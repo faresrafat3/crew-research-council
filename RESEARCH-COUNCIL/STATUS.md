@@ -49,19 +49,6 @@
 - **Method:** tinyfish CLI search + fetch (primary; exa chain error-streak cooldown) + fetch_web_content extraction across Fowler/Vocke pyramid, Google test-sizes + flaky-tests blogs, Maxim system-prompt guide, Wataoka self-preference paper (arXiv:2410.21819), SWE-bench leaderboard, oracle-problem survey (Barr et al. 2014), mutation/quarantine practitioner sources (CircleCI, Drizz, Tenki, TinyCTO, Appscale, Sikkema, Getautonoma). [verified: 2026-09-13]
 - **Gaps / could not verify:** local message_agent() verdict schema, classifier thresholds, tool version pins — same operator-side gaps as prior cycles (flagged in Remaining Gaps).
 
-
-### Research Council Member (opencode) — Breakthrough Cycle 3 (consistency + uncovered agents) — 2026-09-13
-- **Threshold harmonization audit:** found real conflict — freebuff maturity advocates per-commit changed-lines ≥90%/99% aspirational [Google 2020], 9 other files gate project-wide line≥80%. Resolution appended to quality-metrics.md (23944B): 2-tier rule (changed-lines ≥90% MUST via `diff-cover --fail-under=90` + project-wide ≥80% via `pytest --cov-fail-under=80`), mutation 70% PR-targeted / 80% FULL (equivalent mutants 5-15% make 100% waste), ratchet +5%/quarter migration with ledger SQL, 10-file consistency table. 172 lines.
-- **Razor/completer gaps closed** (CONTEXT: razor BREAKS CONSTRAINTS, completer never blocks — no file owned this). Appended to blocking-authority.md (18228B): razor-guard R-1/R-2/R-3 (`grep -r REQ-` before/after must match, auto-ROLLBACK), completer-gate 5-artifact checklist YAML, engineer→tester→razor→reverify→critic→completer sequence (no razor→release edge), 2 abuse cases with detection. 140 lines.
-- **Critic timeout root-cause fix** (CONTEXT: critic TIMES OUT, no timeout config, wrong paths). Appended to routing-integration.md (19889B): 10min/file `timeout 600` + `timeout-minutes: 10`, 30min/task cap, `git diff --name-only` path-awareness, >500-line → ≤200-line hunk chunking with ledger checkpoints, partial-verdict template (tester treats partial as HOLD). 223 lines.
-- **Method:** 3 parallel subagents, 9 TinyFish searches, base fetched via `gh api` to extend-not-repeat. 535 lines new. All cited, specific.
-
-
-### Research Council Member (opencode) — Breakthrough Cycle 4 (operator Monday-morning) — 2026-09-13
-- **COORD-03 validation trial** (appended to implementation-roadmap.md, 21461B): 20 tasks 5×4 formations with failure-family probes, 0–5 rubric, per-formation budgets SOLO<2m/DUO<5m/PIPE<10m/FULL<10m+nightly≤60m with pytest/coverage/mutation/PBT split, 5 go/no-go gates with hold-+1-week remediations. 105 lines.
-- **KB learning loop** (appended to quality-metrics.md, 55409B): 14-field KB schema + ESC example, Day0/1/3/5/7 escape-to-precedent with breach escalation, 90-min quarterly calibration agenda + vote rules + TEST-POLICY versioning, 4 anti-gaming guards + 3 scenarios with detection queries. 354 lines.
-- **Method:** 2 subagents, 6 TinyFish searches, extend-not-repeat via `gh api` tails. 459 lines new. All cited.
-
 ## Research Queue
 
 ### Pending (PROMPTS/INBOX.md)
@@ -84,10 +71,7 @@
 - ~~Blocking Authority — abuse examples, calibration, escalation time, collusion~~ ✅ Complete
 - ~~CI/CD — exact workflow YAML, parallelization, artifact retention, secrets~~ ✅ Complete
 
-#### Attribution (deep dive cycle 3)
-- **freebuff (2026-09-13):** tester-soul.md DEEP DIVE — oracle problem evidence (Barr et al. IEEE TSE 2015; Molinelli et al. ASE 2025: 13,866 unbiased oracles, LLM 43% vs human 45% mutation score; Konstantinou et al. arXiv:2410.21136: LLM oracles capture actual not expected behavior; Hossain and Dwyer TOGLL ICSE 2025: 3.8x/4.9x gains, 1,023 unique bugs), 5-class weak-assertion lint taxonomy with PROMOTE-gated oracle provenance (ORACLE/TAUT verdict fields), determinism harness spec (freezegun, seeded Hypothesis CI profile, 3x-seed flake adjudication). Closes the last DEEPER-queue-adjacent gap: all 10 INBOX outputs now have deep dives.
-
-## Remaining Gaps (flagged for operator)
+### Remaining Gaps (flagged for operator)
 - Local message_agent() verdict schema (could not verify locally)
 - Classifier thresholds (local Hermes config not accessible)
 - Tool version pins (must be set by operator during Phase 1)
@@ -101,8 +85,8 @@
 | workbuddy | ⏳ Pending | Not connected |
 | zcode | ⏳ Pending | Not connected |
 | cline | ✅ Complete | Deep Dive cycle 2 (engineer/routing/roadmap) |
-| freebuff | ✅ Complete | tester-soul DEEP DIVE (oracle quality, assertion strength, determinism) |
-| opencode | ✅ Complete 2026-09-13 | 5 merges + 4 C2 + 3 C3 + 2 C4 (COORD-03 trial, KB loop) |
+| freebuff | ⏳ Pending | Not connected |
+| opencode | ✅ Complete | Restored 6 full files, verified 10/10 |
 
 ## Output Inventory
 
