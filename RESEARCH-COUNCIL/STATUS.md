@@ -33,6 +33,14 @@
   - **cicd-integration.md**: exact GitHub Actions workflow YAML (fast-gate.yml + test-nightly.yml), two-level parallelization strategy (workers + shards), artifact retention policy (30-90 days), secrets handling categories and isolation patterns.
 - **Method:** web_search + web_extract across pytest docs, Hypothesis docs, mutmut docs, GitHub Actions docs, TMMi model, VS Code handoff agents, fatigue model paper, property-based testing papers, CI optimization case studies.
 
+
+### Research Council Member (opencode) — 2026-09-13
+- **Verified all 10 INBOX prompts complete remotely via GitHub API.** Found 6 OUTPUT files deep-dive-only (missing Executive Summary/Key Findings base), 4 files base-only and correct.
+- **Restored 6 full METHODOLOGY-compliant files** (base + deep dive merged): testing-maturity-model.md (95→189 lines, 16987 bytes), tdd-protocol.md (153→258 lines), blocking-authority.md (136→215 lines), testing-framework-spec.md (282→426 lines), quality-metrics.md (129→227 lines), cicd-integration.md (440→533 lines).
+- **Method:** TinyFish web search (8 queries, [verified: 2026-09-13]): TMMi 5 levels, multi-agent TDD/TDAD, pytest/Hypothesis/mutmut, quality metrics flaky <2%, QA blocking gates, GitHub Actions pytest CI, AI agent SOUL prompts, multi-agent routing. Cross-checked tmmi.org, arXiv TDAD/TDD-Agent, pytest/Hypothesis docs, Google flaky 1.5%/16%, DeFlaker 95.5% recall.
+- **Files now:** All 10 OUTPUT files METHODOLOGY-compliant (Executive Summary, Key Findings, Detailed Analysis, Practical Recommendations, Metrics, References, + [DEEP DIVE] where applicable), every claim cited, specific thresholds (line>=80%, branch>=70/75%, mutation>=70/80%, req-cov>=90% FULL, flake<1-2%, FP<2%, escape<1/20, gate<10min, RED 100%).
+- **Gaps / could not verify:** local message_agent() verdict schema, classifier thresholds, tool version pins — flagged for operator Phase 1 (same as scout).
+
 ## Research Queue
 
 ### Pending (PROMPTS/INBOX.md)
@@ -70,18 +78,18 @@
 | zcode | ⏳ Pending | Not connected |
 | cline | ⏳ Pending | Not connected |
 | freebuff | ⏳ Pending | Not connected |
-| opencode | ⏳ Pending | Not connected |
+| opencode | ✅ Complete | Restored 6 full files, verified 10/10 |
 
 ## Output Inventory
 
 | File | Status | Contents |
 |------|--------|----------|
-| `OUTPUT/testing-maturity-model.md` | ✅ Complete | L1-L5 model + self-assessment checklist + DEEP DIVE (gate questions, tools, time, failure modes) |
-| `OUTPUT/tdd-protocol.md` | ✅ Complete | RED/GREEN/REFACTOR split + state machine + DEEP DIVE (flake handling, async delays, tester bugs) |
-| `OUTPUT/testing-framework-spec.md` | ✅ Complete | pytest/coverage/PBT/mutation specs + DEEP DIVE (exact config, conftest.py, strategies, operators) |
-| `OUTPUT/quality-metrics.md` | ✅ Complete | 16-metric catalog + DEEP DIVE (benchmarks, targets, visualization, leading indicators) |
-| `OUTPUT/blocking-authority.md` | ✅ Complete | 8-condition veto + appeal ladder + DEEP DIVE (abuse patterns, calibration, escalation, collusion) |
-| `OUTPUT/cicd-integration.md` | ✅ Complete | commit-gated CI + nightly async + DEEP DIVE (exact YAML, parallelization, artifacts, secrets) |
+| `OUTPUT/testing-maturity-model.md` | ✅ Complete 2026-09-13 (opencode restored full) | Executive Summary + 10 findings + L1-L5 + checklist + DEEP DIVE merged, 189 lines |
+| `OUTPUT/tdd-protocol.md` | ✅ Complete 2026-09-13 (opencode restored full) | Executive Summary + split RED/GREEN + state machine + DEEP DIVE merged, 258 lines |
+| `OUTPUT/testing-framework-spec.md` | ✅ Complete 2026-09-13 (opencode restored full) | pytest/Hypothesis/mutmut specs + exact TOML/conftest + DEEP DIVE merged, 426 lines |
+| `OUTPUT/quality-metrics.md` | ✅ Complete 2026-09-13 (opencode restored full) | 16-metric catalog + benchmarks + DEEP DIVE merged, 227 lines |
+| `OUTPUT/blocking-authority.md` | ✅ Complete 2026-09-13 (opencode restored full) | 8 MUST-block + MUST-NOT + ladder + DEEP DIVE merged, 215 lines |
+| `OUTPUT/cicd-integration.md` | ✅ Complete 2026-09-13 (opencode restored full) | commit-gated + nightly + exact YAML + DEEP DIVE merged, 533 lines |
 | `OUTPUT/tester-soul.md` | ✅ Complete | Full tester SOUL specification |
 | `OUTPUT/engineer-soul.md` | ✅ Complete | Engineer iron-law delta |
 | `OUTPUT/routing-integration.md` | ✅ Complete | Formation table + message/artifact flows |
