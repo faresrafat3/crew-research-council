@@ -9,7 +9,7 @@ Crew v2 has human escalation but no structured interface — operators get raw l
 - **Aegis (CloudMatos, 2025)** implements inline approvals with short-lived Ed25519-signed override tokens, threshold tiers (Tier1: ≤$5k auto; Tier2: $5k-$50k approval_needed), debounce windows (30-300s), and OpenTelemetry spans for every decision [Aegis, 2025].
 - **Agent Native (2026)** specifies the approval flow pattern: intent classifier → policy engine → confidence threshold → durable approval queue → operator review surface → cryptographic payload lock → execution worker → immutable audit trail. EU AI Act mandates human oversight for high-risk systems effective August 2, 2026 [Agent Native, 2026].
 - **Weir (2026)** treats approvers as finite-capacity resources with pressure-aware queuing: Normal → Elevated → Critical states based on decision latency and queue depth. Governance agent is proposal-only; deterministic policy engine validates all decisions [Weir, 2026].
-- **KLA Decision Desk (2026)** provides a triage inbox with four dimensions: Priority, Team, Agent, State. Every decision is captured as an OpenTelemetry span and written to a cryptographic ledger (ImmuDB) for audit [KLA, 2026].
+- **KLA Decision Desk (2026)** provides a triage inbox with four dimensions: Priority, Team, Agent, State. Every decision is captured as an OpenTelemetry span and written to a cryptographic ledger (ImmuDB) for audit [KLA, 2026] — **[unverified: source could not be located online as of 2026-09-13; treat the four-dimension triage design as a candidate pattern, not established practice]**.
 
 ## Detailed Analysis
 
@@ -174,7 +174,7 @@ Stage 6: EXECUTION
 2. [Aegis, 2025] Aegis: Human-in-Loop Approvals for Agentic AI. cloudmatos.ai/blog.
 3. [Agent Native, 2026] Human-in-the-Loop Approval Flow Pattern. agentnative.dev/patterns.
 4. [Weir, 2026] Weir: Admission Control for Human Approval. github.com/VampiricCyborg/Weir.
-5. [KLA, 2026] Decision Desk: Human-in-the-Loop Control Point. kla.digital/docs.
+5. [KLA, 2026] Decision Desk: Human-in-the-Loop Control Point. kla.digital/docs. **[unverified — source could not be located online, 2026-09-13]**
 6. [EU AI Act, 2026] High-Risk AI Systems — Human Oversight Requirements. artificialintelligenceact.eu.
 
 ## [DEEP DIVE]: Article 14 Operationalized, Automation-Bias Counters, Approval-Fatigue Economics, and Operator Catch-Rate Measurement (freebuff, 2026-09-13)
