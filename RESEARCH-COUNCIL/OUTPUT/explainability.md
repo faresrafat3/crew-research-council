@@ -244,3 +244,48 @@ class EvalCase:
 5. [Maxim AI, 2026] Agent Tracing for Debugging Multi-Agent AI Systems. getmaxim.ai.
 6. [Zylos Research, 2026] Event-Driven Architecture for AI Agent Systems. zylos.ai.
 7. [LangChain, 2026] LangGraph Checkpointing and Time-Travel Debugging.
+
+## [DEEP DIVE]: Counterfactual Causality for Attribution, OTel-Native Tracing, and Deterministic Replay Economics (freebuff, 2026-09-13)
+
+### 1. From root-cause *patterns* to counterfactual attribution
+
+The 6-pattern classifier labels a failure's type but not *which decision caused it*. Debugging needs the counterfactual: "would the outcome differ had decision D gone otherwise?" Make it operational with the replay capability the spec already has:
+
+1. Identify the candidate decision (span where the bad branch started — normally the last verifier-rejected span before the escape).
+2. Replay from the preceding checkpoint with a single override (different formation, different tool choice, different verdict).
+3. **Attribution score** = outcome delta between original and counterfactual run. Deltas ≥ the escape's severity = causal; ~0 = the decision was along for the ride, keep walking upstream.
+
+This is diagnosis-as-experiment rather than diagnosis-as-classification; it also reuses the eval infrastructure (the counterfactual run *is* an eval case with an override parameter), and the MAST taxonomy's verification-gap class (21.3%) is exactly the surface this instrument measures — escapes that a different verdict would have caught [Cemri et al., 2025].
+
+### 2. Ground the trace schema in OTel instead of a bespoke Span class
+
+The spec's `Span`/`Trace` classes duplicate what OTel GenAI semantic conventions now standardize: `gen_ai.operation.name` distinguishes LLM/tool/orchestration spans, `gen_ai.usage.*` carries tokens/cost per span, and streaming timing attributes cover latency breakdowns [OpenTelemetry, 2026]. Delta: keep the Python classes as *view models*, make OTel the storage/wire format — every span gets standard attributes so the operator dashboard, the cost unit-economics queries (cost deep dive), and the golden-signal saturation metrics (production deep dive) all read from one source of truth. The zero-replay knowledge-graph approach (arXiv:2606.14805 — traces compiled into event knowledge graphs for RCA without re-execution) becomes an *index* over the OTel store, not a parallel pipeline.
+
+### 3. Deterministic replay: what must be captured for replay to be honest
+
+Time-travel debugging fails silently when replay isn't faithful. Minimum capture set per checkpoint (beyond state + messages):
+
+| Capture | Why | Failure if missing |
+|---|---|---|
+| Tool outputs (hash + content) | External state changes between runs | Replayed tool calls return different data → phantom success/failure |
+| Model seed + temperature | LLM nondeterminism | "Same" replay diverges immediately |
+| Memory snapshot ref | Agent state includes retrieved memories | Replay can't see what the agent knew then |
+| RNG/uuid state | Idempotency tokens must reproduce | Replay dedup-collides or splits identically |
+
+Rule: a replay is **valid** only if its tool outputs are hash-identical to the original run's, or the divergence itself is the finding (external-state change = new thorn). This upgrades the "replay success rate >95%" metric from a plumbing check to a faithfulness check.
+
+### 4. Debugging-time SLO with an escalation ladder
+
+"Debugging time <15 min" needs teeth. Define: TTD (time-to-diagnosis) measured from escape detection to confirmed root cause *with counterfactual evidence*; ladder: pattern-classifier alone must produce a candidate in <5 min; if the operator can't confirm via trace + counterfactual in 15 min, the failure auto-converts to a thorn with mandatory counterfactual analysis in the weekly RBT batch (self-healing). Eval conversion rate (>80%) and regression prevention (>90%) stay as the ledger's outcome metrics — debugging that doesn't end in an eval case is counted as incomplete.
+
+### 5. Privacy boundary: traces contain everything, so they inherit the security model
+
+Full-fidelity traces capture prompts, tool payloads, and memory contents — i.e., the trace store is the crew's most sensitive artifact. Apply the security architecture's controls to it: the trace store reads through the same ring ACLs (Ring 2+ by default; raw payload access Ring 1 + justification), PII/credential redaction runs at *write* time (regex + classifier, security Layer 1) so redaction isn't bypassable by late reads, and the hash chain (Layer 5) covers trace mutations so "who debugged what" is itself auditable. W3C `traceparent` on inter-agent messages (comm-protocols) is the join key that makes per-task reconstruction a query, not a rebuild.
+
+### References for deep dive
+
+- [OpenTelemetry, 2026] GenAI Semantic Conventions (gen_ai.operation.name, gen_ai.usage.*, streaming timing). opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai.
+- [Cemri et al., 2025] Why Do Multi-Agent LLM Systems Fail? (MAST: 21.3% verification-gap failures). arXiv:2503.13657.
+- [arXiv:2606.14805, 2026] Knowledge-Based Zero-Replay Debugging of Multi-Agent LLM Traces (event knowledge graph RCA).
+- [LangChain, 2026] LangGraph checkpointing/time-travel (checkpoint + override replay pattern).
+- [Braintrust, 2026] Trace-to-eval conversion workflow. braintrust.dev.
