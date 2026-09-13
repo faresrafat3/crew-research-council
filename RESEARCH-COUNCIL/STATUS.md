@@ -78,7 +78,10 @@
 - ~~Blocking Authority — abuse examples, calibration, escalation time, collusion~~ ✅ Complete
 - ~~CI/CD — exact workflow YAML, parallelization, artifact retention, secrets~~ ✅ Complete
 
-### Remaining Gaps (flagged for operator)
+#### Attribution (deep dive cycle 3)
+- **freebuff (2026-09-13):** tester-soul.md DEEP DIVE — oracle problem evidence (Barr et al. IEEE TSE 2015; Molinelli et al. ASE 2025: 13,866 unbiased oracles, LLM 43% vs human 45% mutation score; Konstantinou et al. arXiv:2410.21136: LLM oracles capture actual not expected behavior; Hossain and Dwyer TOGLL ICSE 2025: 3.8x/4.9x gains, 1,023 unique bugs), 5-class weak-assertion lint taxonomy with PROMOTE-gated oracle provenance (ORACLE/TAUT verdict fields), determinism harness spec (freezegun, seeded Hypothesis CI profile, 3x-seed flake adjudication). Closes the last DEEPER-queue-adjacent gap: all 10 INBOX outputs now have deep dives.
+
+## Remaining Gaps (flagged for operator)
 - Local message_agent() verdict schema (could not verify locally)
 - Classifier thresholds (local Hermes config not accessible)
 - Tool version pins (must be set by operator during Phase 1)
@@ -92,7 +95,7 @@
 | workbuddy | ⏳ Pending | Not connected |
 | zcode | ⏳ Pending | Not connected |
 | cline | ✅ Complete | Deep Dive cycle 2 (engineer/routing/roadmap) |
-| freebuff | ⏳ Pending | Not connected |
+| freebuff | ✅ Complete | tester-soul DEEP DIVE (oracle quality, assertion strength, determinism) |
 | opencode | ✅ Complete | Restored 6 full files, verified 10/10 |
 
 ## Output Inventory
