@@ -240,3 +240,63 @@ mlflow.crewai.autolog()  # or mlflow.langchain.autolog()
 8. [LangChain, 2026] State of Agent Engineering Report. 89% observability adoption.
 9. [Google, 2025] A2A Protocol: Agent-to-Agent Communication.
 10. [Confluent, 2025] Four Canonical Multi-Agent Patterns on Pub/Sub.
+
+## [DEEP DIVE]: OpenTelemetry Instrumentation Standard, Probe Semantics, and SLO-Gated Progressive Rollout for Agent Patches (freebuff, 2026-09-13)
+
+### 1. Replace bespoke observability with OTel GenAI semantic conventions
+
+The spec proposes MLflow tracing; production practice has converged on **OpenTelemetry GenAI semantic conventions** — a standardized `gen_ai.*` attribute namespace covering spans, metrics, and events for model requests, agent orchestration, and MCP tool calling [OpenTelemetry, 2026]. The concrete attribute set to adopt:
+
+- `gen_ai.system`, `gen_ai.request.model`, `gen_ai.request.max_tokens`
+- `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens` (the cost-metrics backbone)
+- `gen_ai.operation.name` (chat / tool call / orchestration step)
+- Streaming metrics: time-to-first-chunk, time-per-output-chunk (the crew's per-agent latency SLO inputs)
+
+Standard attributes mean the crew's telemetry is queryable by any OTel-compatible backend (Prometheus/Grafana, Datadog, Langfuse) without vendor lock-in, and the W3C `traceparent` propagation from the communication-protocols deep dive makes per-task traces join correctly. Keep MLflow as the experiment/eval store; make OTel the runtime wire format.
+
+### 2. Health checks: adopt the three-probe vocabulary, don't invent one
+
+Kubernetes formalized health into three probes with distinct failure semantics [Kubernetes, 2026]:
+
+| Probe | Question | Failure action |
+|---|---|---|
+| **Startup** | "Has initialization finished?" | Restart after timeout (blocks the other two while running) |
+| **Liveness** | "Am I deadlocked?" (restart me) | Container restart |
+| **Readiness** | "Can I take work right now?" | Removed from routing, no restart |
+
+Two implementation rules the crew's agent supervisor must copy:
+
+1. **Liveness must never check external dependencies** (model API reachability, message bus) — checking externals turns a dependency blip into a restart storm; liveness answers only "is my event loop wedged?"
+2. **Readiness is the gate the router polls** — an agent whose queue is saturated (backpressure state, comm-protocols) flips ready=false instead of accumulating messages; the router stops dispatching but the process keeps running. Readiness thresholds can be aggressive; liveness thresholds conservative (higher failure thresholds avoid restart loops) [OneUptime, 2026].
+
+This refines the spec's single "health check" into a dispatchable/not-dispatchable distinction, which is exactly what the 80%-capacity NACK logic needs as its signal source.
+
+### 3. SOUL-patch rollout is a deployment — give it progressive delivery
+
+The crew deploys prompt/config changes, not just code; Google's canary-analysis pattern applies directly [Google Cloud]:
+
+- **Steady state defined by SLOs**: task success rate, mute rate, escape rate per agent — the same SLIs from the self-healing error budget.
+- **Progressive exposure**: ship a SOUL patch to a *formation slice* (e.g., 2 of 5 engineer task slots = 40% exposure) for a fixed bake window (24h minimum, one full task-type cycle).
+- **Automated rollback analysis**: compare canary slice vs control slice on the SLO metrics over the bake window; any breach of the error-budget burn rate auto-reverts the SOUL to the previous version (SOUL files are versioned, so revert = pointer swap).
+- **Promote only on green**: canary must match or beat control on all guardrail metrics before full rollout.
+
+This closes the gap in the spec's HA section: it covers infrastructure failure but not "the patch itself is the outage." With this, a bad prompt patch has the same blast radius and MTTR as a bad binary.
+
+### 4. Four golden signals, mapped to agent surfaces
+
+| Golden signal | Agent surface | Instrument |
+|---|---|---|
+| Latency | time-to-first-chunk, task completion time | OTel GenAI metrics |
+| Traffic | tasks/min per agent, messages/min per lane | queue + router counters |
+| Errors | verdict rejects, tool failures, DLQ depth | counters + DLQ gauge |
+| Saturation | queue depth %, context-window utilization % | gauges feeding readiness |
+
+Saturation → readiness is the load-bearing link: saturation signals set `ready=false`, closing the loop without human intervention.
+
+### References for deep dive
+
+- [OpenTelemetry, 2026] GenAI Semantic Conventions (gen_ai.* attributes, metrics incl. TTFT/time-per-chunk). opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai; github.com/open-telemetry/semantic-conventions-genai.
+- [Kubernetes, 2026] Liveness, Readiness, and Startup Probes. kubernetes.io/docs/concepts/workloads/pods/probes.
+- [OneUptime, 2026] Health checks: liveness vs readiness (threshold asymmetry). oneuptime.com/blog.
+- [Google Cloud] Getting started with chaos engineering / canary analysis (steady-state + progressive rollout). cloud.google.com/blog.
+- [Anthropic, 2025] How we built our multi-agent research system (agent telemetry context: ~4x chat, ~15x multi-agent token usage). anthropic.com/engineering.
