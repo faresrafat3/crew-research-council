@@ -176,3 +176,59 @@ Stage 6: EXECUTION
 4. [Weir, 2026] Weir: Admission Control for Human Approval. github.com/VampiricCyborg/Weir.
 5. [KLA, 2026] Decision Desk: Human-in-the-Loop Control Point. kla.digital/docs.
 6. [EU AI Act, 2026] High-Risk AI Systems — Human Oversight Requirements. artificialintelligenceact.eu.
+
+## [DEEP DIVE]: Article 14 Operationalized, Automation-Bias Counters, Approval-Fatigue Economics, and Operator Catch-Rate Measurement (freebuff, 2026-09-13)
+
+### 1. EU AI Act Article 14 → a requirements table for the approval control plane
+
+Article 14 makes human oversight a *product requirement* for high-risk systems, not a staffing policy; oversight measures must enable the humans to (a) properly understand outputs and limitations, (b) remain aware of automation bias, (c) correctly interpret output, (d) decide not to use the output, and (e) intervene or stop the system [EU AI Act, 2025]. Deployer-side Article 26 adds: monitor operation per instructions, inform affected workers, and retain logs (≥6 months per compliance analyses) [CSA, 2026]. Mapping to the Sphinx-style control plane:
+
+| Article 14 requirement | Control-plane feature |
+|---|---|
+| Understand outputs/limitations | Every approval card shows: task spec diff, agent confidence, verdict history, and *what the agent cannot know* |
+| Awareness of automation bias | UI displays base rates ("engineer DONE claims pass critic 82% of the time") next to each claim |
+| Correct interpretation | Standardized verdict taxonomy only (HOLD/APPROVE/ESCALATE — free text banned) |
+| Decide not to use | One-click REJECT with mandatory reason code feeding the thorn ledger |
+| Intervene/stop | Kill switch independent of agent infrastructure (operator path, not agent path) |
+
+Log retention: align the audit chain (security Layer 5) with the 6-month deployer requirement — the current 90-day active window is compliant only because the hash-chained archive persists beyond it.
+
+### 2. Automation bias: measured, and designed against
+
+The literature is consistent: humans over-rely on algorithmic advice — weighting it more than identical human-source advice [Logg et al., via Microsoft Aether], and incorrect algorithmic support measurably corrupts human judgment even when later shown to be wrong [Agudo et al., 2024]; the 2026 review literature frames automation bias as the central failure mode of human-AI collaboration [Romeo Lai et al., 2026]. Countermeasures built into the operator flow:
+
+1. **Batch review with rotation**: review queues of ~10 items with mandatory per-item verdicts, then a 5-minute break — sustained review degrades vigilance (see §3).
+2. **Random decoys**: inject ~5% known-flawed agent outputs (seeded from the regression suite) into approval queues; operator catch rate on decoys is the *measured* review-quality metric (target ≥70%; below 50% = stop live approvals, retrain or re-staff).
+3. **Adversarial framing**: present one steel-manned counter-argument per agent claim (cheap LLM call) — skeptical evaluation increases error detection [Beck et al., 2026].
+
+### 3. Approval fatigue: the 93% problem and its economic fix
+
+Field data from Claude Code: users approve ~93% of permission prompts — approval fatigue is the equilibrium state of any always-asking system [reported by ResilientCyber, citing Anthropic, 2026]. A control plane that asks constantly trains its operator to click yes. Design consequences:
+
+- **Approval must be scarce**: only irreversible actions (external comms, spend above threshold, prod data writes, security-relevant config) require human sign-off; read-only and sandboxed actions auto-approve and are *sampled* for review instead.
+- Track **prompt approval rate** as a health metric: >80% approval rate = the gate is miscalibrated (too many trivial prompts), not the operator being lazy.
+- Separate "approval" (decision) from "attention" (information): summaries and dashboards feed attention; only the scarce class interrupts.
+
+Related primary-source evidence that sustained review degrades: Anthropic's randomized trial (52 developers) found AI-assisted developers scored ~17% lower on comprehension/debugging tests [Anthropic, 2026] — comprehension erosion compounds over a review session, which is why batches must be short. (A widely-cited report that human reviewers' catch rate on dangerous prompts fell from 17% to 5% over 50 consecutive prompts [secondary sources, 2026] could not be verified against a primary publication — treat as plausible, unconfirmed.)
+
+### 4. Escalation routing by risk class, not by confidence alone
+
+Add a risk-class dimension to the Aegis-style override flow: a low-confidence *reversible* task (e.g., draft a summary) does not deserve the same queue as a high-confidence *irreversible* one (e.g., publish a release). Routing matrix:
+
+| | Reversible | Irreversible |
+|---|---|---|
+| High confidence | Auto-execute + sampled review | Human approval |
+| Low confidence | Auto-execute + flag in batch | Human approval + adversarial framing |
+
+This keeps human attention on the quadrant where Article 14's "decide not to use" actually matters.
+
+### References for deep dive
+
+- [EU AI Act, 2025] Article 14: Human Oversight. artificialintelligenceact.eu/article/14; EU AI Act Service Desk.
+- [CSA, 2026] EU AI Act high-risk obligations: deployer monitoring, ≥6-month log retention. labs.cloudsecurityalliance.org.
+- [Logg et al.] People discount advice from algorithms less than identical human advice — in Microsoft Aether, Overreliance on AI Literature Review.
+- [Agudo et al., 2024] The impact of AI errors in a human-in-the-loop process. PMC10772030.
+- [Romeo Lai et al., 2026] Exploring automation bias in human-AI collaboration (review). AI & Society, Springer.
+- [Beck et al., 2026] Bias in the Loop: How Humans Evaluate AI-Generated Content. Harvard Data Science Review.
+- [ResilientCyber, 2026] The Human-in-the-Loop Illusion (93% Claude Code approval rate, citing Anthropic). resilientcyber.io.
+- [Anthropic, 2026] How AI assistance impacts the formation of coding skills (RCT, n=52, -17% comprehension). anthropic.com/research/AI-assistance-coding-skills.
