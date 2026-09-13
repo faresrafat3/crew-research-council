@@ -5,13 +5,13 @@ Crew v2 uses one model for all tasks with no caching, no early stopping, and no 
 
 ## Key Findings
 
-- **Prompt Caching** [Veso Research, 2026]: Anthropic offers 90% off cached reads (0.1x cost). OpenAI 75-90% off on GPT-5.4/5.5+. Gemini 90% off via implicit caching (on by default). Cache the stable prefix — system prompt, tool definitions, static few-shot examples — and compact only below the cache boundary. Never compact through it [Veso Research, 2026].
+- **Prompt Caching** [Veso Research, 2026]: Anthropic offers 90% off cached reads (0.1x cost). OpenAI offers 75-90% off cached input on its frontier models (exact model-version names could not be verified as of 2026-09-13). Gemini gives 90% off via implicit caching on 2.5-series models (raised from 75% in Nov 2025; on by default). Cache the stable prefix — system prompt, tool definitions, static few-shot examples — and compact only below the cache boundary. Never compact through it [Veso Research, 2026; Google Developers Blog, 2025].
 
 - **Model Tiering** [Zylos Research, 2026]: A three-tier routing system (Opus for architecture, Sonnet for implementation, Haiku for quick edits) costs $0.98 per session versus $2.02 for uniform Opus — a 51% reduction with no measurable quality regression. Blended cost of $2.31/M tokens vs $18.40/M for uniform Opus — 87% reduction while maintaining 97.7% of full-frontier accuracy [Zylos Research, 2026].
 
 - **Context Window Economics** [Zylos Research, 2026]: A 200K-token context costs 200x more than 1K-token. At Claude Sonnet rates ($3/M input), that's $0.60/turn vs $0.003. In a 50-turn agentic loop: $30 vs $0.15. Prompt caching is the single highest-leverage optimization: 90% discount on cached input tokens [Zylos Research, 2026].
 
-- **APC (Agent Plan Caching)** [Stanford NeurIPS 2025]: 50.31% cost reduction, 27.28% latency reduction. 76.42% cost reduction on GAIA benchmark at only 0.61% accuracy drop [Veso Research, 2026].
+- **APC (Agentic Plan Caching)** [arXiv:2506.14852, 2025]: 50.31% cost reduction, 27.28% latency reduction. 76.42% cost reduction on GAIA benchmark at only 0.61% accuracy drop [Veso Research, 2026].
 
 - **Output Token Premium** [SAA Report, 2026]: Claude family charges 5x more for output tokens than input. Reducing output from 5K to 1K tokens through structured formatting saves 16% on a 100K context task. The largest cost driver is context accumulation across agent turns — a 4-agent fleet consuming 200K tokens each costs 800K tokens per wave; intelligent orchestration can aggregate to ~10K tokens in the main context (80x difference) [SAA Report, 2026].
 
@@ -29,15 +29,17 @@ Crew v2 uses one model for all tasks with no caching, no early stopping, and no 
 
 ### Three-Tier Model Routing
 
-**Model tiers (2026 pricing):**
+**Model tiers (verified 2026-09-13 against Anthropic pricing docs; older Opus pricing of $15/$75 no longer applies — Opus 4.6 lists at $5/$25):**
 
 | Model | Input ($/M) | Output ($/M) | Use Case |
 |-------|-------------|--------------|----------|
-| Claude Opus 4.6 | $15.00 | $75.00 | Architecture, complex reasoning |
-| Claude Sonnet 4.6 | $3.00 | $15.00 | Implementation, testing, default |
-| Claude Haiku 4.5 | $1.00 | $5.00 | Quick edits, classification, linting |
+| Claude Opus 4.6 | $5.00 | $25.00 | Architecture, complex reasoning [verified: 2026-09-13, Anthropic pricing] |
+| Claude Sonnet 4.6 | $3.00 | $15.00 | Implementation, testing, default [verified: 2026-09-13, Anthropic pricing] |
+| Claude Haiku 4.5 | $1.00 | $5.00 | Quick edits, classification, linting [verified: 2026-09-13, Anthropic pricing] |
 | GPT-4o | $2.50 | $10.00 | Alternative for specific tasks |
 | Gemini 2.0 Flash Lite | $0.08 | $0.30 | High-volume, low-complexity |
+
+Note: tiering savings shrink as frontier prices fall (uniform-Opus baseline dropped from $15/$75 to $5/$25), but tiering still pays because the Haiku:Opus input ratio is 5:1 and output ratio 5:1. Recompute savings against *current* prices at each quarterly review.
 
 **Routing rules:**
 
@@ -165,4 +167,4 @@ class CostContext:
 3. [Zylos Research, 2026] AI Agent Cost Engineering — Production Token Economics. zylos.ai/research.
 4. [Zylos Research, 2026] Context Window Economics — Managing Token Budgets in Persistent AI Agents. zylos.ai/research.
 5. [SAA Report, 2026] Token Optimization Techniques. tibsfox.com/Research/SAA.
-6. [Stanford NeurIPS, 2025] APC: Agent Plan Caching. arXiv:2506.14852.
+6. [arXiv:2506.14852, 2025] Agentic Plan Caching: Test-Time Memory for Fast and Cost-Efficient LLM Agents.
