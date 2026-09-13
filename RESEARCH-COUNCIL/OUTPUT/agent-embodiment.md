@@ -164,3 +164,50 @@ Crew v2 agents have SOULs with declared biases but in practice produce similar o
 3. [Beyond the Strongest LLM, 2025] Multi-Turn Multi-Agent Orchestration. arXiv:2509.23537.
 4. [Persona Design Research, 2025] Effective Agent Personas: Design Principles. **[unverified — generic attribution; primary source could not be located, 2026-09-13. Treat the five dimensions as a design template, not an empirical finding.]**
 5. [Voice Drift Detection, 2025] Embedding-Based Consistency Monitoring. **[unverified — generic attribution; the 0.2/0.3/0.5 thresholds are heuristics, not published benchmarks. Calibrate on Crew v2's own output history before enforcing.]**
+
+## [DEEP DIVE]: Activation-Space Voice Monitoring (Persona Vectors), Collapse Dynamics of Convergence, and Functional Diversity Metrics (freebuff, 2026-09-13)
+
+### 1. Persona vectors: upgrade drift detection from output embeddings to activation space
+
+Anthropic's persona vectors work identifies **directions in the model's activation space underlying character traits** (e.g., sycophancy, humor, evil) and uses them to (a) *monitor* trait fluctuation in deployment before it surfaces in outputs, and (b) flag training data likely to induce unwanted trait shifts [Chen et al. / Anthropic, arXiv:2507.21509]. For Crew v2 this is the mechanism the output-similarity heuristic (1 - cosine) approximates:
+
+- Output-embedding drift (the current spec) detects drift *after* it reaches text; persona vectors detect *during* generation. When self-hosted/open-weight models are used, extract the prefill-activation projection and alarm on sustained activation drift even when outputs look stable (early-warning, ~zero output tokens burned).
+- The same technique explains the SOUL's limits: prompt-level voice instructions are weakly enforced relative to what the activation geometry supports. So treat the voice spec as a *control input*, and drift alarms (output-side) as the enforcement layer — matching the security deep dive's "externalize enforcement" principle.
+- Practical adoption path: run output-embedding drift now (no infra change); add activation-space monitoring per role when the crew moves to an open-weight model where hooks are available; keep the 0.2/0.3/0.5 thresholds but restate them as calibrated-on-crew-data (the original doc already flags this honestly).
+
+### 2. Convergence as model collapse: the tails disappear first
+
+Shumailov et al. (Nature, 2024, ~1900 citations) showed models trained recursively on synthetic outputs suffer **irreversible defects: the tails of the distribution vanish first** [Shumailov et al., 2024]. The crew's convergence failure mode is the organizational analogue: agents exchanging outputs (memory, debate transcripts, shared context) that feed each other's generations will lose *rare perspectives* first — the critic's contrarianism, the researcher's minority-source findings — long before average pairwise similarity crosses 0.8. Two derived rules:
+
+1. **Convergence metrics must be tail-sensitive**: track pairwise similarity at the 90th percentile and the *distinct-perspective count* (see §3), not just the mean; means hide exactly the collapse that matters.
+2. **Quarantine human/external grounding**: memory writes from external sources (docs, human feedback, web) should be tagged and never fully replaced by intra-crew derived content — mirroring the collapse-prevention finding that access to true original data halts collapse [Shumailov et al., 2024]. Concretely: Tier-3 insight compaction must preserve ≥1 external evidence link per insight (memory-architecture corroboration already requires two *independent* sources — extend one of them to be external-grounded).
+
+### 3. Distinct-Perspective Count (DPC): a measurable diversity instrument
+
+Replace the fuzzy "≥2 distinct perspectives" with an instrument computable from the existing debate transcripts:
+
+```
+DPC(round) = number of clusters in the round's argument embeddings
+             (agglomerative, threshold = 1 - 0.7 cosine)
+Gate: DPC < 2 in round 1 → inject perspective (different model family,
+      devil's advocate SOUL, or external citation requirement) before
+      any vote is allowed.
+```
+
+This operationalizes DynaDebate's anti-homogeneity finding as a pre-vote gate rather than a post-hoc observation, and gives the "perspective diversity" metric in the catalog a deterministic measurement procedure.
+
+### 4. Role conflict as an embodied property, not a bug
+
+The embodiment doc treats distinctiveness as style; the strongest reason for it is functional. RoundTable/DynaDebate results (already cited) show homogeneous agents collapse to majority voting, and the conflict-resolution deep dive derives the value of adversarial roles (devil's advocate, HOLD-wins tester). Embodiment guidance: assign each agent a *declared conflict duty* in its SOUL (e.g., critic must always produce one falsification attempt; researcher must always surface one contradicting source) — behavioral commitments that make diversity robust to model homogeneity, which prompt-style differentiation alone cannot guarantee when all agents share a model family.
+
+### 5. Authorship disclosure: keep votes anonymous, keep debates attributed
+
+The existing findings (authorship disclosure increases self-voting; visible ongoing votes amplify herding [Beyond the Strongest LLM, 2025]) map to a two-channel rule: **debate transcripts carry attribution** (accountability, traceability — W3C traceparent from comm-protocols), while **votes are anonymous and simultaneous** (bias control). Do not collapse the two channels: anonymous debates destroy auditability; attributed votes reintroduce herding.
+
+### References for deep dive
+
+- [Chen et al. / Anthropic, 2025] Persona Vectors: Monitoring and Controlling Character Traits in Language Models. arXiv:2507.21509; anthropic.com/research/persona-vectors.
+- [Shumailov et al., 2024] AI models collapse when trained on recursively generated content. Nature 631, 755-759. nature.com/articles/s41586-024-07566-y.
+- [DynaDebate, 2026] arXiv:2601.05746 (dynamic path generation vs homogeneity).
+- [Beyond the Strongest LLM, 2025] arXiv:2509.23537 (authorship/herding effects).
+- [RoundTable, 2024] arXiv:2411.07161 (group decision-making).
