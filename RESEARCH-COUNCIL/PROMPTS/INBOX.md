@@ -17,55 +17,55 @@
 
 ## Queue
 
-### P0 — Testing Maturity Model
-- **Question:** What are 5 maturity levels for AI agent testing, with measurable criteria?
-- **Context:** We need to assess where Crew v2 is now and define a path forward.
-- **Output:** `OUTPUT/testing-maturity-model.md`
+### P1 — Multi-Agent Memory and Knowledge Management
+- **Question:** How should a multi-agent crew manage shared memory, per-agent memory, and organizational knowledge? What are the patterns for memory hierarchy (per-task, per-agent, per-crew, cross-crew), memory compaction, retrieval-augmented generation for agents, and preventing catastrophic forgetting?
+- **Context:** Crew v2 has no systematic memory. Each agent starts fresh. librarian shelves solved cases but there's no retrieval mechanism. firstmate tracks expertise in JSONL but it's not structured for fast lookup.
+- **Output:** `OUTPUT/memory-architecture.md`
 
-### P0 — Role-Split TDD Protocol
-- **Question:** What is the exact step-by-step procedure for multi-agent TDD?
-- **Context:** Engineer and tester are different agents. They communicate asynchronously.
-- **Output:** `OUTPUT/tdd-protocol.md`
+### P1 — Agent Communication Protocol Optimization
+- **Question:** What is the optimal communication protocol for async multi-agent systems? How do you handle message ordering, duplicate detection, priority queuing, backpressure, and dead letter queues? What are the patterns for request-response vs fire-and-forget in agent workflows?
+- **Context:** Crew v2 uses message_agent() which is fire-and-forget. There's no ordering guarantee, no duplicate detection, no priority. Complex tasks can have race conditions.
+- **Output:** `OUTPUT/communication-protocols.md`
 
-### P0 — Blocking Authority and Governance
-- **Question:** When can the tester block a release? How are disagreements resolved?
-- **Context:** Tester must have bounded authority — not too strict, not too lenient.
-- **Output:** `OUTPUT/blocking-authority.md`
+### P1 — Self-Healing and Self-Improvement Mechanisms
+- **Question:** How should a multi-agent crew detect its own failures and heal itself? What are the patterns for automated root cause analysis, self-patching, regression testing for agent behavior, and graceful degradation? How do you implement a "coach" that improves the crew without human intervention?
+- **Context:** Crew v2 has coach and historian but no systematic self-improvement loop. Escapes are tracked but not automatically converted to patches.
+- **Output:** `OUTPUT/self-healing.md`
 
-### P1 — Testing Framework Specification
-- **Question:** What are the concrete specifications for unit, integration, E2E, property-based, and mutation testing?
-- **Context:** Need exact tools, configurations, and thresholds.
-- **Output:** `OUTPUT/testing-framework-spec.md`
+### P2 — Production Deployment and Monitoring
+- **Question:** How do you deploy a multi-agent crew to production with high availability? What are the patterns for health checks, circuit breakers, rate limiting, cost monitoring, and alerting? How do you monitor agent "drift" over time?
+- **Context:** Crew v2 runs on a single machine. No HA, no monitoring, no cost tracking per agent.
+- **Output:** `OUTPUT/production-deployment.md`
 
-### P1 — Test Quality Metrics
-- **Question:** What 15+ metrics should we track, with definitions and targets?
-- **Context:** We need to measure test quality over time.
-- **Output:** `OUTPUT/quality-metrics.md`
+### P2 — Security and Safety in Multi-Agent Systems
+- **Question:** What are the unique security risks in multi-agent systems? How do you prevent prompt injection between agents, privilege escalation, data exfiltration via agent outputs, and agent "going rogue"? What are the patterns for sandboxing, capability-based security, and audit logging?
+- **Context:** Crew v2 agents share a filesystem, can execute arbitrary code, and trust each other's outputs. No inter-agent security boundary.
+- **Output:** `OUTPUT/multi-agent-security.md`
 
-### P1 — CI/CD Integration
-- **Question:** How do we integrate testing into the agent dispatch cycle?
-- **Context:** Tests must run automatically when agents produce output.
-- **Output:** `OUTPUT/cicd-integration.md`
+### P2 — Scalability Patterns for Multi-Agent Crews
+- **Question:** How do you scale a multi-agent crew from 8 agents to 80 to 800? What are the patterns for agent pooling, load balancing, task routing at scale, and preventing coordination overhead from dominating? When should you split a monolithic crew into micro-crews?
+- **Context:** Crew v2 has 81 agents but they all share one machine, one context window, one terminal. This won't scale.
+- **Output:** `OUTPUT/scalability-patterns.md`
 
-### P1 — Tester Agent SOUL
-- **Question:** What is the complete, implementable tester SOUL?
-- **Context:** Must be executable instructions, not philosophy.
-- **Output:** `OUTPUT/tester-soul.md`
+### P2 — Human-in-the-Loop Integration
+- **Question:** How do you design the human-agent handoff in a multi-agent crew? What should be escalated to humans vs handled automatically? How do you present agent state for human review efficiently? What are the patterns for "approval gates," "adjudication queues," and "operator dashboards"?
+- **Context:** Crew v2 has human escalation but no structured interface. Operator gets raw logs, not a dashboard.
+- **Output:** `OUTPUT/human-in-the-loop.md`
 
-### P1 — Engineer Agent SOUL Updates
-- **Question:** What exact additions does the engineer SOUL need?
-- **Context:** Must require tests before declaring done.
-- **Output:** `OUTPUT/engineer-soul.md`
+### P3 — Cost Optimization and Token Economics
+- **Question:** How do you optimize token usage across a multi-agent crew? What are the patterns for model tiering (cheap model for simple tasks, expensive for complex), caching strategies, context window management, and early stopping? How do you measure and optimize "value per token"?
+- **Context:** Crew v2 uses one model for all tasks. No caching, no early stopping, no cost tracking per agent/task.
+- **Output:** `OUTPUT/cost-optimization.md`
 
-### P2 — Routing and Formation Integration
-- **Question:** How does the tester integrate into formation selection?
-- **Context:** firstmate must know when to activate the tester.
-- **Output:** `OUTPUT/routing-integration.md`
+### P3 — Testing Multi-Agent Interactions
+- **Question:** How do you test the interaction between agents, not just individual agents? What are the patterns for integration testing agent workflows, chaos engineering for crews, and simulating edge cases in multi-agent communication?
+- **Context:** COORD-01 tested individual formations but not agent-to-agent handoffs under failure conditions.
+- **Output:** `OUTPUT/multi-agent-testing.md`
 
-### P2 — Implementation Roadmap
-- **Question:** What is the phased implementation plan?
-- **Context:** We need a sequence that delivers value at each step.
-- **Output:** `OUTPUT/implementation-roadmap.md`
+### P3 — Explainability and Debugging for Agent Crews
+- **Question:** How do you explain why a multi-agent crew made a specific decision? What are the patterns for decision provenance, replay debugging, and "why did agent X do Y" traceability? How do you make the crew's reasoning transparent to operators?
+- **Context:** Crew v2 has message history but no structured provenance. When something goes wrong, debugging requires reading hundreds of messages.
+- **Output:** `OUTPUT/explainability.md`
 
 ---
 
@@ -75,4 +75,17 @@
 
 ## Completed
 
-(None — awaiting agent pickup)
+### Researcher (Internal) — 2026-09-13
+- 10 INBOX prompts completed (611 lines)
+- Testing discipline framework delivered
+
+### Scout — 2026-09-13
+- 6 DEEP DIVE topics completed (866 lines)
+- Testing discipline deepened with exact configs, state machines, calibration
+
+### Web Agents (freebuff, cline, opencode, workbuddy, zcode) — 2026-09-13
+- Cycle 1: Testing discipline synthesis (testing-maturity-model.md deepened)
+- Cycle 2: Implementation roadmap operationalized (implementation-roadmap.md deepened)
+- Cycle 3: TDD protocol state machine formalized (tdd-protocol.md deepened)
+- Cycle 4: CI/CD integration detailed (cicd-integration.md deepened)
+- Cycle 5: Quality metrics calibrated (quality-metrics.md deepened)
