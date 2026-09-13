@@ -300,3 +300,358 @@ Notes: `README.md` (11th file in OUTPUT/) carries no threshold — excluded. Bra
 - [Council base, gh api] `quality-metrics.md` (129 lines, head-60 + tail fetched): benchmark table, phased targets, leading-indicator gap model, CTRF schema — extended, not repeated. [verified: 2026-09-13, gh api]
 - [Council base, gh api] `testing-maturity-model.md` / `testing-framework-spec.md` / `tdd-protocol.md` / `cicd-integration.md` / `blocking-authority.md` / `engineer-soul.md` / `tester-soul.md` / `routing-integration.md` / `implementation-roadmap.md` threshold greps — pre-fix language quoted in §4 table. [verified: 2026-09-13, gh api]
 - [Mutagen, 2026; CTRF, 2026; SQRBOK, 2025; Stewart, 2010] via cicd/routing base: exit-2 targeted gate, JUnit/JSON artifacts, Small/Medium/Large tiers, <10 min budget. Carried, not re-verified this cycle. [unverified — cutoff: 2026-09-13]
+
+## [DEEP DIVE Cycle 4]: KB Learning Loop — Escape-to-Precedent in 7 Days, Quarterly Calibration Agenda
+
+> Phase 4 (Continuous Improvement) in `implementation-roadmap.md` / `quality-metrics.md` is aspirational prose: "learn from escapes, calibrate quarterly." This file makes it executable: a typed KB schema, a 7-day SLA-bound workflow with a state machine and human escalation, a 90-minute calibration meeting with inputs/outputs/versioning, and anti-gaming guards that keep the loop honest. It assumes Cycle 3 normative tiers (Tier A changed-lines ≥90%, Tier B line ≥80% / branch ≥70 gate + ≥75 FULL-stripe target / mutation ≥70 targeted-PR + ≥80 FULL-nightly) — not repeated here, only referenced as breach classes.
+
+---
+
+### 1. KB entry schema (one file per escape, typed + greppable)
+
+**Storage (concrete):**
+- Path: `RESEARCH-COUNCIL/KB/escapes/ESC-<YYYY>-<NNN>.md` (e.g. `ESC-2026-041.md`).
+- Index: `RESEARCH-COUNCIL/KB/README.md` — append one row per escape (table below). CI check fails if entry file exists but index row missing, or vice versa.
+- Ledger link: `RESEARCH-COUNCIL/OUTPUT/quality-ledger.md` (or CTRF-adjacent ledger) gets one line per closed escape: `ESC-ID | date-closed | KB path | fix SHA | policy version`.
+- Front-matter is the schema. Body is the narrative. Both are required — front-matter for machines, body for humans (Google SRE: metadata fields enable trend analysis; Atlassian: extensive issue fields before the meeting).
+
+**Field table (all required unless marked Optional):**
+
+| Field | Type / Allowed values | Validation | Why |
+|---|---|---|---|
+| `escape_id` | `ESC-YYYY-NNN`, monotonically increasing per year | `grep -r` uniqueness; CI rejects duplicate | Stable join key across KB, ledger, Jira/gh issue |
+| `date_filed` | `YYYY-MM-DD` (Day 0) | ISO date, ≤ today | SLA clock starts here |
+| `date_closed` | `YYYY-MM-DD` or `null` while open | ≥ `date_filed` when set | SLA 7d measured `closed - filed ≤ 7` |
+| `req_ids` | list of `REQ-XXX` | ≥1 entry; must exist in routing REQ registry | Connects escape to requirement coverage (routing 90% REQ-coverage BLOCK is orthogonal to line coverage) |
+| `root_cause_class` | enum: `missing-test` / `weak-assert` / `oracle-violation` / `flake-escape` / `razor-break` / `misroute` | exactly 1 primary + Optional `secondary` | The only closed vocabulary in the KB — enables quarterly trend counts |
+| `severity` | `S1` (user-visible / data-loss / rollback) / `S2` (degraded, mitigated <1h) / `S3` (latent, found by audit/drill) | maps to Atlassian rule: S1+S2 always get KB entry; S3 sampled | Prevents KB flooding while guaranteeing S1/S2 precedent |
+| `tier_breached` | `Tier-A-90-changed` / `Tier-B-80-line` / `Tier-B-70-branch` / `Tier-B-70/80-mutation` / `REQ-90` / `none-passed-but-escaped` | ≥1 | Tells calibration which gate failed (or that all gates passed = oracle/razor gap) |
+| `detection_point` | enum: `production` / `post-merge-CI` / `nightly-FULL` / `manual-QA` / `audit-sample` / `drill` / `customer-report` | exactly 1 | Measures shift-left: quarterly goal is detection-point moving left |
+| `fix_diff_ref` | commit SHA or PR URL + one-line scope | must resolve (`git cat-file -e` or `gh pr view`) | The code fix — separate from the policy fix |
+| `regression_test_ref` | file:line of new/strengthened test + drill result | test must fail pre-fix, pass post-fix (RED-before-GREEN proof) | Prevents "fix without test" closures |
+| `soul_patch_ref` | path + version delta, e.g. `tester-soul.md §8 cond-3 v1.4→v1.5` or `null` with justification | if `null`, `no_policy_change_reason` required | Every escape must answer: does a SOUL/policy file change? "No" needs a reason, not silence |
+| `owner` | github handle / agent profile | single accountable human or agent-ID, not a team | Atlassian postmortem-owner rule: one driver to approval |
+| `approver` | handle, ≠ owner | must approve merge | No self-approved precedents |
+| `sla_due` | `date_filed + 7d` | auto-computed, immutable | Breach clock |
+| `status` | `OPEN` / `TRIAGED` / `FIXED` / `POLICY-PROPOSED` / `KB-MERGED` / `CLOSED` / `BREACHED` | transitions only per §2 state machine | Greppable pipeline health |
+| `ledger_ref` | line pointer after close | filled at Day 7 | Closes the loop to metrics |
+
+**Root-cause class definitions (use verbatim in triage — no free text):**
+
+- `missing-test`: no test covered the path. Fix = add test. SOUL patch usually a razor/check addition.
+- `weak-assert`: test existed but asserted too little (e.g. `status_code == 200` without body check). Fix = strengthen assert + drill proof.
+- `oracle-violation`: test + assert existed but oracle (expected value / contract / snapshot) was wrong or stale. Fix = correct oracle + pinning rule.
+- `flake-escape`: real bug masked by flaky suite (retry hid red, or quarantine hid signal). Fix = de-flake + quarantine-rule patch.
+- `razor-break`: a REQ razor / routing rule misfired (wrong tier, wrong agent, skipped FULL). Fix = routing-integration patch.
+- `misroute`: human/agent routing error (assigned to wrong owner, wrong severity, skipped approver). Fix = ownership/escalation patch.
+
+**File template (`KB/escapes/_TEMPLATE.md` — copy, never edit in place):**
+
+```markdown
+---
+escape_id: ESC-YYYY-NNN
+date_filed: YYYY-MM-DD
+date_closed: null
+req_ids: [REQ-XXX, REQ-YYY]
+root_cause_class: missing-test # | weak-assert | oracle-violation | flake-escape | razor-break | misroute
+secondary_class: null
+severity: S2
+tier_breached: Tier-A-90-changed
+detection_point: production
+fix_diff_ref: null # fill Day 3: <SHA or PR URL>
+regression_test_ref: null # fill Day 3: <path:line + RED/GREEN SHAs>
+soul_patch_ref: null # fill Day 5: <file § + vX.Y->vX.Z> or null + reason
+owner: @handle
+approver: @handle
+sla_due: YYYY-MM-DD  # = filed + 7d
+status: OPEN
+ledger_ref: null
+---
+
+# ESC-YYYY-NNN — <one-line summary>
+
+## 1. Incident summary (Atlassian field set, condensed)
+- Impact: <who saw what, how long, how many>
+- Leadup: <change that introduced latent bug>
+- Fault: <what didn't work as expected>
+- Detection: <how found + how time-to-detect could halve>
+- Response/Recovery: <who responded, mitigation, restore time>
+
+## 2. Timeline (UTC, chronological)
+- HH:MM — event
+
+## 3. Five Whys (≥3 levels, end at systemic cause, not a name)
+1. Why …? Because …
+2. Why …? Because …
+3. Why …? Because … → root_cause_class
+
+## 4. Root cause (1 paragraph, proximate vs root distinguished)
+
+## 5. Fix + regression proof
+- Diff: <ref>
+- Test: <ref> — RED pre-fix SHA: ___, GREEN post-fix SHA: ___
+- Drill: <new test run through mutation/drill harness, kills ≥1 mutant or asserts strengthened value>
+
+## 6. SOUL / policy patch (or explicit no-change reason)
+- Patch ref + rationale, or `no_policy_change_reason: …`
+
+## 7. Corrective actions (Atlassian wording: actionable + specific + bounded)
+- [ ] Priority Action (root-cause fix): <verb …> — owner — due
+- [ ] Improvement Action (detect/mitigate next time): <verb …> — owner — due
+
+## 8. Lessons + prevention-backlog link
+- Went well / could improve / got lucky (3 bullets)
+- Backlog item: <link> (filed Day 5 even if scheduled later)
+
+## 9. Backlog check + recurrence
+- Backlog would-have-prevented? <yes/no + why not done>
+- Same root cause before? <ESC-IDs or "first occurrence">
+```
+
+**Index row (`KB/README.md`):**
+
+```markdown
+| ESC-ID | Filed | Class | Tier | Detection | Owner | Status | KB path |
+|---|---|---|---|---|---|---|---|
+| ESC-2026-041 | 2026-05-11 | weak-assert | Tier-B-80-line | nightly-FULL | @fares | CLOSED | KB/escapes/ESC-2026-041.md |
+```
+
+**Full example entry (file `KB/escapes/ESC-2026-041.md` — realistic, complete):**
+
+```markdown
+---
+escape_id: ESC-2026-041
+date_filed: 2026-05-11
+date_closed: 2026-05-17
+req_ids: [REQ-114, REQ-118]
+root_cause_class: weak-assert
+secondary_class: null
+severity: S2
+tier_breached: Tier-B-80-line
+detection_point: nightly-FULL
+fix_diff_ref: PR faresrafat3/crew-research-council#212 (SHA 9f3ac41)
+regression_test_ref: tests/test_routing.py:187 test_full_stripe_requires_branch75 (RED 9f3ac40 / GREEN 9f3ac41)
+soul_patch_ref: tester-soul.md §8 cond-4 v1.4->v1.5 (assert-strength rule)
+owner: @fares
+approver: @council-lead
+sla_due: 2026-05-18
+status: CLOSED
+ledger_ref: quality-ledger.md:L314
+---
+
+# ESC-2026-041 — FULL-stripe branch gate passed with stubbed coverage uploader
+
+## 1. Incident summary
+- Impact: 14% of nightly FULL runs 05-09→05-11 reported branch 78% as 81% (uploader stub averaged file-level instead of line-level); 2 PRs merged below the ≥75 FULL-stripe target. No prod outage; quality-signal corruption.
+- Leadup: coverage-uploader refactor 05-08 introduced `mean(files)` fast path behind `STUB_UPLOADER=1` left set in nightly env.
+- Fault: branch-coverage aggregator returned inflated value; gate compared inflated value.
+- Detection: nightly-FULL trend alert (branch +3pp overnight with zero code change) + audit-sample drill re-ran uploader with fixture.
+- Response/Recovery: on-call reverted env flag 05-11 09:20 UTC; re-ran 3 nightlies; 2 merged PRs re-checked (1 still ≥75 true value, 1 reverted + re-tested).
+
+## 2. Timeline (UTC)
+- 05-08 16:00 — uploader refactor merged (PR #209), STUB flag added for local dev.
+- 05-09 02:00 — nightly FULL #881 reports branch 81% (true 78%); flag leaked via env snapshot.
+- 05-10 02:00 — nightly #882 same inflation; no alert (threshold was absolute, not delta).
+- 05-11 07:55 — audit drill replays uploader fixture, expects 78.0, gets 81.2 → escape filed 08:10.
+- 05-11 09:20 — flag cleared, rerun ordered.
+- 05-13 15:00 — fix PR #212 merged (true line-level mean + env-flag guard).
+- 05-15 11:00 — SOUL patch proposed (assert-strength rule).
+- 05-17 10:00 — KB entry merged, ledger L314 linked.
+
+## 3. Five Whys
+1. Why did the gate pass? Because uploader reported 81% > 75%. 
+2. Why did it report 81%? Because STUB path averaged per-file percentages (unweighted) instead of line-level aggregation. 
+3. Why didn't the test catch it? Because the only uploader test asserted `result > 75` (boolean gate), never the numeric value against a fixture — classic weak-assert. 
+4. Why was the flag set in nightly? Because nightly env snapshot inherited a dev export; no guard asserted flag absence in CI. → systemic: weak asserts at two levels (value + env).
+
+## 4. Root cause
+Proximate: stub averaging bug. Root: weak-assert — gate-shape test (`>75`) instead of value-shape test (`== 78.0 ±0.1` on fixture) plus missing env-guard assert. Tier-B-80-line family; Tier A unaffected (changed-lines still diff-cover, different path).
+
+## 5. Fix + regression proof
+- Diff: PR #212 — `uploader.py: mean(lines)/sum(lines)` replaces `mean(file_pct)`; adds `assert STUB_UPLOADER != "1" in CI` guard in `conftest.py:22`.
+- Test: `tests/test_routing.py:187` now asserts `branch == pytest.approx(78.0, abs=0.1)` on `fixtures/uploader_mixed.json`; RED pre-fix (81.2), GREEN post-fix (78.0). Second test `test_stub_flag_blocked_in_ci` fails with flag set, passes without.
+- Drill: new value-assert kills 3/3 uploader mutants (mean→median, weighted→unweighted, rounding); old boolean-assert killed 0/3. Drill log: `drills/ESC-2026-041.log`.
+
+## 6. SOUL / policy patch
+- `tester-soul.md §8 cond-4 v1.4->v1.5`: "Gate-shape asserts (`> threshold`) are insufficient for aggregators; require fixture-pinned value asserts (±tolerance) for any coverage/mutation math." Also `testing-framework-spec.md` conftest guard pattern added as recommended snippet.
+
+## 7. Corrective actions
+- [x] Priority Action: fix uploader aggregation + CI env guard — @fares — done 05-13.
+- [x] Improvement Action: add nightly delta-alert (branch Δ >2pp with <50-line diff pages on-call) — @council-lead — done 05-16.
+- [ ] Improvement Action (backlog PREV-089): audit all `> threshold` asserts in metrics path, convert to fixture-pinned — @fares — due 06-15.
+
+## 8. Lessons + prevention-backlog link
+- Went well: audit drill caught in 2 days what absolute gate missed; trend-alert idea came from postmortem meeting.
+- Could improve: nightly env should never inherit dev exports; need env-allowlist.
+- Got lucky: only 2 PRs merged in window; true values showed 1 was still green.
+- Backlog: PREV-089 filed.
+
+## 9. Backlog check + recurrence
+- Backlog would-have-prevented? Partially — PREV-071 ("pin uploader fixture") existed since 04-02, deprioritized for roadmap Phase 2. Honest reason: uploader seen as infra, not gate-critical. Reclassified as gate-critical.
+- Same root cause before? No prior weak-assert escape on uploader; similar pattern ESC-2026-033 (mutation math, S3) — shared prevention item merged into PREV-089.
+```
+
+---
+
+### 2. Escape-to-precedent workflow (7-day SLA, Day 0 → Day 7)
+
+**Principle (Google SRE + Atlassian, adapted):** blameless, owner-driven, approved, action-tracked — but time-boxed to 7 days so precedent compounds instead of rotting. Day counts are calendar days from `date_filed`. Every transition is a file + issue state change, not a meeting vibe.
+
+| Day | Milestone | Owner | Inputs | Outputs (artifacts) | Gate to proceed |
+|---|---|---|---|---|---|
+| **Day 0** | File escape | Finder (anyone/agent) | Failing signal, prod symptom, audit hit | `KB/escapes/ESC-*.md` created at `status: OPEN` + gh issue `ESC-*` opened + `date_filed`/`sla_due` set | File exists + index row added (CI `kb-index-check` passes) |
+| **Day 1** | Triage + assign | Council-lead / on-call | Entry draft, REQ registry, severity rubric | `root_cause_class` (preliminary), `severity`, `owner` + `approver` assigned, `status: TRIAGED` | Owner ≠ approver; severity set; SLA clock acknowledged in issue comment |
+| **Day 3** | Fix + regression test + drill | Owner | Codebase, failing test, drill harness | `fix_diff_ref` + `regression_test_ref` (RED/GREEN SHAs) + drill log; `status: FIXED` | New/strengthened test fails pre-fix and passes post-fix; drill kills ≥1 mutant OR documents strengthened value (weak-assert proof); reviewer confirms |
+| **Day 5** | SOUL/policy patch proposal | Owner (author) + approver (reviewer) | Fix, Five Whys, SOUL files | `soul_patch_ref` OR `no_policy_change_reason`; prevention-backlog item filed; `status: POLICY-PROPOSED` | Approver confirms patch scope is narrow + bounded (Atlassian actionable/specific/bounded wording); backlog item linked |
+| **Day 7** | KB entry merged + ledger linked | Approver | Completed entry, fix SHA, policy version | `date_closed`, `ledger_ref`, `status: CLOSED`; index row updated; KB PR merged | All required fields non-null; approver sign-off comment; ledger line appended; `closed - filed ≤ 7` |
+
+**Day-by-day commands (copy-paste; `gh` + `git`):**
+
+```bash
+# Day 0 — file (finder)
+cp RESEARCH-COUNCIL/KB/escapes/_TEMPLATE.md RESEARCH-COUNCIL/KB/escapes/ESC-2026-042.md
+# edit front-matter: escape_id, date_filed=$(date +%F), req_ids, owner=TBD, status=OPEN, sla_due=+7d
+gh issue create --title "[ESC-2026-042] <one-line>" --body "KB: KB/escapes/ESC-2026-042.md | severity:TBD | class:TBD" --label escape,OPEN
+# append README index row with status OPEN
+
+# Day 1 — triage (lead)
+gh issue edit <N> --add-label TRIAGED --remove-label OPEN
+# set root_cause_class/severity/owner/approver in front-matter; comment: "SLA due YYYY-MM-DD, owner @x, approver @y"
+
+# Day 3 — fix (owner)
+# prove RED then GREEN; attach SHAs + drill log path in §5; set status FIXED
+gh pr create --title "[ESC-2026-042] fix + regression" --body "Closes #<N> (code part). RED <sha> GREEN <sha>. Drill: drills/ESC-2026-042.log"
+
+# Day 5 — policy (owner proposes, approver reviews)
+# file prevention item, set soul_patch_ref or no_policy_change_reason, status POLICY-PROPOSED
+
+# Day 7 — close (approver merges)
+echo "ESC-2026-042 | $(date +%F) | KB/escapes/ESC-2026-042.md | <fixSHA> | TEST-POLICY vX.Y" >> RESEARCH-COUNCIL/OUTPUT/quality-ledger.md
+# set date_closed, ledger_ref (e.g. quality-ledger.md:L315), status CLOSED; merge KB PR; close issue
+```
+
+**State machine (allowed transitions only; anything else fails CI `kb-lint`):**
+
+```
+        Day0 file          Day1 triage         Day3 fix            Day5 policy          Day7 merge
+OPEN ─────────────► TRIAGED ───────────► FIXED ───────────► POLICY-PROPOSED ──────────► KB-MERGED ──► CLOSED
+ │                    │                    │                       │                        │
+ │ Day1+24h           │ Day3+48h           │ Day5+48h              │ Day7+24h               │ approve
+ │ no-owner           │ no-fix             │ no-policy             │ checks-fail            │ fails
+ ▼                    ▼                    ▼                       ▼                        ▼
+BREACHED ─────────────────────────────────────────────────────────────────────────────── (any state past sla_due without gate met)
+ │ human-escalation (below) → re-plan with new due + reason, or accept BREACHED→CLOSED with waiver (approver + human sign only)
+ └─► (after recovery) re-enters at the missed state, status BREACHED cleared only by human comment
+```
+
+- `KB-MERGED` is the transient "PR approved, ledger pending" state; automation moves it to `CLOSED` when ledger line lands. Humans never set `CLOSED` directly without ledger ref.
+- Reopen: `CLOSED → OPEN` allowed only with `reopened_because` comment + new `sla_due`; preserves history (append, don't rewrite).
+- `null` is legal for `fix_diff_ref` / `soul_patch_ref` only in `OPEN`/`TRIAGED`. From `FIXED` onward they must be set or explicitly waived with reason.
+
+**SLA breach escalation to human (no silent slips):**
+
+| Breach | Detector (automated) | Escalation | Action |
+|---|---|---|---|
+| Day 1 +24h still `OPEN` (no owner) | nightly `kb-sla-check` (cron) comments on issue + tags lead | → council-lead paged; must assign within 24h or record `capacity-blocked` reason | If 2nd consecutive triage breach, quarterly calibration auto-adds "ownership capacity" agenda item |
+| Day 3 +48h still `TRIAGED` (no fix) | same check | → owner + approver notified; owner posts blocker or partial diff within 24h | Approver may reassign; if blocked on external dep, file `waiver-request` (human approves new Day 3+3) |
+| Day 5 +48h still `FIXED` (no policy proposal) | same check | → approver nudges; owner proposes patch or `no_policy_change_reason` within 24h | "No patch" without reason is rejected — forces the precedent question |
+| Day 7 +24h not `CLOSED` | `sla_due` passed | → status auto-flips to `BREACHED`, human owner (Fares / council-lead) assigned, issue labeled `BREACHED` + `P1` | Human decides within 48h: (a) grant dated extension with reason (status returns to missed state, `sla_due` unchanged for metrics + `extension_granted` note), or (b) accept breach (stays `BREACHED→CLOSED` with waiver, counted in quarterly breach-rate metric). Bots/agents cannot waive their own breach — human sign required. |
+| Reviewer overload (approver holds >5 open escapes) | workload cap check (§4) | → auto-suggest second approver; lead redistributes | Prevents "approved by exhaustion" |
+
+Breach-rate itself is a quarterly calibration input (target: <10% BREACHED/quarter; >20% triggers process retro, not just more time).
+
+---
+
+### 3. Quarterly calibration agenda (90 minutes, same script every quarter)
+
+**Cadence:** first week of Jan/Apr/Jul/Oct. Owner: council-lead. Required attendees: tester + engineer SOUL owners, routing owner, metrics owner. Optional: any escape owner from the quarter. No calibration without the input packet (below) posted 48h before — meeting cancelled/rescheduled if packet missing (forces data discipline over opinion).
+
+**Timebox (90 min total, timer enforced):**
+
+| Block | Min | Question | Inputs from packet | Output (decision or item) |
+|---|---|---|---|---|
+| 1. FP/FN review | 20 | Where did gates lie or miss? | FP list (blocked but shouldn't), FN list (escaped = this quarter's ESC-IDs), drill kill deltas | Per-gate keep/loose/tighten straw vote; FN classes feed prevention backlog |
+| 2. Threshold vote | 20 | Do Tier A/B numbers move? | Current `TEST-POLICY.md` version + clamp math + breach/escape counts | Binding vote: adjust any threshold by ±5pp max per quarter, within clamps (coverage 70–95, mutation 60–90 per blocking-authority); or hold. Version bump (§ below). |
+| 3. Flake / escape trends | 20 | Are we getting more stable or just luckier? | Flake-rate trend, quarantine list, detection-point histogram, root-cause-class histogram, MTTD/MTTR | Flake-budget decision (quarantine cap), detection-shift goal for next quarter, top-1 systemic fix funded |
+| 4. Prevention backlog groom | 20 | What actually gets built? | PREV backlog (from §2 Day-5 items + prior quarters), cost/impact tags | Ranked top-3 funded + owners + dues; close stale items with reason; carry rest |
+| 5. Policy version bump + close | 10 | What did we decide, in writing? | Decision log draft | `TEST-POLICY.md` version bumped, decision log merged, next quarter date set |
+
+**Input packet checklist (posted as `CALIB-YYYY-QN-packet.md`, 48h before; meeting invalid without all 8):**
+
+- [ ] 1. Threshold snapshot: current Tier A/B + REQ-90 values + `TEST-POLICY.md` version (quote, don't paraphrase).
+- [ ] 2. Gate outcomes: # PRs evaluated, # HOLD/BLOCK per tier, FP appeals + overturn rate.
+- [ ] 3. Escape list: all ESC-IDs closed + BREACHED this quarter with class/tier/detection-point table (from `KB/README.md`).
+- [ ] 4. FP/FN exhibits: ≥3 FP appeal cases (diff + verdict + human ruling) + all FN escapes mapped to missed gate.
+- [ ] 5. Flake report: flake-rate %, quarantined tests, retry-masked reds, top-5 flakiest files.
+- [ ] 6. Drill/mutation deltas: targeted-PR mutation mean + FULL-nightly mean, drill-pass rate on new tests, equivalent-mutant notes.
+- [ ] 7. Audit sample: 10% verdict re-review results (per §4) — agreement rate + disagreements.
+- [ ] 8. Prevention backlog status: prior PREV items done / overdue / stale + new Day-5 items awaiting rank.
+
+**Threshold-vote rules (binding, anti-drift):**
+
+- Scope: Tier A changed-lines, Tier B line/branch/mutation, REQ-coverage, flake budget, drill-pass bar. One motion per threshold, seconded, majority of required attendees.
+- Step limit: ±5pp per threshold per quarter (e.g. Tier B line 80→75 or 85 max). Prevents oscillation and big-bang loosening.
+- Clamps (from blocking-authority, non-negotiable without MAJOR + human sign): coverage ∈ [70, 95], mutation ∈ [60, 90]. Any motion outside clamps is out of order.
+- Ratchet guidance (from quality-metrics phased model): prefer upward ratchet when escape-rate <5% and FP-overturn <10%; prefer hold when mixed; loosen only with ≥2 quarters of FP-overturn >20% AND escape-rate flat — never loosen because a single team complains.
+- Quorum: 3/4 required roles present; absent role delegates in writing or vote deferred.
+
+**Decision log template (append to `TEST-POLICY.md` changelog + standalone `CALIB-YYYY-QN-decisions.md`):**
+
+```markdown
+# CALIB-2026-Q3 decisions (2026-07-08, chair @council-lead, quorum 4/4, packet CALIB-2026-Q3-packet.md)
+| # | Motion | Evidence (packet §) | Vote (for/against/abstain) | Result | Policy delta |
+|---|---|---|---|---|---|
+| 1 | Hold Tier A 90% changed | ESC-041/042 weak-assert, FP-overturn 6% | 4/0/0 | PASS | none |
+| 2 | Tier B branch FULL-target 75→80 | 0 escapes via branch, FP-overturn 4% | 3/1/0 | PASS | TEST-POLICY v2.3->v2.4 (MINOR) |
+| 3 | Fund PREV-089 uploader-assert audit | 2 related escapes | 4/0/0 | PASS | backlog PREV-089 owner @fares due 08-15 |
+| 4 | … | | | | |
+Breach-rate Q2: 1/9 = 11% (ESC-2026-038, waiver signed @fares, reason: external dep).
+Next calibration: 2026-10-07. Packet due 2026-10-05.
+```
+
+**Versioning `TEST-POLICY.md vX.Y` (semver-lite, enforced by CI tag check):**
+
+- `vX.Y` header line 1 of `TEST-POLICY.md`: `# TEST-POLICY v2.4 (2026-07-08, CALIB-2026-Q3)`.
+- MAJOR (`X+1`, e.g. v2→v3): any clamp change, Tier A floor change, or severity-definition change. Requires human (Fares) sign + 2-quarter evidence.
+- MINOR (`Y+1`, e.g. v2.3→v2.4): threshold ±5pp move, new razor/check, detection-point redefinition, flake-budget change. Requires calibration vote (this meeting).
+- PATCH (`v2.4.1`-style or date suffix allowed): wording, examples, template fixes. Owner + approver, no vote.
+- Every bump appends a changelog row (version, date, CALIB-ID, motions, author). `git tag test-policy-vX.Y` on merge. KB entries reference the version they closed under (`soul_patch_ref` + ledger line include it) so precedent is traceable to the rule set that produced it.
+
+---
+
+### 4. Anti-gaming guards (the loop only works if cheating is more expensive than complying)
+
+**The four standing guards (always on, not quarterly):**
+
+1. **Mutation floor prevents coverage theater.** Tier B mutation ≥70 targeted / ≥80 FULL-nightly is a hard BLOCK independent of line coverage. Adding uncovered-line-free "comment tests" or `assert True` raises line % but kills 0 mutants → mutation gate still red. CI runs `mutmut --mutate-only-covered-lines` (targeted) so uncovered-line gaming can't even inflate the denominator.
+2. **Drill-pass prevents weak asserts.** Every new/changed test from a fix (Day 3) must pass the drill: facilitator mutates the fixed code (operator swap, off-by-one, stub-average, flag-flip) and the test must flip RED. Boolean gate-asserts (`> 75`) fail drill by construction (ESC-2026-041 proof: 0/3 kills). No drill log = `FIXED` gate rejected.
+3. **Audit sampling 10% verdicts/quarter.** Metrics owner re-reviews a random 10% of PASS/HOLD verdicts + all BREACHED waivers each quarter (packet item 7). Disagreement rate >15% triggers reviewer retro + counts against the reviewer's calibration standing, not the author's. Sample seed published in packet for reproducibility (`shuf --random-source=<(openssl enc ...)` or documented `random.seed(CALIB-ID)`).
+4. **Reviewer workload cap 5 escalations/week.** No approver holds >5 open escape reviews or >5 FP appeals in any rolling 7 days. Breach auto-suggests a second approver and blocks self-merge. Prevents rubber-stamping under load and "reviewer shopping" (reassigning until someone waves it through — reassignments logged, >2 reassigns/escape flags in packet).
+
+**3 gaming scenarios + detection (concrete, with the query that catches each):**
+
+**Gaming 1 — Coverage theater (trivial asserts to hit Tier A 90% changed).**
+- *Play:* author adds `def test_smoke(): assert import_module(...)` or `assert result is not None` over 200 new lines → diff-cover 92% green, mutation untouched.
+- *Why it tempts:* Tier A is per-commit and visible; fastest way to unblock a PR.
+- *Detection (layered):* (a) mutation gate stays red (0 kills on theater tests) → PR still BLOCKED; (b) quarterly `assert-density` scan flags files with >50 added lines and <1 value-assert per 20 lines (`grep -c "assert.*==\|approx\|raises\|match"` vs added lines); (c) drill on sampled new tests fails → author asked to strengthen in the PR, not after. *Precedent:* file as `weak-assert` escape if it ever merges (detection_point `audit-sample`), proving the guard fired late but fired.
+
+**Gaming 2 — Flake laundering (retry/quarantine to hide real red).**
+- *Play:* team marks a failing regression test `@pytest.mark.flaky(reruns=5)` or moves it to quarantine so the suite goes green; escape later blamed on "infra."
+- *Why it tempts:* fixes the build without fixing the code; invisible in pass-rate dashboards.
+- *Detection:* (a) flake-rate + quarantine-list are packet items — any test quarantined >14 days without a PREV item auto-pages owner; (b) retry-masked-red metric (`passed-after-retry / total-passed`) tracked per nightly — spike >5% triggers calibration block-3 deep dive; (c) root-cause class `flake-escape` exists precisely to name this, and Day-5 policy patch must tighten the quarantine rule (e.g. max 7-day quarantine + mandatory PREV). Repeat offenders lose quarantine-write permission (human decision, logged).
+
+**Gaming 3 — Diff-splitting / razor-shopping (dodge Tier A or FULL).**
+- *Play A (split):* author slices a 400-line change into 5 stacked 80-line PRs each hitting 90% changed trivially while the feature as a whole is under-tested. *Play B (shop):* author re-labels a feature PR as `docs`/`chore` to route to PIPELINE instead of FULL, dodging the ≥75 FULL-stripe + ≥80 mutation gates.
+- *Why it tempts:* Tier A denominator is per-PR; routing is label-driven.
+- *Detection:* (a) stacked-PR detector: >3 PRs by same author touching same module within 72h with shared REQ-IDs auto-flag for combined diff-cover (`diff-cover --compare-branch=main~N`) — combined <90% reopens HOLD; (b) label-vs-diff check: `docs/chore` PRs with >50 code-line diffs auto-rerouted to FULL + logged as `razor-break` candidate; (c) audit sample includes 10% of PIPELINE-routed PRs re-evaluated against FULL criteria — systematic under-routing shows up as a calibration motion to tighten razor rules, with the misrouter named by role (blameless wording, systemic fix).
+
+---
+
+**References Cycle 4:**
+- [Google SRE Book, Ch. Postmortem Culture — Lunney/Lueder] Postmortem = impact + actions + root cause(s) + follow-ups; blameless tenet; review criteria (data collected? impact complete? root deep enough? action plan + priority? stakeholders shared?); repository + metadata fields for trend analysis; reward writing. Fetched full text. [verified: 2026-09-13, TinyFish fetch]
+- [Atlassian Incident Management Handbook — Postmortems] S1/S2 mandatory postmortems; owner drives to approval, approvers prioritize backlog; Priority Action (root-cause) vs Improvement Action + SLO 4/8 wks; Five Whys; proximate-vs-root + category table (Bug/Change/Scale/Architecture/Dependency/Unknown); action wording actionable/specific/bounded with before→after examples. Fetched full text. [verified: 2026-09-13, TinyFish fetch]
+- [TinyFish search "postmortem knowledge base schema lessons learned 2024"] Results corroborate Google/Atlassian as canonical templates; PMI/RMCLS lessons-learned framing (store in org process assets), PostHog/Rootly agenda+roles templates. [verified: 2026-09-13, TinyFish search]
+- [TinyFish search "defect escape root cause corrective action template 2024"] 8D D5 confirm-capable-corrective-action rule; Lockheed RCA guidebook (systematic contributors-before-action); Joint Commission RCA framework template; 8Dflow worksheet structure. Informs Day-5 confirm-no-side-effects + Day-3 RED/GREEN proof. [verified: 2026-09-13, TinyFish search]
+- [TinyFish search "software quality quarterly review calibration metrics 2024"] Returned HR performance-calibration noise (Lattice/Deel/PeopleGoal), no software-quality-threshold calibration standard found — confirms this file's quarterly script (FP/FN + ±5pp vote + flake/escape trends + PREV groom + version bump) is original synthesis, not a copy; vote/clamp mechanics instead grounded in council base below. [verified: 2026-09-13, TinyFish search]
+- [Council base, gh api — quality-metrics.md tail-30] Tier A/B normative table (10 OUTPUT files, after-fix values: Tier A changed ≥90%; Tier B line 80% / branch 70-gate+75-target / mutation 70-targeted+80-nightly; clamps coverage 70–95 / mutation 60–90; ±5 calibration) — breach classes + vote limits in §§1–3 cite this, not re-argued. [verified: 2026-09-13, gh api]
+- [Council base, prior cycles] blocking-authority ±5 calibration + theater example; cicd-integration targeted-70/exit-2 + FULL-80/60-min + no-drop >1%; routing-integration PIPELINE-70 / FULL-80 + REQ-90 BLOCKs; engineer/tester-soul blocking conditions — escalation caps + drill/mutation guards in §§2/4 extend these. [carried — cutoff: 2026-09-13]
