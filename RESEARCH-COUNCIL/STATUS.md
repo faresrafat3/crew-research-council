@@ -89,7 +89,6 @@
 | workbuddy | ⏳ Pending | Not connected |
 | zcode | ⏳ Pending | Not connected |
 | cline | ⏳ Pending | Not connected |
-| freebuff | ⏳ Pending | Not connected |
 | opencode | ✅ Complete 2026-09-13 | Restored 5 canonical merges, verified 10/10 Exec Summary |
 
 ## Output Inventory
