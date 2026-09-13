@@ -182,3 +182,71 @@ class AuditEvent:
 6. [Tao An, 2025] Agent Security Boundaries: From Prompt Injection to Tool Misuse. Medium.
 7. [Palo Alto Unit 42, 2026] Persistent Prompt Injection in A2A Systems.
 8. [Tao An, 2025] The Lethal Trifecta for Agent Vulnerabilities. Medium.
+
+## [DEEP DIVE]: The Lethal Trifecta, Defense Effectiveness Data, MicroVM Sandboxing, and Externalized Enforcement (freebuff, 2026-09-13)
+
+### 1. Threat-model correction and sharpening: the Lethal Trifecta
+
+Attribution correction: the "lethal trifecta" cited in the Key Findings [Tao An, 2025] originates with Simon Willison (June 2025): an AI agent is exploitable via prompt injection whenever it combines **(1) access to private data, (2) exposure to untrusted content, and (3) the ability to communicate externally** — and if all three hold, exfiltration is achievable and cannot be fixed by prompting alone; the only real fix is to remove at least one leg [Willison, 2025]. Engineering consequence for Crew v2 — audit every agent against the three legs and design so no agent holds all three:
+
+| Agent | Private data | Untrusted content | External comms | Verdict |
+|---|---|---|---|---|
+| researcher | — | **yes (web)** | **yes (web_search)** | No private data access — enforced read scope |
+| engineer | **yes (repo)** | — (no web) | — (network-deny sandbox) | Network-isolated build sandbox |
+| critic/tester | **yes (repo)** | — | — | Safe combination |
+| historian | **yes (memory)** | — | — | Safe; memory-write rate limits apply |
+
+This table, not keyword filtering, is Layer 2's real enforcement design [Willison, 2025].
+
+### 2. Prompt-injection defense effectiveness: measured, not assumed
+
+- Keyword/pattern filtering (the spec's Layer-1 "strip instructions" list) collapses under evaluation: the InsecPrompt benchmark (82 attack techniques, 62 evaluated) found **prompting-based defenses at 95-99% attack success rate** for the attacker — pattern lists are speed bumps [Geng et al., 2026].
+- What works, in order of evidence: **spotlighting/datamarking** (delimiting untrusted content so the model treats it as data), **structured privileged-context alignment**, and **action-level policy gates**. Task Shield (task-aligned LLM-based checking of tool-call arguments before execution) achieved **2.07% attack success rate on AgentDojo while retaining 69.79% utility** [tldrsec/prompt-injection-defenses, 2025].
+- Baseline danger: on AgentDojo's banking environment, prompt-injection ASR reaches **~54%** (36% workspace) for unmitigated agents [TMLS, 2026].
+
+**Delta to the architecture:** Layer 1 becomes (a) datamark all fetched web content with spotlighting delimiters, (b) validate *tool-call arguments* against the current task spec before execution (Task Shield pattern) — not message text, (c) drop the keyword blacklist to a low-value tripwire metric only.
+
+### 3. Sandboxing: Docker is not a boundary; microVMs are
+
+Assume code execution inside the container: configuration-based sandbox escapes (CBSE) start from exactly that premise [Cymulate, 2026], and SandboxEscapeBench exists because frontier LLMs measurably probe container escapes [arXiv:2603.02277]. The isolation ladder [Zylos, 2026; Google Cloud, 2026]:
+
+1. **Docker/runc containers** — namespace-level only; agent with root-equivalent shell inside is one kernel exploit from the host. Not sufficient for the engineer.
+2. **gVisor** (userspace kernel intercept) — syscall filtering with ~low overhead; good default for engineer tool runs.
+3. **Firecracker microVMs** (used by GKE Agent Sandbox; ~125ms to spin up) — hardware-virtualized boundary; required for any agent that executes unreviewed code or parses untrusted input.
+
+Production confirmation: Anthropic's own containment for Claude with terminal access runs the agent inside a **VM that enforces filesystem and network controls over everything the agent executes** [Anthropic, 2026]. Delta: engineer Ring-1 elevation requires a gVisor/Firecracker execution lane; canary probes (Layer 3) run against the microVM boundary, not the container boundary.
+
+### 4. Externalize enforcement — the in-model enforcement lesson
+
+Claude Code's deny rules were found to be **silently bypassed after ~50 subcommands** because the security check cost too many tokens (since fixed) [Adversa AI, 2026]. Lesson generalized: any guardrail implemented as model-followed instructions degrades under context pressure and cost optimization. Therefore: ring transitions, tool ACLs, and egress allowlists MUST be enforced by the runtime/router (code), never solely by SOUL text; SOUL rules are advisory context, the router is the policy enforcement point. This converts Layer 2 from "agents are told their ring" to "the router rejects out-of-ring tool calls" — which the spec's `validate_tool_call()` sketch already implies but should make normative.
+
+### 5. OWASP Top 10 for LLM Applications 2025 — map the five layers
+
+| OWASP 2025 | Crew v2 surface | Layer |
+|---|---|---|
+| LLM01 Prompt Injection | web content → researcher; inter-agent messages | 1 + Task Shield gate |
+| LLM02 Sensitive Information Disclosure | repo secrets, memory contents in outputs | 5 (audit) + output redaction |
+| LLM03 Supply Chain | pip/npm deps in engineer tasks | sandbox egress allowlist + hash pinning |
+| LLM04 Data/Model Poisoning | shared memory writes | memory-architecture corroboration controls |
+| LLM06 Excessive Agency | tool breadth per ring | Ring ACLs (externalized) |
+
+[OWASP, 2025]
+
+### 6. Red-team validation cadence
+
+Quarterly run **Agent Security Bench (ASB)** — 10 scenarios, 10 attack types (prompt injection, memory poisoning, backdoor, etc.), 400+ tools across 10 agent frameworks [Zhang et al., 2025] — plus AgentDojo injection suites against the researcher's fetch pipeline. Pass gate: injection ASR ≤ Task Shield's published 2.07% class of results (or documented improvement over own prior quarter); any ASR >10% on any scenario = security sprint (same governance as self-healing error budgets). The chaos GameDay (self-healing deep dive) adds a sandbox-escape drill: canary-probe attempts from inside the engineer lane must fail every time; one success = Ring-1 revoked pending re-hardening.
+
+### References for deep dive
+
+- [Willison, 2025] The lethal trifecta for AI agents: private data, untrusted content, external communication. simonwillison.net/2025/Jun/16/the-lethal-trifecta.
+- [Geng et al., 2026] Prompt Injection Attacks on Large Language Models (InsecPrompt, 82 techniques). Cybersecurity/Springer, cited 38+; summary via cyberdesserts.
+- [tldrsec, 2025] prompt-injection-defenses: every practical defense, with AgentDojo evaluations (Task Shield 2.07% ASR / 69.79% utility). github.com/tldrsec/prompt-injection-defenses.
+- [TMLS, 2026] Sandboxing Computer-Use Agents in the Enterprise (AgentDojo ASR ~54% banking, 36% workspace). tmls.nyc.
+- [Zhang et al., 2025] Agent Security Bench (ASB): Formalizing and Benchmarking Attacks and Defenses in LLM-based Agents. openreview (cited 470).
+- [Zylos, 2026] AI Agent Sandboxing and Security Isolation: MicroVMs, gVisor, Kata. zylos.ai/research/2026-04-04.
+- [Google Cloud, 2026] Secure Code Execution for the Age of Autonomous AI Agents (gVisor architecture). medium.com/google-cloud.
+- [Cymulate, 2026] Configuration-Based Sandbox Escape (CBSE) in AI environments. cymulate.com/blog.
+- [arXiv:2603.02277] SandboxEscapeBench: Quantifying Frontier LLM Capabilities for Container Sandbox Escape.
+- [Anthropic, 2026] How we contain Claude across products. anthropic.com/engineering/how-we-contain-claude.
+- [Adversa AI, 2026] Claude Code deny rules silently bypassed after 50 subcommands. adversa.ai.
+- [OWASP, 2025] Top 10 for LLM Applications 2025 (LLM01-LLM06). genai.owasp.org.
