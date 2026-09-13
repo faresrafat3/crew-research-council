@@ -162,5 +162,5 @@ Crew v2 agents have SOULs with declared biases but in practice produce similar o
 1. [CrewAI, 2025] How we built Cognitive Memory for Agentic Systems. blog.crewai.com.
 2. [DynaDebate, 2026] DynaDebate: Breaking Homogeneity in Multi-Agent Debate. arXiv:2601.05746.
 3. [Beyond the Strongest LLM, 2025] Multi-Turn Multi-Agent Orchestration. arXiv:2509.23537.
-4. [Persona Design Research, 2025] Effective Agent Personas: Design Principles.
-5. [Voice Drift Detection, 2025] Embedding-Based Consistency Monitoring.
+4. [Persona Design Research, 2025] Effective Agent Personas: Design Principles. **[unverified — generic attribution; primary source could not be located, 2026-09-13. Treat the five dimensions as a design template, not an empirical finding.]**
+5. [Voice Drift Detection, 2025] Embedding-Based Consistency Monitoring. **[unverified — generic attribution; the 0.2/0.3/0.5 thresholds are heuristics, not published benchmarks. Calibrate on Crew v2's own output history before enforcing.]**
