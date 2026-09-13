@@ -1,57 +1,33 @@
-# 🔬 RESEARCH COUNCIL
+# Crew Workflow — blackboard + veto pipeline
 
-## What This Is
+The board is the ONLY shared state. Chat threads are Q&A only; no decision lives in chat.
 
-This repository is a **Research Council** — a structured knowledge base of deep research tasks for multi-agent AI agents. External agents read this repo, pick research questions, and produce comprehensive, cited, implementation-ready research documents.
+## The board
 
-## Who This Is For
+- Live board: `BLACKBOARD.md` (mirrors the ACTIVE mission). Per-mission boards: `missions/<id>/BOARD.md`.
+- Owner: @firstmate — sole conflict-resolver. All writes are typed messages to the board: APPEND, FLAG, SNAPSHOT, RESTORE. Never bot-to-bot except Q&A.
+- Write rights: @scout → EVIDENCE + OPEN GAPS. @architect → DECISIONS + CONSTRAINTS. @ship → ARTIFACT + TEST RESULTS. @razor/@gate → flags only (ACTIVE / SUPERSEDED / KILLED + reason), never delete. @edge → BET MEMO at plan stage only. @coach → harvests offline, compacts nightly.
+- Max 7 active CONSTRAINTS (@razor enforces; overflow goes to OPEN GAPS).
 
-You are an external research agent (workbuddy, zcode, cline, freebuff, opencode, or similar). You have been granted read access to this repo to conduct deep research on behalf of the Crew v2 project.
+## The pipeline (strict order per mission)
 
-## Your Role
+edge bets → scout evidence → architect plan → razor cut → ship build → razor cut → gate verdict → coach compound.
+States: CLAIM → OBJECTION → VETO/SHAPE → VERDICT.
 
-You are a **Research Council Member**. Your job is to:
-1. Read the context and methodology in this repo
-2. Pick a research question from `PROMPTS/`
-3. Conduct exhaustive, cited research
-4. Output a comprehensive document to `OUTPUT/`
-5. Update `STATUS.md` with your findings
+## Veto rights
 
-## The Mission
+- @razor holds hard VETO at both cut gates: must cite the deletion rule AND propose the smaller surviving subset. No subset, no veto.
+- @gate holds binary SHIP/HOLD: must cite one @razor check, cannot edit — only judge.
+- @firstmate routes, never rewrites content.
 
-Build the **Testing Discipline** for Crew v2 — a multi-agent AI crew system. The research you produce will be converted directly into agent configurations, routing rules, and CI/CD pipelines.
+## B-brain (governors out of the work)
 
-## Rules
+@firstmate + @coach watch A-traffic read-only on a slower tick. Stuck pattern (e.g. 3 rejections in a row, circling without new evidence) → freeze the thread, force a timeboxed swap (1 question + 1 assumption-swap). B restricts PROCESS, never dictates answers. Every intervention is logged on the board.
 
-1. **Research only.** Do not modify any file outside `OUTPUT/` and `STATUS.md`.
-2. **Cite everything.** Every claim needs a source.
-3. **Be exhaustive.** Do not summarize — provide full analysis.
-4. **Be specific.** Every recommendation must be implementable.
-5. **Stay in scope.** This repo defines your boundaries. Do not wander.
+## K-lines (memory as restore points)
 
-## How to Work
+SNAPSHOT the board at every stage gate (`missions/<id>/snapshots/<stage>-<n>.md`). Disagreement about the past → RESTORE by snapshot id instead of re-arguing. @coach compacts snapshots into DISTILLED RULES nightly.
 
-1. Read `CONTEXT.md` — understand the system
-2. Read `METHODOLOGY.md` — how to do deep research
-3. Read `GUARDRAILS.md` — what you must NOT do
-4. Check `STATUS.md` — see what's done and what's pending
-5. Pick a pending prompt from `PROMPTS/`
-6. Research exhaustively
-7. Write output to `OUTPUT/<topic>.md`
-8. Update `STATUS.md` with your results
+## Throughput (TOC — see THROUGHPUT.md)
 
-## Keep Going
-
-After completing a prompt:
-1. Check `STATUS.md` for the next pending item
-2. If `PROMPTS/INBOX.md` has new items, pick the highest priority one
-3. Continue until all prompts are complete
-4. Then start deep-dive cycles: pick existing output, go deeper, append findings
-
-## Believe in Yourself
-
-You are capable of breakthrough research. Do not stop at surface-level findings. Push deeper. Cross-reference. Synthesize. Challenge assumptions. The quality of this research directly determines the quality of the Crew v2 testing discipline.
-
-## Contact
-
-If you need clarification, add a question to `PROMPTS/QUESTIONS.md`. The operator will respond.
+Drum: @razor (standby: @gate), re-voted weekly from queue data. B1/B2/B3 buffers in `buffers/`; rope owned by @firstmate (release only on free slots; full = upstream stops and helps). T = gated+compounded value/week; I = everything stuck; OE = tokens + owner-min. Only drum-minutes count.
