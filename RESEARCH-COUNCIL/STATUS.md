@@ -49,6 +49,13 @@
 - **Method:** tinyfish CLI search + fetch (primary; exa chain error-streak cooldown) + fetch_web_content extraction across Fowler/Vocke pyramid, Google test-sizes + flaky-tests blogs, Maxim system-prompt guide, Wataoka self-preference paper (arXiv:2410.21819), SWE-bench leaderboard, oracle-problem survey (Barr et al. 2014), mutation/quarantine practitioner sources (CircleCI, Drizz, Tenki, TinyCTO, Appscale, Sikkema, Getautonoma). [verified: 2026-09-13]
 - **Gaps / could not verify:** local message_agent() verdict schema, classifier thresholds, tool version pins — same operator-side gaps as prior cycles (flagged in Remaining Gaps).
 
+
+### Research Council Member (opencode) — Breakthrough Cycle 3 (consistency + uncovered agents) — 2026-09-13
+- **Threshold harmonization audit:** found real conflict — freebuff maturity advocates per-commit changed-lines ≥90%/99% aspirational [Google 2020], 9 other files gate project-wide line≥80%. Resolution appended to quality-metrics.md (23944B): 2-tier rule (changed-lines ≥90% MUST via `diff-cover --fail-under=90` + project-wide ≥80% via `pytest --cov-fail-under=80`), mutation 70% PR-targeted / 80% FULL (equivalent mutants 5-15% make 100% waste), ratchet +5%/quarter migration with ledger SQL, 10-file consistency table. 172 lines.
+- **Razor/completer gaps closed** (CONTEXT: razor BREAKS CONSTRAINTS, completer never blocks — no file owned this). Appended to blocking-authority.md (18228B): razor-guard R-1/R-2/R-3 (`grep -r REQ-` before/after must match, auto-ROLLBACK), completer-gate 5-artifact checklist YAML, engineer→tester→razor→reverify→critic→completer sequence (no razor→release edge), 2 abuse cases with detection. 140 lines.
+- **Critic timeout root-cause fix** (CONTEXT: critic TIMES OUT, no timeout config, wrong paths). Appended to routing-integration.md (19889B): 10min/file `timeout 600` + `timeout-minutes: 10`, 30min/task cap, `git diff --name-only` path-awareness, >500-line → ≤200-line hunk chunking with ledger checkpoints, partial-verdict template (tester treats partial as HOLD). 223 lines.
+- **Method:** 3 parallel subagents, 9 TinyFish searches, base fetched via `gh api` to extend-not-repeat. 535 lines new. All cited, specific.
+
 ## Research Queue
 
 ### Pending (PROMPTS/INBOX.md)
