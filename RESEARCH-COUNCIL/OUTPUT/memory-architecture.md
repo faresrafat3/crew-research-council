@@ -210,3 +210,66 @@ Where:
 8. [Multiple Memory Systems, 2025] Multiple Memory Systems for Enhancing the Long-term Memory of Agent. arXiv:2508.15294.
 9. [CrewAI, 2025] How we built Cognitive Memory for Agentic Systems. blog.crewai.com.
 10. [IBM, 2025] What Is AI Agent Memory? IBM Think.
+
+## [DEEP DIVE]: Production Memory Systems, Context Rot, Sleep-Time Consolidation, Memory Poisoning, and Benchmark Validation (freebuff, 2026-09-13)
+
+### 1. Production memory systems validate the four-tier design — and supply the exact mechanics
+
+Three production-grade systems independently converged on tiered memory, and each maps onto one crew tier:
+
+- **Mem0 (arXiv:2504.19413, ECAI 2025)** runs a two-phase pipeline: an *extraction phase* (LLM extracts candidate memories from the recent exchange, asynchronously) and an *update phase* where an LLM decides per candidate: ADD / UPDATE / DELETE / NOOP against similar existing memories. Results: +26% accuracy over full-context OpenAI baselines, **91% lower p95 latency, >90% token savings**; the graph variant Mem0g adds ~2% accuracy over Mem0 at ~1.7x p95 latency [Mem0, 2025]. This is exactly the Tier 1→2 compaction operation — adopt the four update verbs as the compaction operator's decision set, and run extraction **asynchronously** (never in the task's critical path).
+- **Zep/Graphiti (arXiv:2501.13956)** uses a *bi-temporal* knowledge graph: every edge carries `valid_at` (when true in the world) and `invalid_at` (when it stopped being true), separate from ingestion time. An LLM extract-step **invalidates** contradicted edges rather than deleting them — history stays queryable, current state stays clean. Results: up to **+18.5% accuracy on LongMemEval with 90% latency reduction** vs full-context baselines; up to +11.6% on DMR [Zep, 2025]. This is the concrete mechanism for Tier 3/4 "selective forgetting": replace the spec's "overwrite on conflict" with *edge invalidation* — mark the old insight `invalid_at = now`, never delete.
+- **Letta/MemGPT** formalizes *memory blocks*: bounded in-context blocks (core memory, edited by the agent itself via tools) plus external archival/recall stores [Letta, 2025]. This justifies Tier 2's shape: per-agent profile = a fixed set of named blocks with hard character limits, edited by the agent, not by an invisible batch job.
+
+**Delta to the architecture:** Tier 1→2 compaction gets the Mem0 four-verb operator (async); Tier 3/4 contradictions get Zep-style edge invalidation with bitemporal fields; Tier 2 becomes explicit named blocks with size caps.
+
+### 2. Context rot: the empirical reason retrieval budgets are accuracy-critical, not just cost-saving
+
+Chroma's context-rot study tested 18 state-of-the-art models (GPT-4.1, Claude-4 families, Gemini 2.5, Qwen, Gemma) on repetitive/simple synthetic tasks and found performance **degrades as input tokens grow even when nothing else changes** — degradation worsens with task complexity, grows with irrelevant "distractor" content, and needle position effects are non-uniform and model-specific [Chroma, 2025]. This converts the spec's 2000-token retrieval budget from a cost heuristic into an *accuracy* requirement: every extra retrieved token risks degrading the very task the memory was meant to help. Practical consequence: the budget stays at 2000 tokens; raising it requires a measured win on the benchmark below, per model, not a default assumption that "more context = better."
+
+### 3. Sleep-time compute: restructure compaction from cron schedule to idle-time agents
+
+Sleep-time compute lets a model "think" offline about contexts before queries arrive: the same accuracy is reached with **~5x less test-time compute**; scaling sleep-time compute adds up to **+13% (Stateful GSM-Symbolic) and +18% (Stateful AIME)** accuracy; amortized across multiple queries per context, average cost per query drops **2.5x**; efficacy correlates with how predictable the queries are [Lin et al., 2025]. Letta operationalizes this as sleep-time agents that **rewrite other agents' memory state** during idle periods [Letta, 2025].
+
+**Delta to the architecture:** replace the "weekly Sunday 3 AM" Tier 2→3 batch with *idle-triggered* sleep-time agents — whenever a queue goes idle (see communication-protocols backpressure metrics), a sleep agent distills that agent's recent traces. Also add pre-task priming: before firstmate dispatches, a sleep agent pre-computes the top-3 relevant insights per assignee (queries are highly predictable per task type, which is the regime where sleep-time compute works best [Lin et al., 2025]). Cost note: sleep tokens run in batch/off-peak lanes at BULK priority; they buy down latency-critical STANDARD-lane tokens at a measured 2.5-5x ratio [Lin et al., 2025].
+
+### 4. Memory poisoning: the threat model the original spec missed
+
+- **Agent Poisoning (arXiv:2409.20283)** demonstrated persistent memory poisoning: poisoning **<0.15% of memory** achieves >50% backdoor success rate *persistently across sessions* — the poisoned entry is few-shot context for future retrievals [Zeng et al., 2024].
+- **Unit42 (Oct 2025)** showed indirect prompt injection can write injected instructions into long-term memory where they persist and later trigger exfiltration [Unit42, 2025].
+- **Systematic study (arXiv:2606.04329)** catalogs four memory *write channels* and nine structural poisoning mechanisms; **MemPoison (arXiv:2605.29960)** plants trojans through memory-sharing mechanisms with attack success rates up to **0.95** [Chen et al., 2026].
+
+Defenses, mapped onto the existing tiers (all implementable without new infrastructure):
+
+| Defense | Mechanism | Tier |
+|---|---|---|
+| Provenance mandatory | Every entry stores {source_task, agent, tool, timestamp}; entries without provenance are unqueryable | 1-4 |
+| Two-source corroboration | Tier 3/4 insights stay *quarantined* until two independent agents derive the same insight from different tasks | 3-4 |
+| Write rate limits | Per-agent memory-write budget via the existing token bucket (e.g., 20 writes/hour) — blunts flood-poisoning | 1-2 |
+| Invalid-not-delete | Zep-style edge invalidation keeps poison visible and auditable for rollback instead of silently overwriting | 3-4 |
+| Weekly provenance audit | The existing "periodic replay" doubles as a poison sweep: re-derive sampled insights from cited sources; mismatch → invalidate upstream | 2-3 |
+
+The importance-weighted write protection already specified [Council OUTPUT, 2026] blocks *accidental* overwrites but not *malicious inserts* — poison enters as new high-relevance entries, which is why corroboration + provenance are the load-bearing controls.
+
+### 5. Benchmark validation plan: hold the memory system to LongMemEval
+
+**LongMemEval (arXiv:2410.10813, ICLR 2025)** is the standard: 500 questions over seven question types testing five abilities — information extraction, multi-session reasoning, temporal reasoning, knowledge updates, and *abstention* (refusing to answer what isn't in memory) [Wu et al., 2024]. Its key operating finding: even strong long-context models lose **more than 30% accuracy** as the haystack expands from 2 hours to 7 days of interaction [Wu et al., 2024] — which is the baseline case our memory layer must beat.
+
+**Crew v2 validation protocol (monthly regression gate):**
+1. Run LongMemEval-S (500 questions) against the crew's memory stack with 10 representative task-history replays as the haystack.
+2. Report accuracy overall + per ability; the five abilities map 1:1 to crew failure modes already observed (e.g., knowledge updates = stale API facts researcher re-cites; abstention = fabricating "past incidents" that never happened).
+3. Pass gate: memory-augmented accuracy ≥ no-memory baseline **+10 points**, and retrieval latency within the existing <500ms target. Below that, the memory system's complexity is not paying for itself.
+4. Track MemoryAgentBench's four competencies (accurate retrieval, test-time learning, long-range understanding, selective forgetting) as the per-quarter drill [MemoryAgentBench, 2025].
+
+### References for deep dive
+
+- [Mem0, 2025] Mem0: Building Production-Ready AI Agents with Scalable Long-Term Memory. arXiv:2504.19413 (ECAI 2025). github.com/mem0ai/mem0.
+- [Zep, 2025] Rasmussen et al. Zep: A Temporal Knowledge Graph Architecture for Agent Memory. arXiv:2501.13956. github.com/getzep/graphiti.
+- [Letta, 2025] Memory Blocks / Agent Memory. letta.com/blog/memory-blocks; letta.com/blog/agent-memory.
+- [Lin et al., 2025] Sleep-time Compute: Beyond Inference Scaling at Test-time. arXiv:2504.13171. github.com/letta-ai/sleep-time-compute.
+- [Chroma, 2025] Hong et al. Context Rot: How Increasing Input Tokens Impacts LLM Performance. research.trychroma.com/context-rot.
+- [Zeng et al., 2024] Zeng, Y. et al. How to Steal an LLM Agent? (Agent Poisoning: memory poisoning, <0.15% poison → persistent backdoor). arXiv:2409.20283.
+- [Unit42, 2025] When AI Remembers Too Much: indirect prompt injection poisons long-term agent memory. unit42.paloaltonetworks.com, Oct 2025.
+- [Chen et al., 2026] A Systematic Study of Memory Poisoning Attacks in LLM-based Agents. arXiv:2606.04329; MemPoison (Hijacking Agent Memory). arXiv:2605.29960.
+- [Wu et al., 2024] LongMemEval: Benchmarking Chat Assistants on Long-Term Interactive Memory. arXiv:2410.10813 (ICLR 2025). github.com/xiaowu0162/LongMemEval.
+- [MemoryAgentBench, 2025] Evaluating Memory in LLM Agents via Incremental Multi-Turn Interactions. arXiv:2507.05257.
