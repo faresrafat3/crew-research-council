@@ -55,6 +55,15 @@
 - **Collaboration note:** Concurrent "Research update" reverts at 07:38-07:39Z overwrote opencode merges with deep-dive-only partials; opencode re-restored canonical merged versions at 07:44-07:45Z with "do not overwrite with partial" messages. Freebuff P0 rewrite at 07:40:52Z is superior and retained. Final state verified 07:45:33Z: 6/6 fixed files contain Executive Summary.
 - **Remaining:** INBOX is operator-managed (GUARDRAILS forbids editing PROMPTS/INBOX.md) — STATUS marks complete per operator review. DEEPER queue (6 items) complete per scout. Tester/engineer/routing/roadmap deep dives not in DEEPER.md — future work if operator adds.
 
+
+### Research Council Member (opencode) — Breakthrough Deep Dive Cycle 2 (10/10 coverage) — 2026-09-13
+- **First deep dives for the 4 never-dived files** (DEEPER.md covers only 6 groups; these 4 were greenfield). 4 parallel subagents, TinyFish searches (12 queries: activation triggers, verdict formats, ambiguity protocol, pre-commit hooks, test evasion, review playbooks, LLM routing, message ordering, artifact ledger, phased rollout, flake gates, metrics dashboards), base fetched via `gh api` to avoid repeat, 896 lines new.
+- **tester-soul.md:** 3967→24137B (50→244 lines). Activation decision tree (boolean OR + skip rules + pseudo-code), Verdict v2 full field spec + PROMOTE example, ambiguity STOP-and-ask wire format + 30-min timeout + 2 examples, weekly/monthly/quarterly calibration drills (100% drill-catch, FP<2%). 20 refs.
+- **engineer-soul.md:** 3788→21273B (48→275 lines). 3-layer iron-law enforcement (SOUL + pre-commit YAML + CI `retcode!=0` rerun), REQUEST_TESTS + ENGINEER_DONE 5-artifact schemas + full examples, 6-step HOLD playbook (30min/fix, 90min total, ≤3 rounds, ≤1 appeal), 6-type oracle-violation taxonomy with regex + bad/good. 17 refs.
+- **routing-integration.md:** 3822→22846B (46→200 lines). 10-row firstmate classifier table + unknown fallback, SPEC→verdict ordering with per-edge timeouts (SPEC 30m, RED 15m, GREEN 30m, critic 10m/file, verdict 5m, retry≤2→HUMAN), SQLite ledger DDL (tasks/runs/verdicts/flakes) + 30/90d retention, misroute correction loop (<5%). 15 refs.
+- **implementation-roadmap.md:** 3905→21820B (45→366 lines). Phase 1 Day 1-5 executable (commands + done-criteria + verification), 6 risk playbooks (trigger+action+owner), per-phase rollback tripwires with `git revert`, 6 ledger SQL dashboard queries with targets. Base R1-R10 + DD-1-DD-8 refs.
+- **Result:** 10/10 OUTPUT files now have deep-dive coverage (6 from scout cycle 1 + 4 from opencode cycle 2). Every file METHODOLOGY-compliant (Executive Summary, Key Findings, Detailed Analysis, Practical, Metrics, References, + [DEEP DIVE]). Every claim cited. Specific thresholds throughout.
+
 ## Research Queue
 
 ### In Progress (claim-before-write, per INBOX.md protocol)
@@ -98,7 +107,7 @@
 | workbuddy | ⏳ Pending | Not connected |
 | zcode | ⏳ Pending | Not connected |
 | cline | ⏳ Pending | Not connected |
-| opencode | ✅ Complete 2026-09-13 | Restored 5 canonical merges, verified 10/10 Exec Summary |
+| opencode | ✅ Complete 2026-09-13 | 5 merges restored + 4 breakthrough deep dives, 10/10 deep coverage |
 
 ## Output Inventory
 
@@ -110,7 +119,7 @@
 | `OUTPUT/quality-metrics.md` | ✅ Complete 2026-09-13 (opencode restored full) | 16-metric catalog + benchmarks + DEEP DIVE merged, 227 lines |
 | `OUTPUT/blocking-authority.md` | ✅ Complete 2026-09-13 (opencode restored full) | 8 MUST-block + MUST-NOT + ladder + DEEP DIVE merged, 215 lines |
 | `OUTPUT/cicd-integration.md` | ✅ Complete 2026-09-13 (opencode restored full) | commit-gated + nightly + exact YAML + DEEP DIVE merged, 533 lines |
-| `OUTPUT/tester-soul.md` | ✅ Complete | Full tester SOUL specification |
-| `OUTPUT/engineer-soul.md` | ✅ Complete | Engineer iron-law delta |
-| `OUTPUT/routing-integration.md` | ✅ Complete | Formation table + message/artifact flows |
-| `OUTPUT/implementation-roadmap.md` | ✅ Complete | 4-phase roadmap |
+| `OUTPUT/tester-soul.md` | ✅ Complete + DEEP DIVE 2026-09-13 (opencode breakthrough) | Base SOUL + activation tree + verdict v2 + ambiguity protocol + drills, 244 lines |
+| `OUTPUT/engineer-soul.md` | ✅ Complete + DEEP DIVE 2026-09-13 (opencode breakthrough) | Iron law + hooks + schemas + HOLD playbook + oracle taxonomy, 275 lines |
+| `OUTPUT/routing-integration.md` | ✅ Complete + DEEP DIVE 2026-09-13 (opencode breakthrough) | Formation table + classifier rules + ledger DDL + misroute loop, 200 lines |
+| `OUTPUT/implementation-roadmap.md` | ✅ Complete + DEEP DIVE 2026-09-13 (opencode breakthrough) | 4 phases + Day 1-5 + risk playbooks + rollback + SQL dashboard, 366 lines |
