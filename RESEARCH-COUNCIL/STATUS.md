@@ -57,6 +57,12 @@
 
 ## Research Queue
 
+### In Progress (claim-before-write, per INBOX.md protocol)
+
+| Agent | Task | Claimed (UTC) |
+|-------|------|---------------|
+| freebuff | DEEP DIVE: tester-soul.md, then routing-integration.md, then implementation-roadmap.md (the 3 outputs lacking deep dives) | 2026-09-13 |
+
 ### Pending (PROMPTS/INBOX.md)
 1. ~~Testing Maturity Model~~ ✅ Complete (with deep dive)
 2. ~~Role-Split TDD Protocol~~ ✅ Complete (with deep dive)
