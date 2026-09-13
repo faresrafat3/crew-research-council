@@ -168,3 +168,46 @@ class CostContext:
 4. [Zylos Research, 2026] Context Window Economics — Managing Token Budgets in Persistent AI Agents. zylos.ai/research.
 5. [SAA Report, 2026] Token Optimization Techniques. tibsfox.com/Research/SAA.
 6. [arXiv:2506.14852, 2025] Agentic Plan Caching: Test-Time Memory for Fast and Cost-Efficient LLM Agents.
+
+## [DEEP DIVE]: FrugalGPT Cascades, Cache-Write Economics, and Unit-Economics Governance (freebuff, 2026-09-13)
+
+### 1. Upgrade three-tier routing to a quality-gated cascade (FrugalGPT)
+
+The spec's three-tier routing assigns models by task class statically. FrugalGPT (Chen, Zaharia & Zou) adds the missing *quality gate*: run cheap first, **score the answer** (consistency/self-consistency checking across samples or a scorer model), escalate to the next tier only if the score fails — matching GPT-4-level accuracy with **up to 98% cost reduction**, or +4% accuracy at equal cost, with learned cascades saving 50-98% across workloads [Chen et al., 2023]. Crew instantiation:
+
+- **Cheap tier attempt** for all NORMAL-class tasks (summaries, routine edits, doc updates).
+- **Scorer**: task-type-specific check (tests for code edits — free, deterministic; self-consistency n=3 for judgment tasks).
+- **Escalate** to strong tier only on gate failure. The tester's existing HOLD mechanism *is* a free quality gate for code: cheap-model drafts → tester RED/HOLD → strong-model fix is the cascade, already 80% built from the testing discipline.
+- Expected blended saving is workload-dependent (the 98% headline comes from query-mix with many easy items; crews with hard-task-heavy mixes should model their own cascade curve from the ledger).
+
+### 2. Prompt caching: the write/read asymmetry decides placement
+
+Provider mechanics (2026): **Anthropic** — cache writes cost 1.25x input, reads cost 0.1x (90% discount), default TTL 5 minutes (1-hour at higher write cost); **OpenAI** — 50% discount on cached inputs for most current models (automatic, no explicit write cost) [Anthropic docs, 2026; Prompthub, 2025; Flexera, 2026]. Two derived rules for the crew:
+
+1. **Prefix discipline**: the cached prefix must be *stable* (SOUL text, tool schemas, voice spec — the parts that never change per task class) and *volatile content must come after* the cache breakpoint. An interleaved prompt (task details injected before tool schema) busts the cache every call and *pays* the 1.25x write surcharge for the privilege — a measurable anti-pattern; instrument `cache_read_input_tokens` per agent and alert when cache-hit ratio <50% on any agent whose prompt prefix is supposed to be stable.
+2. **TTL vs task cadence**: agent sessions with gaps >5 min (async message_agent) will miss 5-minute-TTL windows; the 1-hour TTL pays off when inter-message latency median >5 min — decide from the ledger's inter-call gap distribution, not intuition. The BULK/sleep-time lanes (memory deep dive) should batch to reuse warm caches within TTL windows.
+
+Anthropic's own agent telemetry (4x chat tokens for agents, 15x multi-agent) [Anthropic, 2025] means the input-heavy prefix cache is where most of the crew's achievable saving lives — bigger than output-side optimizations.
+
+### 3. Unit economics: $/successful-task is the only top-line cost metric
+
+"Cost per task" rewards cheap failures. Define:
+
+```
+unit_cost(agent) = total_tokens_cost(agent, window)
+                   / tasks_completed_passing_all_gates(agent, window)
+```
+
+Route/model changes are accepted only when unit_cost falls without success-rate SLO breach (error-budget integration from self-healing deep dive). Track token spend per OTel `gen_ai.usage.*` attributes (production-deployment deep dive) so the metric is queryable without bespoke accounting.
+
+### 4. Budget enforcement at the right granularity
+
+Enforce budgets at *formation level* (SOLO/DUO/PIPELINE/FULL multipliers over a base per-task budget), not per-agent flat caps: a FULL formation legitimately burns 10x a SOLO task. The degradation ladder (FULL→...→REJECT, self-healing) keys off the formation's remaining budget, and escalation paths already exist. Add one governance rule from the FrugalGPT evidence: **cascade adoption itself must clear a measured bar** — run one month shadow-mode comparing cascade vs direct-strong on the evaluation suite (evaluation-frameworks.md), adopt only if quality-neutral at ≥30% saving.
+
+### References for deep dive
+
+- [Chen, Zaharia & Zou, 2023] FrugalGPT: How to Use Large Language Models While Reducing Cost and Improving Performance. arXiv:2305.05176 (98% cost reduction matching GPT-4; +4% accuracy at same cost; 50-98% learned-cascade savings). github.com/stanford-futuredata/FrugalGPT.
+- [Anthropic, 2026] Prompt caching docs: 1.25x write, 0.1x read (90% discount), 5-min TTL, 1-hour option. platform.claude.com/docs/en/build-with-claude/prompt-caching.
+- [Prompthub, 2025] Prompt Caching with OpenAI, Anthropic, and Google Models (OpenAI 50% cached-input discount; automatic).
+- [Flexera, 2026] Prompt Caching breakdown (write 1.25x; read 0.1x; TTL economics). flexera.com/blog.
+- [Anthropic, 2025] How we built our multi-agent research system (agents ~4x chat tokens; multi-agent ~15x).
