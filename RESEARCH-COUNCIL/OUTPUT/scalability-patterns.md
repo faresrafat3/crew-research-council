@@ -159,3 +159,48 @@ def select_formation(task):
 3. [AlphaXiv, 2025] Towards a Science of Scaling Agent Systems — Overview. alphaxiv.org.
 4. [Hong et al., 2024] Centralized Multi-Agent Coordination.
 5. [Du et al., 2023] Decentralized Peer-to-Peer Multi-Agent Systems.
+
+## [DEEP DIVE]: Amdahl/Gustafson for Formations, Little's Law Pool Sizing, and the Single-Agent Baseline Portfolio (freebuff, 2026-09-13)
+
+### 1. Classic scaling laws explain *why* the empirical curve bends
+
+The arXiv:2512.08296 finding that multi-agent wins on parallelizable work (+80.8% centralized) and loses on sequential work (-39-70%) is the agent-era restatement of two classical laws:
+
+- **Amdahl's law**: speedup is capped by the serial fraction — at 50% parallel work the ceiling is 2x; at 95%, 20x [Wikipedia/Cornell]. Crew v2's serial fraction = firstmate classification + artifact handoffs + verification gates. These are *correct* (they implement the testing discipline), but they cap any FULL-formation speedup: if verification and handoff consume 20% of wall-clock serially, ceiling = 5x regardless of agent count.
+- **Gustafson's law**: with scaled problems, near-linear speedup is achievable in the parallel fraction [Compilersutra]. The crew's honest win condition is therefore *throughput at fixed latency* (more tasks in parallel), not per-task latency — which matches Anthropic's field data: parallel sub-agents cut research time ~90% on complex queries [Anthropic, 2025].
+
+Design consequence: parallelize the *task stream* (pool instances, many tasks at once) before parallelizing *inside a task* (formation fan-out); the first has no serial-fraction penalty, the second always does.
+
+### 2. Pool sizing is a queueing problem, not a vibes problem — Little's law
+
+Little's law: **L = λW** — average number of in-flight items = arrival rate × time-in-system [Little]. For agent pools, per role:
+
+```
+pool_size(role) = ceil(λ_role × W_role)
+```
+
+Example with crew-shaped numbers: researcher tasks arrive at λ = 0.2/min with mean duration W = 4 min → L = 0.8 → a single researcher instance suffices; engineer tasks at λ = 0.5/min with W = 10 min → L = 5 → pool of 5 engineer instances (plus burst headroom = the burst allowance already in the STANDARD rate-limit class). Two operational rules follow:
+
+1. Measure λ and W per role from the ledger (the same counters as the golden signals), recompute pool sizes weekly; a pool is misconfigured the moment W doubles (a latency SLO breach signals it via `ready=false` flapping).
+2. Never grow a pool to compensate for rising W without checking whether W's growth is a defect (self-healing ASI dimensions latency >+50%, token efficiency >+50% already detect this) — adding agents to hide a regression is how 81 agents share one terminal today.
+
+### 3. The decision boundary needs a per-archetype baseline portfolio, not one P_SA
+
+A single P_SA > 0.45 threshold [arXiv:2512.08296] hides that the *task archetype* determines the payoff. Anthropic's production data: token usage alone explains **80% of performance variance** on hard research tasks — multi-agent wins largely because parallel work increases total tokens/work done [Anthropic, 2025]. Translate: measure P_SA per task archetype (planning, analysis, tool-heavy, web-dynamic, sequential-constraint) on the crew's own evaluation suite (evaluation-frameworks.md), store as a 5-entry portfolio, and let firstmate dispatch on the archetype's measured P_SA. The crossover shifts per archetype; the 0.45 constant is only the initial prior. Re-estimate monthly; the architecture-selection accuracy metric (>85%) audits the classifier, not the threshold.
+
+### 4. Overhead budget: where the 30% rule comes from and when to break it
+
+The spec's "coordination overhead <30%" is an SLO for *communication*, but the deeper budget is Amdahl's serial fraction. Decompose overhead into (a) coordination messages (debate, voting, acks) — keep <30%, enforce via the 3-round debate cap and message compression; and (b) *serial pipeline stages* (routing, RED/GREEN gates) — these count against the speedup ceiling, so minimize their count, not their per-stage cost: 5 serial gates at 5% each already cap speedup at 4x. When a formation's measured speedup plateaus below 2x on a parallelizable archetype, audit for serial-stage creep before adding agents.
+
+### 5. Micro-crew split at 50 agents: refine the trigger
+
+Keep the ≤10-per-group rule [SWARM+, 2026], and add the split trigger: split when *any* inter-group edge carries >50 messages/hour sustained, or when meta-firstmate aggregate context exceeds 60% of its window — those are the measurable precursors of O(n·m) overhead blowup, better than a raw agent count. The 50-agent threshold becomes a backstop, not the primary signal.
+
+### References for deep dive
+
+- [Wikipedia] Amdahl's law (50% parallel → 2x ceiling; 95% → 20x). en.wikipedia.org/wiki/Amdahl%27s_law; Cornell Virtual Workshop.
+- [Compilersutra] Amdahl's vs Gustafson's law (fixed vs scaled problems). compilersutra.com/docs.
+- [Little] Little's law, L = λW. en.wikipedia.org/wiki/Little%27s_law.
+- [Anthropic, 2025] How we built our multi-agent research system (~90% time reduction; token usage explains 80% of variance; ~15x chat tokens). anthropic.com/engineering/multi-agent-research-system.
+- [arXiv:2512.08296] Towards a Science of Scaling Agent Systems (P_SA* = 0.45 raw; T = 2.72 × (n+0.5)^1.724).
+- [SWARM+, 2026] arXiv:2603.19431 (≤10 per group at ~1000 agents, 98.5% completion).
