@@ -36,6 +36,22 @@
 ### Web Agents (freebuff, cline, opencode, workbuddy, zcode) — 2026-09-13
 - Cycle 1-5: Testing discipline synthesis and operationalization
 
+### freebuff — 2026-09-13
+- **13 deep-dive cycles completed** — one per multi-agent output, appended in place with `[DEEP DIVE]` markers (all claims web-verified against primary sources):
+  1. `memory-architecture.md` — production mechanics (Mem0 ADD/UPDATE/DELETE/NOOP compaction, Zep bi-temporal edge invalidation, Letta blocks), context rot (Chroma), sleep-time compute (5x compute reduction), memory-poisoning defenses (provenance + two-source corroboration), LongMemEval validation gate
+  2. `communication-protocols.md` — A2A task lifecycle states, "effectively-once" correction of exactly-once claim (Kafka EOS), per-task ordering keys, full/decorrelated jitter (AWS), W3C traceparent propagation, MAST failure-class sizing (41.8/36.9/21.3)
+  3. `self-healing.md` — GEPA/TextGrad patch generation (10% > GRPO, 35x fewer rollouts), error-budget patch governance (Google SRE), agent chaos GameDay catalog, MAST-weighted ASI
+  4. `multi-agent-security.md` — Lethal Trifecta per-agent audit (Willison), injection-defense effectiveness (Task Shield 2.07% ASR on AgentDojo; keyword defenses fail 95-99%), gVisor/Firecracker microVM sandboxing, externalized (in-router) enforcement, ASB quarterly red-team
+  5. `production-deployment.md` — OTel GenAI semantic conventions, liveness/readiness/startup probe semantics, SLO-gated progressive SOUL rollout (canary for prompts), four golden signals → agent surfaces
+  6. `scalability-patterns.md` — Amdahl/Gustafson formation ceilings, Little's law pool sizing (L = λW), per-archetype P_SA portfolio, measurable micro-crew split triggers
+  7. `human-in-the-loop.md` — EU AI Act Article 14 → requirements table, automation-bias counters (decoy catch rate ≥70%), approval-fatigue economics (93% approval rate; scarcity principle), risk-class escalation matrix
+  8. `conflict-resolution.md` — Arrow impossibility → declared sacrificed axiom, adjudicator bias hardening (swap-consistency, self-preference ban), HOLD-wins mechanism design (asymmetric error costs), decision-rights matrix
+  9. `agent-embodiment.md` — persona vectors (activation-space drift monitoring), model-collapse tail-sensitivity (Shumailov, Nature 2024), Distinct-Perspective Count pre-vote gate, attributed-debate/anonymous-vote split
+  10. `tool-differentiation.md` — tool-count failure curves (≤15 visible tools; 13% accuracy on huge catalogs), Toolformer usefulness filter, cache invalidation/staleness rules, MCP bundle namespacing, counterfactual differentiation audits
+  11. `cost-optimization.md` — FrugalGPT quality-gated cascades (up to 98% savings), cache write/read economics (Anthropic 1.25x/0.1x; prefix discipline), unit economics ($/successful-task), formation-level budgets
+  12. `evaluation-frameworks.md` — Agent-as-a-Judge (DevAI: 58% vs 32% human agreement, 18% cost), Goodhart metric pairs, flaky-eval budget (Google/Microsoft baselines), unified evaluation calendar
+  13. `explainability.md` — counterfactual attribution via checkpoint replay, OTel-native trace storage, deterministic replay capture set (hash-validated), TTD SLO ladder, trace-store privacy boundary (ring ACLs + write-time redaction)
+
 ### Scout — 2026-09-13 (Second Pass)
 - **13 new INBOX prompts completed** (multi-agent systems research):
   1. **P1 Multi-Agent Memory and Knowledge Management** → `memory-architecture.md`
@@ -113,7 +129,7 @@
 | workbuddy | ⏳ Pending | Not connected |
 | zcode | ✅ Complete | Published 9 missing outputs; citation audit passed |
 | cline | ⏳ Pending | Not connected |
-| freebuff | ⏳ Pending | Not connected |
+| freebuff | ✅ Complete | 13 multi-agent deep dives appended in OUTPUT (2026-09-13) |
 | opencode | ⏳ Pending | Not connected |
 
 ## Output Inventory
@@ -143,3 +159,4 @@
 | `OUTPUT/cost-optimization.md` | ✅ Complete | 3-tier routing, caching, APC, budget enforcement |
 | `OUTPUT/evaluation-frameworks.md` | ✅ Complete | 6 archetypes, coordination metrics, trace-to-eval |
 | `OUTPUT/explainability.md` | ✅ Complete | Structured traces, time-travel debugging, root cause analysis |
+| *(all 13 multi-agent files above)* | ✅ Deep-dived | freebuff 2026-09-13: one `[DEEP DIVE]` cycle each — validation gates, standards alignment (A2A/MCP/OTel/W3C), and measured thresholds appended |
