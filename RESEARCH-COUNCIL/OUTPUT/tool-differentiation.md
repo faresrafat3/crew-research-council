@@ -194,3 +194,51 @@ class ToolSandbox:
 4. [arXiv, 2512.08296, 2025] Tool-Coordination Trade-off in Multi-Agent Systems.
 5. [Stellar Cyber, 2026] Tool Misuse and Privilege Escalation Incidents. stellarcyber.ai.
 6. [Parallax, 2026] Sandboxed Tool Execution. arXiv:2604.12986.
+
+## [DEEP DIVE]: Tool-Count Empirics, Toolformer Filtering, Namespaced Toolsets, and Counterfactual Differentiation Audits (freebuff, 2026-09-13)
+
+### 1. Tool count has measured failure curves — size per-role catalogs accordingly
+
+Tool selection accuracy degrades as catalogs grow and as semantically similar tools are added; reported failure cases include selection accuracy dropping to ~13% on very large tool sets, with degradation starting well before catalog sizes that context windows could technically hold [arXiv:2605.24660, 2026; tianpan.co, 2026; MLQ.ai, 2026]. Galileo formalizes the per-call failure surface as Tool Selection Quality: right tool *and* right arguments [Galileo]. Delta to the spec's utilization heuristic (">60% used, <40% too many"):
+
+- Cap each agent's visible toolset at **≤15 tools** per task context, and audit for *semantic near-duplicates* (two tools whose descriptions embed >0.85 cosine) — duplicates confuse selection more than raw count.
+- When a role needs more (the tool-coordination trade-off shows tool-heavy tasks with 16+ tools are where multi-agent overhead bites hardest [arXiv:2512.08296]), use **two-stage retrieval**: a lightweight tool-registry search returns the top-5 relevant tools for the current subtask, and only those enter the model's context. This is the Toolformer lesson inverted: it's not just which tools an agent has, it's which tools it *sees this turn* [Schick et al., 2023].
+
+### 2. Toolformer's helpfulness filter: the principled way to prune a role's toolset
+
+Toolformer determined that an API call is worth keeping if inserting its result at a position *reduces the model's perplexity on the ground-truth continuation* — i.e., the tool's output must carry information the model lacks [Schick et al., 2023]. Adapted to crew tool audits (monthly review, already in spec):
+
+1. For each (agent, tool) pair, replay sampled past tasks where the tool was called.
+2. Score: did the tool's output change the downstream decision/answer (counterfactual usefulness), not merely was it invoked?
+3. Tools that were invoked but never decision-relevant are removal candidates; tools never invoked AND never decision-relevant are removed outright.
+
+This replaces the spec's utilization-rate proxy (used/available) with a usefulness measure — utilization rewards *calling* tools; Toolformer logic rewards *helpful* calls, which is what tool-outcome correlation is trying to capture.
+
+### 3. Result-sharing cache: reuse needs an invalidation story, or it ships stale facts
+
+The 30-50% savings estimate for duplicate tool calls is plausible but the cache key `hash(tool_name + normalized_args)` hides the hard problem: **staleness**. Web search results, issue-tracker states, and dependency versions change; a 7-day Global-TTL cache of "pytest coverage best practices" is fine, but a cached "latest version of X" is a production incident waiting. Rules:
+
+- Classify tools by *mutability*: static (docs, syntax) → long TTL fine; volatile (versions, prices, statuses) → TTL ≤1h or no cache, and cached hits must be labeled with `fetched_at` so downstream agents can judge freshness (ties to memory-architecture bitemporal fields).
+- Cache hits carry the original tool's provenance and can be revalidated by any agent with the tool (write-through, not blind trust) — consistent with the memory two-source corroboration rule.
+- Track **stale-hit escape rate** (bugs caused by cached facts invalidated later) in the ledger; >0 sustained = TTL policy too loose.
+
+### 4. Namespacing MCP toolsets per role
+
+With MCP as the tool-exposure layer (comm-protocols deep dive), implement differentiation as *per-role MCP server allowlists* rather than per-agent flags: firstmate/agent profiles bind to named toolset bundles (e.g., `research-web`, `build-execute`, `verify-audit`), each bundle a curated MCP server set with its own permission scope. Benefits: ring transitions (security deep dive) map cleanly to bundle swaps; audit logs record bundle identity, making the Tool Differentiation Index computable from config alone; and the confused-deputy surface shrinks because agents never even see tools outside their bundle (selection-accuracy protection from §1 comes free).
+
+### 5. Counterfactual differentiation audit: the honest measurement
+
+The spec's Tool Differentiation Index (1 - shared/total) measures *assigned* difference, not *behavioral* difference — an agent can hold unique tools and never use them meaningfully. Quarterly audit:
+
+1. For each agent's task sample, recompute outcomes under its actual tool bundle vs. the generic crew-wide bundle (shadow evaluation on replayed tasks — no live disruption).
+2. Report Δ(success rate) per role. If Δ ≤ 0 for a role, its specialization is cargo: either reassign the unique tools or admit the role is generic and shrink its ring.
+3. This produces the evidence the tool-outcome correlation metric gestures at, with causal direction (bundle → outcome) instead of raw correlation.
+
+### References for deep dive
+
+- [Schick et al., 2023] Toolformer: Language Models Can Teach Themselves to Use Tools. arXiv:2302.04761 (NeurIPS 2023; perplexity-reduction helpfulness filter).
+- [arXiv:2605.24660, 2026] How Many Tools Should an LLM Agent See? (selection accuracy vs catalog size/similarity).
+- [tianpan.co, 2026] The Over-Tooled Agent Problem (selection accuracy ~13% on large tool sets).
+- [MLQ.ai, 2026] AI Agent Tool Selection: Why Accuracy Degrades with Tool Count.
+- [Galileo] Tool Selection Quality metric (tool + arguments correctness). docs.galileo.ai.
+- [arXiv:2512.08296] Towards a Science of Scaling Agent Systems (tool-coordination trade-off, 16+ tool tasks).
