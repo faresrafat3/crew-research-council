@@ -235,3 +235,55 @@ class RegressionTest:
 8. [Microsoft, 2025] Agent Governance Toolkit: Kill Switch and Rate Limiting. github.com/microsoft/agent-governance-toolkit.
 9. [LangChain, 2026] State of Agent Engineering Report. 89% observability adoption.
 10. [Factory AI, 2026] Long-Running Session Context Overflow Research.
+
+## [DEEP DIVE]: Optimizer-Grade Patch Generation (GEPA/TextGrad), Error-Budget Governance, and Chaos Drills for Agents (freebuff, 2026-09-13)
+
+### 1. Replace ad-hoc patch proposals with reflective prompt evolution (GEPA)
+
+The self-patching protocol currently says "LLM-generated SOUL deltas" — the state of the art makes this concrete and measured. **GEPA** (Genetic-Pareto) evolves textual components (prompts/rules) via LLM reflection on *traceback-like* execution traces, maintaining a Pareto frontier of candidates scored on a held-out metric. Results: **beats GRPO (RL) by 10% on average across four tasks (up to 20%) while using up to 35x fewer rollouts**, and beats the leading prompt optimizer MIPROv2 by over 10% across two pipelines; on six tasks it beats GRPO by 6% on average with the same rollout advantage [Agarwal et al., 2025]. For the coach agent this means:
+
+- A patch proposal is never a single candidate — generate 2-4 SOUL deltas, score each against the regression suite (the existing past-failure tests), keep the Pareto-nondominated set, promote only a candidate that dominates the incumbent SOUL on the failure cases without regressing the success cases.
+- Reflection inputs = the thorn's evidence bundle (task IDs, traces, root-cause category) — exactly the "traceback" signal GEPA's reflect step consumes.
+- The 35x fewer rollouts number is what makes this economical for an 8-agent crew: patch generation is an occasional, high-value operation, not a background RL loop.
+
+### 2. TextGrad as the mechanism for localized, attributable patches
+
+**TextGrad** implements "backpropagation through text": LLM-generated textual feedback is propagated along the compound system's computation graph to improve individual components; the framework treats prompts, tool specs, and even code as differentiable-in-text variables [Yuksekgonul et al., 2024]. Crew mapping: the SOUL file is the variable; escape traces are the loss signal; the "gradient" is a specific, localized critique ("rule X causes behavior Y in situation Z — change rule X"). Practical use: run TextGrad-style critique *before* GEPA-style candidate generation, so each candidate patch carries an explicit causal story linking it to the failing behavior — this is what makes the PatchProposal `proposed_change` field reviewable by the operator in minutes rather than an hour.
+
+### 3. Patch governance via error budgets: when the coach is *allowed* to act
+
+The original spec gates patches on human approval but has no quantitative trigger — patches happen whenever someone notices. Google SRE's error-budget policy supplies the trigger logic [Google SRE Workbook]:
+
+- Define the SLI (task success rate) and SLO (start: 95%), giving a **5% escape budget** per 4-week window.
+- Policy: a **single incident consuming >20% of the error budget** (i.e., one failure class burning ≥1% of all tasks in 4 weeks) triggers a mandatory postmortem with at least one concrete action item [Google SRE Workbook].
+- Budget exhausted → feature work freezes and the crew enters a reliability sprint (patches only) until budget is restored. This is the automated "coach that improves the crew without human intervention" — within guardrails: the coach can *force* the patch pipeline to run, but never merge without operator approval.
+- Pair with the SRE toil cap (<50% of agent/operator time on mechanical toil) as a standing health metric for the self-healing loop itself [Google SRE Workbook].
+
+This also fixes the MTTR target's vagueness: MTTR <7 days becomes an SLO with its own budget, and repeat escapes (same thorn re-opened) count double against the budget — the economic incentive that makes regression-testing patches non-optional.
+
+### 4. Chaos drills for agent systems: formalize the existing break drills
+
+The Principles of Chaos Engineering: (1) build a hypothesis around **steady-state** behavior measured in outputs, (2) vary **real-world events**, (3) run experiments in **production** (or a faithful staging), (4) **minimize blast radius** with automatic rollback [Principles of Chaos]. The crew already runs "break drills" informally (STATUS: quality tracking lints) — formalize as a monthly GameDay with this experiment catalog:
+
+| Experiment | Injected fault | Steady-state hypothesis | Expected crew response |
+|---|---|---|---|
+| Kill-the-verifier | Critic process terminated mid-task | Task completes with bounded delay | Retry once simplified → escalate; graceful degradation L2 |
+| Duplicate-verdict | Same tester verdict replayed 3x | Verdict applied once | Idempotency token dedup (comm-protocols) |
+| Poisoned-message | Malformed/oversized payload on bus | No task affected | Validation reject → DLQ, alert |
+| Token-shock | Simulate 95% budget consumption | Task degrades, never silently | Level MINIMAL banner + operator notify |
+| Memory-poison | Contradictory high-relevance memory insert | Insight quarantined | Two-source corroboration blocks propagation (memory-architecture deep dive) |
+
+Rules: one experiment per GameDay, hypothesis written before injection, automatic rollback on steady-state violation, every finding becomes either a regression test or a thorn — closing the loop back into Layer 2 diagnosis.
+
+### 5. Failure-class weighting for the ASI
+
+The MAST taxonomy (150+ traces: 41.8% spec, 36.9% inter-agent, 21.3% verification) [Cemri et al., 2025] implies the 12-dimension ASI should be weighted by observed class frequency: specification drift and inter-agent misalignment deserve ~2x the weight of verification gaps, because they are ~2x more frequent in the field. Rebalance quarterly as the crew's own failure ledger accumulates — the ASI is a living instrument, not a fixed checklist.
+
+### References for deep dive
+
+- [Agarwal et al., 2025] GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning. arXiv:2507.19457. github.com/gepa-ai/gepa.
+- [Yuksekgonul et al., 2024] TextGrad: Automatic "Differentiation" via Text. arXiv:2406.07496. github.com/zou-group/textgrad.
+- [Google SRE Workbook] Error Budget Policy for Service Reliability; Implementing SLOs. sre.google/workbook.
+- [Principles of Chaos] principlesofchaos.org (steady-state hypothesis, blast radius, rollback).
+- [Google Cloud, 2026] Getting started with chaos engineering. cloud.google.com/blog.
+- [Cemri et al., 2025] Why Do Multi-Agent LLM Systems Fail? arXiv:2503.13657.
