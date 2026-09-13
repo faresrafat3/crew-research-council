@@ -251,3 +251,74 @@ class DeadLetterMessage:
 8. [LangChain, 2026] State of Agent Engineering Report. 89% observability adoption.
 9. [MLflow, 2026] AI Observability for Production: Multi-Agent Systems. mlflow.org/blog.
 10. [Datadog, 2025] AI Gateway Best Practices: Model Routing, Reliability, Budget Controls. datadoghq.com/blog.
+
+## [DEEP DIVE]: Standards Alignment (A2A, MCP), Delivery-Semantics Correction, Ordering Keys, Jittered Retries, and Trace Propagation (freebuff, 2026-09-13)
+
+### 1. Adopt A2A's task lifecycle as the standard state vocabulary
+
+The A2A specification defines tasks as addressable, resumable objects that progress through an explicit lifecycle: **submitted → working → input-required / auth-required → completed / failed / canceled**, with completed/failed/canceled as terminal states, over JSON-RPC with SSE streaming and web-hook push notifications for long-running work [A2A, 2025]. The crew's Pattern-3 "task delegation" schema should adopt these exact state names and the terminal-state rule:
+
+- Every task message MUST reach a terminal state within its `ttl_ms`; a task still in `working` at TTL expiry is moved to DLQ as `failed` (closes the "lost task" hole in the current spec, where only messages fail — tasks could linger forever).
+- `input-required` gives tester HOLD and clarifying questions a first-class state instead of overloading responses.
+- Agents already running `message_agent()` can keep the transport and adopt only the state machine — the vocabulary is implementable in the existing Pydantic schema as a `task_state` field.
+
+### 2. Delivery semantics: drop "exactly-once", implement "effectively-once"
+
+Correction to the original spec's "Exactly-once" claim. Kafka's exactly-once semantics are a per-partition guarantee built from an **idempotent producer** (broker de-duplicates retried produces using a producer ID + per-partition sequence number) plus **transactions** for atomic multi-partition writes; end-to-end EOS still requires the consumer side to be idempotent, and ordering is guaranteed **only within a partition** [Confluent, 2017; AutoMQ, 2025; Strimzi, 2023]. The honest wording for Crew v2:
+
+- Delivery is **at-least-once** (retries guarantee it).
+- Processing is **effectively-once** via the idempotency-token handler — which the spec already specifies, and which is the same mechanism Kafka itself relies on downstream.
+- Implementation detail from Kafka practice: idempotence/sequence tracking is per-connection and per-partition — a handler restart must re-load the dedup table (the Redis dedup cache with TTL is the right store; a purely in-memory dict loses dedup state exactly when duplicates are most likely) [AutoMQ, 2025].
+
+### 3. Ordering: partition by task, never promise global order
+
+Per-partition ordering [Confluent, 2017] translates to: order is guaranteed **per task_id (or correlation_id), zero guarantees across tasks**. Practical rules for the router:
+
+1. Key the stream partition on `task_id` — all RED/GREEN/DONE/HOLD messages for one task are consumed in order.
+2. Within a task, a tester verdict arriving before the RED log it references becomes structurally impossible — the exact COORD failure mode.
+3. Do not add global sequence numbers or a global serial queue to "fix" cross-task order; it serializes the whole crew for no correctness benefit (tasks are independent by design).
+
+### 4. Retries: full jitter with a cap, not bare exponential backoff
+
+AWS's canonical guidance: with plain exponential backoff, simultaneous failures retry in lockstep and stampede the recovering agent; **full jitter** (`sleep = random_between(0, min(cap, base * 2 ** attempt))`) cuts total completion time with less total work than fixed or equal jitter; **decorrelated jitter** (`sleep = min(cap, random_between(base, prev * 3))`) is preferred when individual callers must make progress quickly [AWS, 2015]. Concretely for the crew:
+
+| Parameter | Value | Rationale |
+|---|---|---|
+| base delay | 100ms | Sub-second roundtrips for agent-to-agent |
+| cap | 20s | Keeps 5-retry worst case ≤ ~40s total |
+| retries | 5 | Matches existing DLQ trigger |
+| jitter | full (default) | Prevents synchronized retry storms after a circuit breaker closes |
+| decorrelated | tester/critic lanes | Verification agents should not wait behind long random delays |
+
+Jitter applies to the *agent retrying a busy peer* and to *circuit-breaker HALF_OPEN probes* — the probe schedule should itself be jittered so 81 agents don't all probe the same recovered agent in the same millisecond.
+
+### 5. Wire-level standards: borrow, don't invent
+
+- **A2A** for inter-crew / external agent interop (JSON-RPC, SSE for streaming, push for long tasks, per-task auth states) [A2A, 2025].
+- **MCP Streamable HTTP** (spec 2025-03-26, superseding the deprecated HTTP+SSE transport) for tool sessions: single-endpoint POST, optional SSE streaming responses, explicit session header for resumability, OAuth 2.1 authorization [MCP, 2025]. When Crew v2 exposes tools to outside agents, expose them as MCP servers rather than a bespoke HTTP API.
+- Inside the crew, Redis Streams remains correct — the point is that the *schemas and states* are standard so nothing is crew-locked.
+
+### 6. Trace propagation: make every message traceable by default
+
+The W3C Trace Context specification defines the `traceparent` header format (`00-<32-hex trace-id>-<16-hex span-id>-<2-hex flags>`) and `tracestate` for vendor extensions, enabling end-to-end distributed tracing; OpenTelemetry implements it as its default propagator [W3C, 2022; OpenTelemetry, 2026]. The spec's `metadata` dict should carry `traceparent` on every message, with the router validating the format and rejecting (to DLQ) malformed trace IDs. This makes the explainability stack (OUTPUT/explainability.md) a free side effect: task timelines reconstruct from trace-id grouping without a separate provenance pipeline.
+
+### 7. Communication failures are the measured #1 class — size the DLQ and metrics accordingly
+
+The MAST taxonomy (why multi-agent LLM systems fail) analyzed 150+ traces across 7 frameworks and found **41.8% specification issues, 36.9% inter-agent misalignment, 21.3% task verification** failures [Cemri et al., 2025] — matching the 42/37/21 split already cited from Galileo, now anchored to the primary source. Inter-agent misalignment (information asymmetry, invalid/incorrect acts, misaligned or ignorable instructions, transaction failures) is precisely the message-flow surface this protocol governs. Consequences:
+
+1. Budget the DLQ for ~1/3 of failure volume being coordination-type, not transport-type — triage must classify "message delivered but wrong/ignored" not just "message lost."
+2. Track the MAST-named metrics: ignorable-instruction rate (messages never acked) and information-asymmetry events (consumer missing context the producer had) as first-class counters, alongside delivery rate.
+3. Token economics reinforce priority lanes: agents use ~4x chat tokens and multi-agent systems ~15x [Anthropic, 2025] — BULK-lane discipline (background sync, non-urgent notifications at reduced rate) is the single cheapest lever on that multiplier.
+
+### References for deep dive
+
+- [A2A, 2025] Agent2Agent (A2A) Protocol Specification. github.com/a2aproject/A2A/blob/main/docs/specification.md.
+- [MCP, 2025] Model Context Protocol Specification 2025-03-26: Transports (Streamable HTTP, OAuth 2.1, sessions). modelcontextprotocol.io/specification/2025-03-26/basic/transports.
+- [Confluent, 2017] Exactly-Once Semantics Are Possible: Here's How Apache Kafka Does It. confluent.io/blog.
+- [AutoMQ, 2025] Kafka Exactly-Once Semantics Implementation: Idempotence and Transactional Messages. automq.com/blog.
+- [Strimzi, 2023] Exactly-once semantics with Kafka transactions. strimzi.io/blog.
+- [AWS, 2015] Exponential Backoff and Jitter. aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter.
+- [W3C, 2022] Trace Context — W3C Recommendation. w3.org/TR/trace-context.
+- [OpenTelemetry, 2026] Context Propagation. opentelemetry.io/docs/concepts/context-propagation.
+- [Cemri et al., 2025] Why Do Multi-Agent LLM Systems Fail? (MAST taxonomy, 150+ traces, 7 frameworks). arXiv:2503.13657.
+- [Anthropic, 2025] How we built our multi-agent research system. anthropic.com/engineering/multi-agent-research-system.
