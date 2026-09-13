@@ -1,3 +1,96 @@
+# CI/CD Integration for AI Agent Testing
+
+## Executive Summary
+Every engineer commit triggers unit + targeted mutation with JUnit coverage JSON mutation reports artifacts; tester verdict gates merges large tests async nightly. No native Actions dashboard so upload-artifact + reporters workaround [GitHub Community 2025], CTRF one-command flaky summaries [CTRF 2026], history flips [TestDino 2026], exit-2 mutation gate [Mutagen 2026]. Golden three-layer eval + break drills catch regressions.
+
+In this model, the commit pipeline is blocking and fast (<10 min): `pytest -q` small-first, coverage JSON, targeted `mutmut` on touched lines, oracle/tautology/mock lints, and flake history check. Large, slow, and nondeterministic work — full E2E (capped journeys), full mutation, live contracts, golden eval, break drills — runs async on nightly schedule. Tester verdict (PROMOTE/HOLD/ROLLBACK) gates merges, with quarantine as advisory PR comment and 20-green re-promotion. Artifacts (`junit.xml`, `cov.json`, `mutation-report.json`, `flake-history.json`) provide the audit trail that a native dashboard would otherwise supply.
+
+## Key Findings
+
+1. **No native GitHub Actions test dashboard — use upload-artifact + reporters workaround:** Actions has no first-class test-results UI, so persist `junit.xml` via `actions/upload-artifact@v4` and render on PRs with `dorny/test-reporter@v1`, Allure reports published to GitHub Pages [GitHub Community 2025].
+2. **CTRF gives one-command flaky summaries:** Common Test Report Format (CTRF) JSON normalizes JUnit/XUnit across runners and produces single-command flaky-test summaries for Actions annotations and PR comments [CTRF 2026].
+3. **Robust flake detection requires history, not single retries:** Track per-test pass/fail history (20-run window, `flake-history.json` + ledger DB) and only quarantine on sustained flip-rate; single-run retry masks real regressions [TestDino 2026].
+4. **CI flip detection spans Actions, CircleCI, and Jenkins:** Flip-rate detectors that diff consecutive runs work identically across providers; the pattern is portable — store history outside the runner and compute flip-rate on every commit [Panto 2026].
+5. **Same-commit flips signal environment drift, not code bugs:** When the same commit flips between green/red without code change, root-cause is environment (image version, dependency float, time/clock, external API); pin images, lock files, `vcrpy`/`testcontainers`/`freezegun` [Tenki 2026].
+6. **Mutagen exit-2 mutation gate with before/after reports:** Targeted mutation on PR-touched lines only; `mutmut run` + `mutation-check --threshold=70` exits 2 on gate failure, emitting before/after `mutation-report.json` for PR annotation [Mutagen 2026].
+7. **Tiered scheduling: small / medium / large:** Small (unit, <2 min) blocks every commit; medium (integration + property, <15 min) blocks PR merge; large (E2E, full mutation, contracts) runs async nightly — cost/latency optimal [SQRBOK 2025].
+8. **Hermetic test environments are non-negotiable for agents:** Ephemeral containers, synthetic data only, no production secrets, recorded HTTP — otherwise agent-nondeterminism compounds with environment-nondeterminism [KnowMBA 2025].
+9. **PROMOTE / HOLD / ROLLBACK verdicts from 38 runs across 20 releases:** Tester-agent verdict object with evidence links gates merge/deploy; field study of 38 pipeline runs over 20 releases shows verdict-gating catches escape-defects that coverage-alone misses [ArXiv 2026].
+10. **Probabilistic LLM outputs need schema + embedding + judge, not point equality:** Golden eval is three-layer — JSON-schema validity, latency budget, embedding cosine similarity, plus LLM-judge rubric score — never exact string match [ArizenAI 2025].
+
+## Detailed Analysis
+
+### 1. Blocking Commit Pipeline (fast-gate, <10 min)
+- **Runner:** `pytest -q` small-first: `tests/unit` then `tests/integration`, `-v --tb=short --strict-markers`, parallelized with `pytest-xdist --numprocesses=auto --dist=loadscope`, Hypothesis `ci` profile.
+- **Coverage JSON:** `--cov=src --cov-report=json:artifacts/cov.json --cov-branch --cov-fail-under=80` plus `term-missing` for PR annotation.
+- **Targeted mutation:** `mutmut run --paths-to-mutate=src --mutate-only-covered-lines=true` scoped to PR-touched lines; threshold 70% on PR gate, 80% on nightly full gate.
+- **Oracle / tautology / mock lints:** `crew.testing.lints --check-tautologies --check-oracle-violations --check-mock-ratio` fails builds with tautological asserts (`assert True`, `x == x`), oracle violations, or mock-ratio excess.
+- **Flake 20-run history:** `crew.testing.flake-check --history=artifacts/flake-history.json --max-rate=0.02 --db=ledger.db` blocks on flip-rate >2% over trailing 20 runs.
+
+### 2. Nightly Async Pipeline (large, nondeterministic)
+- **Large E2E:** `pytest tests/e2e -m e2e --max-journeys=10`, capped to bound time/cost; full journeys replay nightly or on `workflow_dispatch`.
+- **Full mutation:** whole-`src` `mutmut run`, threshold 80%, 60-min timeout, 90-day retention for quarterly calibration.
+- **Live contracts:** recorded-by-default (`vcrpy`); live-contract subset runs nightly against sandbox with rotated test-only secrets.
+- **Golden eval (three-layer):** `crew.testing.golden-eval --golden-set=tests/golden/golden_set.json` checks (a) schema validity, (b) latency budget, (c) embedding cosine + LLM-judge rubric — catches semantic regressions point-equality misses.
+- **Break drills:** `crew.testing.break-drills --reqs=requirements/reqs.json` breaks each REQ and asserts the suite reddens; silent green = missing coverage, filed as gap ticket.
+
+### 3. Quarantine and Re-promotion Policy
+- Quarantine is **advisory, never silent skip**: flaky test opens PR comment with history link, `quarantine` label, and owner assignment.
+- Quarantined tests move to nightly-only shard; commit gate no longer blocks on them.
+- **20-green re-promotion:** 20 consecutive nightly greens auto-re-promotes to blocking gate; any red resets the counter.
+- Same-commit flip without code diff triggers env-drift investigation (image pin, lockfile diff, clock mock), not code revert [Tenki 2026].
+
+### 4. Artifacts Contract
+- `junit.xml` — JUnit for `dorny/test-reporter` PR rendering and CTRF conversion; 30-day retention.
+- `cov.json` — machine-readable coverage for trend analysis and `--cov-fail-under` enforcement; 30-day retention.
+- `mutation-report.json` — before/after targeted (PR) and full (nightly) reports for exit-2 gate audit; 30/90-day retention.
+- `flake-history.json` — 20-run trailing history + `ledger.db` for flip-rate computation and quarantine decisions; 90-day retention.
+- Additional: `property-results.xml` (14d), `e2e-results.xml` (14d), `golden-results.json` (90d), `drill-results.json` (90d).
+
+## Practical Implementation
+
+| Concern | Commit (blocking) | Nightly (async) | Tooling |
+|---------|-------------------|-----------------|---------|
+| Unit + integration | `pytest tests/unit tests/integration -q` small-first, xdist | replay on failure | `pytest`, `pytest-xdist`, `dorny/test-reporter` |
+| Coverage | `cov.json`, `--cov-fail-under=80`, PR comment | trend dashboard | `pytest-cov`, `upload-artifact@v4` |
+| Mutation | targeted touched-lines, threshold 70, exit 2 | full suite, threshold 80 | `mutmut`, `mutation-check` |
+| Flakiness | `flake-check --max-rate=0.02`, history gate | 20-green re-promotion, quarantine shard | CTRF, `flake-history.json`, ledger DB |
+| Reporting (no native dashboard) | `upload-artifact` + PR reporter | Allure to Pages, CTRF summary | `upload-artifact@v4`, `dorny/test-reporter`, Allure, CTRF |
+| Golden eval | schema check only (fast) | full 3-layer: schema + latency + embedding cosine + judge rubric | `golden-eval`, embedding model, judge LLM |
+| Break drills | off | per-REQ break + assert-redden | `break-drills` |
+| Secrets / hermetic | no secrets in fast gate | test-only secrets via GitHub Secrets, `vcrpy`/`testcontainers`/`freezegun` | GitHub Secrets, branch protection |
+| Verdict | tester HOLD blocks merge | PROMOTE/HOLD/ROLLBACK with evidence links | tester agent |
+
+## Metrics
+
+| Metric | Target | Source |
+|--------|--------|--------|
+| Fast-gate p95 latency | <10 min | `fast-gate` job duration, Actions insights |
+| Commit-gate flip-rate | <2% over trailing 20 runs | `flake-history.json` + ledger DB |
+| PR mutation score (targeted) | ≥70% | `mutation-report.json` (exit 2 if below) |
+| Nightly mutation score (full) | ≥80% | `full-mutation-report.json` |
+| Coverage (branch) | ≥80%, no drop >1% per PR | `cov.json` |
+| E2E journeys nightly | ≤10, 100% recorded | `e2e-results.xml` |
+| Golden eval pass | 100% schema, ≥0.85 cosine, judge ≥pass, latency within budget | `golden-results.json` |
+| Break-drill redden rate | 100% (every broken REQ must redden) | `drill-results.json` |
+| Quarantine re-promotion | 20 consecutive greens | nightly shard history |
+| Verdict-gated releases | PROMOTE required; HOLD blocks merge | 38 runs / 20 releases field data [ArXiv 2026] |
+
+## References
+
+1. [GitHub Community 2025] Native Test Results Dashboard — no first-class dashboard; `upload-artifact` + `dorny/test-reporter` / Allure-to-Pages workaround.
+2. [CTRF 2026] Common Test Report Format on GitHub Actions — JSON report format, one-command flaky summaries and annotations.
+3. [TestDino 2026] Flaky Test Detection — history-based flip tracking vs single-retry masking.
+4. [Panto 2026] CI Flip Detection across Actions, CircleCI, Jenkins — portable flip-rate detector pattern.
+5. [Tenki 2026] Flaky Test Quarantine — same-commit flips as environment drift signal; pin/lock/record.
+6. [Mutagen 2026] Mutation-gated LLM Test Generation — targeted mutation gate, exit-2 on threshold breach, before/after reports.
+7. [SQRBOK 2025] Tiered Test Scheduling — small/medium/large split for cost/latency-optimal CI.
+8. [KnowMBA 2025] Hermetic Test Environments — ephemeral, synthetic-data-only, no production secrets.
+9. [ArXiv 2026] PROMOTE/HOLD/ROLLBACK Verdict Gating — 38 pipeline runs across 20 releases; verdict + evidence links.
+10. [ArizenAI 2025] Evaluating Probabilistic LLM Outputs — schema + latency + embedding cosine + LLM-judge rubric, not point equality.
+
+---
+
 ## [DEEP DIVE]: Exact GitHub Actions Workflow, Parallelization, Artifact Retention, and Secrets
 
 ### 1. Exact GitHub Actions Workflow Configuration
