@@ -96,7 +96,7 @@
 | zcode | ⏳ Pending | Not connected |
 | cline | ✅ Complete | Deep Dive cycle 2 (engineer/routing/roadmap) |
 | freebuff | ✅ Complete | tester-soul DEEP DIVE (oracle quality, assertion strength, determinism) |
-| opencode | ✅ Complete | Restored 6 full files, verified 10/10 |
+| opencode | ✅ Complete 2026-09-13 | 5 merges + 4 Cycle2 + 3 Cycle3 (thresholds, razor/completer, critic) |
 
 ## Output Inventory
 
