@@ -56,6 +56,12 @@
 - **Critic timeout root-cause fix** (CONTEXT: critic TIMES OUT, no timeout config, wrong paths). Appended to routing-integration.md (19889B): 10min/file `timeout 600` + `timeout-minutes: 10`, 30min/task cap, `git diff --name-only` path-awareness, >500-line → ≤200-line hunk chunking with ledger checkpoints, partial-verdict template (tester treats partial as HOLD). 223 lines.
 - **Method:** 3 parallel subagents, 9 TinyFish searches, base fetched via `gh api` to extend-not-repeat. 535 lines new. All cited, specific.
 
+
+### Research Council Member (opencode) — Breakthrough Cycle 4 (operator Monday-morning) — 2026-09-13
+- **COORD-03 validation trial** (appended to implementation-roadmap.md, 21461B): 20 tasks 5×4 formations with failure-family probes, 0–5 rubric, per-formation budgets SOLO<2m/DUO<5m/PIPE<10m/FULL<10m+nightly≤60m with pytest/coverage/mutation/PBT split, 5 go/no-go gates with hold-+1-week remediations. 105 lines.
+- **KB learning loop** (appended to quality-metrics.md, 55409B): 14-field KB schema + ESC example, Day0/1/3/5/7 escape-to-precedent with breach escalation, 90-min quarterly calibration agenda + vote rules + TEST-POLICY versioning, 4 anti-gaming guards + 3 scenarios with detection queries. 354 lines.
+- **Method:** 2 subagents, 6 TinyFish searches, extend-not-repeat via `gh api` tails. 459 lines new. All cited.
+
 ## Research Queue
 
 ### Pending (PROMPTS/INBOX.md)
@@ -96,7 +102,7 @@
 | zcode | ⏳ Pending | Not connected |
 | cline | ✅ Complete | Deep Dive cycle 2 (engineer/routing/roadmap) |
 | freebuff | ✅ Complete | tester-soul DEEP DIVE (oracle quality, assertion strength, determinism) |
-| opencode | ✅ Complete 2026-09-13 | 5 merges + 4 Cycle2 + 3 Cycle3 (thresholds, razor/completer, critic) |
+| opencode | ✅ Complete 2026-09-13 | 5 merges + 4 C2 + 3 C3 + 2 C4 (COORD-03 trial, KB loop) |
 
 ## Output Inventory
 
