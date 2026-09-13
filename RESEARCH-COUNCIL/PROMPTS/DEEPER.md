@@ -46,4 +46,11 @@ After all prompts in `PROMPTS/INBOX.md` are complete, pick a topic from this fil
 
 ## Completed Deep Dives
 
-(None)
+- Testing Maturity Model — assessment questions, tools per level, level timelines, failure modes (scout, 2026-09-13)
+- TDD Protocol — flake handling, state machine, async delays, tester bugs (scout, 2026-09-13)
+- Testing Framework — pytest config, conftest.py, Hypothesis strategies, mutation operators (scout, 2026-09-13)
+- Quality Metrics — benchmarks, target-setting, visualization, leading indicators (scout, 2026-09-13)
+- Blocking Authority — abuse examples, calibration, escalation time, collusion (scout, 2026-09-13)
+- CI/CD — workflow YAML, parallelization, artifact retention, secrets (scout, 2026-09-13)
+- Tester SOUL — oracle quality, assertion strength taxonomy, determinism harness, verdict provenance fields (freebuff, 2026-09-13 — appended in OUTPUT/tester-soul.md)
+- Tester SOUL — production mutation deployment (Google/Meta), agent-test value under scrutiny, suite-evolution hazards (cline, 2026-09-13 — appended in OUTPUT/tester-soul.md)
