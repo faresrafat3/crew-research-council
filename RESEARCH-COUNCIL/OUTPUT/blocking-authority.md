@@ -1,3 +1,52 @@
+# Blocking Authority and Governance
+
+## Executive Summary
+Tester holds a hard-bounded veto: 8 machine-checkable HOLD/ROLLBACK conditions only. An explicit out-of-scope (MUST-NOT) list prevents overreach into style, scope, or ambiguity disputes. Appeal is once to critic tie-break, then to human with a full evidence package [Priygop 2026]. Code-layer vetoes (failing tests, gates, oracle violations) are absolute; semantic disagreements escalate rather than block [QABattle 2025]; any tester–critic disagreement triggers human review [IJECS 2026]. Thresholds calibrate quarterly on false-positive and escape rates to hold trust.
+
+## Key Findings
+1. **Code-layer vetoes are absolute:** failing pytest, missing RED log, oracle violation, or gate breach = HOLD/ROLLBACK with no discretion [QABattle 2025].
+2. **Policy engine verdicts are five-state:** pass / fail / warn / review / inconclusive — only fail blocks; warn/review route to critic, inconclusive reruns [Priygop 2026].
+3. **Consensus HITL keeps safe auto-fix:** agreed tester+critic PROMOTE ships; any split requires human; low-risk fixes auto-apply with audit [ArXiv 2026].
+4. **PROMOTE/HOLD/ROLLBACK validated at scale:** 38 runs across 20 releases show three-state verdicts cut escapes vs binary pass/fail [ArXiv 2026].
+5. **Escalation ladder is fixed:** tester → critic rerun → human with logs/diff/thresholds/options A/B/C; one appeal per task [Priygop 2026].
+6. **Gatekeeper bottleneck is the top abuse mode:** unbounded testers blocking 50%+ on preference erode trust and invite bypass [Medium 2025].
+7. **Requirement text beats code as oracle:** tester writes from REQ-IDs without reading implementation; independent oracle catches tautologies [Eleks 2025].
+8. **Healers must classify before fixing:** environment vs logic vs flake vs oracle failure determines rerun / HOLD / ROLLBACK, not blind retry [IJECS 2026].
+9. **False-positive erosion is real:** overturned-block rate >5% destroys developer trust faster than escapes do; tighten FP tracking [ArizenAI 2025].
+10. **Healed-test capture is collusion:** engineer-written weak tests rubber-stamped by tester yield 100% coverage with single-digit mutation; mutation gate + critic rerun required [QABattle 2025; ArXiv 2025].
+
+## Detailed Analysis
+
+### MUST-Block: 8 Machine-Checkable Conditions
+1. **No RED log** — tester never produced a failing-first run; no proof the test can catch anything.
+2. **pytest fail** — any blocking-suite failure on current diff.
+3. **Coverage/mutation below threshold** — line/branch coverage or mutation score under TEST-POLICY.md floor (default 80%/70%).
+4. **Req-coverage <90% on FULL tasks** — fewer than 90% of mapped REQ-IDs exercised by at least one blocking test.
+5. **Oracle violation** — test asserts implementation behavior contradicting REQ text, or oracle separation breached (test derived from code).
+6. **Unresolved PBT/mutant survivor** — property-based counterexample open, or non-equivalent mutant survives blocking suite.
+7. **Blocking-suite flake** — same commit yields pass+fail across reruns; HOLD until quarantined or fixed (max 3 reruns / 15 min).
+8. **E2E cap / live breach** — E2E time budget exceeded, or test touched live/production resource.
+
+Any one = HOLD (fixable in place) or ROLLBACK (implementation must revert). Tester cites condition number + log line.
+
+### MUST-NOT Block (Out of Scope)
+- **Style / formatting / naming** — warn only, never block.
+- **Out-of-scope performance** — no REQ/SLO cited → warn, not HOLD.
+- **Scope disputes** — "should this feature exist" goes to human, not tester veto.
+- **Ambiguous requirement** — ask for clarification (review/inconclusive), do not HOLD.
+- **Infra outage** — CI provider down, network partition, expired secret → inconclusive + rerun, never fail.
+
+### Appeals: One + Critic Rerun + Human
+1. Engineer files **one appeal** per HOLD/ROLLBACK with counter-evidence.
+2. Critic performs **independent rerun** (no tester rationale read) and tie-breaks.
+3. If critic–tester split, escalate to **human with evidence package**: full logs, diff, threshold table, and options A/B/C (promote / hold-fix / rollback) [Priygop 2026].
+4. Human decision is final and recorded as **KB precedent**; tester SOUL patched if precedent changes interpretation.
+
+### Governance Precedent
+- Every human ruling enters the KB with REQ-IDs, condition cited, FP/escape context.
+- SOUL patch versioned in TEST-POLICY.md; precedent application lag target = 0 (next run applies it).
+- Quarterly calibration on FP rate (>5% loosen) and escape rate (>1/10 tighten) [IJECS 2026; ArizenAI 2025].
+
 ## [DEEP DIVE]: Real-World Tester Blocking Abuse, Calibration, Escalation Time, and Collusion
 
 ### 1. Real-World Examples of Tester Blocking Abuse
@@ -134,3 +183,33 @@ quarterly_calibration():
 - [Eleks, 2025] Independent Oracle: oracle separation, tautology detection
 - [ArXiv, 2025] MutGen: mutation gate catches weak assertions
 - [TMMi Foundation, 2018] Level 5: calibration, process optimization
+
+## Practical Recommendations
+
+| Situation | Action | Owner | Evidence to Attach |
+|-----------|--------|-------|-------------------|
+| Tester wants to HOLD | Cite 1 of 8 MUST-block conditions with log line + threshold | Tester | RED log / pytest output / coverage + mutation report |
+| Style / perf nit, no REQ | Emit warn, PROMOTE with note; never HOLD | Tester | REQ-ID search showing no match |
+| Ambiguous REQ | Return review/inconclusive + clarification question | Tester | Quoted REQ text + two readings |
+| Infra outage / flake suspected | Mark inconclusive, rerun ≤3× / 15 min, then quarantine | Tester | Rerun matrix (pass/fail per run) |
+| Engineer disagrees | One appeal → critic independent rerun → human on split | Engineer → Critic → Human | Counter-evidence + diff + threshold table |
+| Tester–critic split | Escalate to human with options A/B/C | Critic | Both verdicts + logs + options memo |
+| Human ruling | Record KB precedent, patch SOUL / TEST-POLICY.md | Human | Precedent ID + version bump |
+| FP >5% or escape >1/20 | Quarterly calibration ±5% thresholds, human approves >10% | Maintainer | FP/escape/appeal ledger |
+
+## Metrics
+- **Block rate:** 10–30% early in rollout, falling as quality stabilizes; >50% = too strict, <5% = rubber stamp.
+- **Appeal rate:** <5% of HOLD/ROLLBACK verdicts appealed.
+- **False-positive rate:** <2% of blocks overturned by human (loosen at >5%).
+- **Escape rate:** <1 per 20 FULL tasks PROMOTED (tighten at >1/10).
+- **Verdict latency:** <5 min from diff-ready to tester verdict (excluding E2E cap).
+- **Precedent lag:** 0 — next run after a human ruling applies the KB precedent.
+
+## References
+1. [Priygop 2026] — Escalation frameworks: one-appeal rule, critic tie-break, evidence package (logs/diff/thresholds/options A/B/C).
+2. [QABattle 2025] — Layered LLM evaluation: absolute code-layer vetoes, independent oracle, healed-test capture.
+3. [IJECS 2026] — Detect-Fix-Learn loop: tester–critic disagreement → human, model diversity, FP/escape calibration.
+4. [ArXiv 2026] — Oversight capacity + 38 runs / 20 releases: PROMOTE/HOLD/ROLLBACK validation, fatigue model, safety-optimal escalation below full.
+5. [Medium 2025] — Quality assistance: gatekeeper bottleneck, structural tester–engineer conflict.
+6. [Eleks 2025] — Independent oracle: requirement text over code, tautology detection, oracle separation.
+7. [ArizenAI 2025] — End of determinism: FP erosion of trust, rubber-stamp detection, escape tracking.
