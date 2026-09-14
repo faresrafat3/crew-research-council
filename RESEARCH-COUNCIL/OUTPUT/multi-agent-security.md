@@ -445,3 +445,36 @@ Urgency datapoint: enterprise research found **6 of 10** OWASP agentic threat ve
 - [Human Security, 2026] Agentic AI Security: OWASP Threats breakdown. humansecurity.com/learn/blog/agentic-ai-security-owasp-threats.
 - [Graylog, 2026] What Is the OWASP Top 10 Agentic AI? (ASI06 memory and context poisoning). graylog.org/post/what-is-the-owasp-top-10-agentic-ai.
 - [Lyrie, 2026] OWASP Agentic AI Top 10: Enterprise Gap (6/10 vectors with in-the-wild exploitation by April 2026). lyrie.ai/research/research/owasp-agentic-ai-top10-enterprise-gap.
+
+## [DEEP DIVE (freebuff, pass 3, 2026-09-14)]: Workload Identity and Trust Bootstrapping — SPIFFE/SVIDs for Agents, and the TOFU Problem
+
+Pass-1 covered sandboxing and the Lethal Trifecta; Antigravity's pass-2 covered containment and capability attenuation; zcode's pass-2 covered the MCP attack surface. Pass-3 covers the layer all three assume: **how an agent proves who it is** — to the message bus, to the tools, and to the other agents — and how that identity is bootstrapped without a human in the loop.
+
+### 1. Identity: "who, not where"
+- The industry answer to workload identity is SPIFFE/SPIRE: every workload gets a SPIFFE ID (a URI name like `spiffe://crew/tester`) and a **SVID** — a short-lived, cryptographically verifiable identity document (X.509 cert or JWT token) issued by an attesting control plane; services authenticate with mTLS derived from SVIDs [spiffe.io; Palo Alto, 2026]. The design principle is explicit: identity based on **who the workload is** (attested code, runtime, provenance), not where it runs (IP, host) [Buoyant, 2026].
+- Crew mapping: the message envelope (pass-1 ordering keys + HLC from comms pass 3) gains an identity header — each agent's messages are signed with its SVID-derived key; the ledger stores the SPIFFE ID with every verdict. This makes three existing mechanisms verifiable instead of assumed: (a) blocking-authority's model-diversity check (tester vs critic model families) becomes cryptographic — the critic cannot present itself as a different family; (b) the "signed SOULs" zcode proposed get an issuer chain (SOUL hash signed by the agent identity that loaded it); (c) memory writes carry author identity, feeding the MV-Register adjudication (memory pass 3).
+
+### 2. Short-lived credentials, not long-lived secrets
+- SVIDs rotate on the order of an hour by design — a stolen credential has a tiny validity window, and revocation is passive (wait for expiry) [spiffe.io; Spletzer, 2025]. Contrast the crew's current surface: tool API keys and provider tokens with long lifetimes, held in agent environments — the exact asset tj-actions-style CI compromises dump (cicd pass 2). The migration rule: agent environments hold **no long-lived secrets**; outbound provider calls are mediated by a broker that presents short-lived, audience-scoped credentials on the agent's behalf (the same externalized-enforcement logic as pass 1's in-router defense, applied to credentials).
+
+### 3. Trust bootstrapping: the TOFU problem is real for agents
+- Every identity system has a first-contact problem. SSH's model — **Trust On First Use** (record the host key at first contact, alarm on change) — is the honest baseline: it converts an unauthenticated channel into a pinned one *after* one trust decision that itself is unauthenticated. For agent crews the decision points are: first SVID issuance (who attests the attester?), first tool registration (zcode's signed-tool-manifests need a root), and the first SOUL signature chain. The rule this forces: **a human must anchor the root** — the operator signs the crew's root identity/SOUL manifest once (a physical-act requirement, like the constitution's article on operator authority), and everything below is machine-verified. Without that anchor, the whole identity layer is self-referential and spoofable at bootstrap.
+- Detection complement: after bootstrap, any identity whose attestation attributes change (model family, loaded SOUL hash, tool set) mid-lifecycle triggers a re-attestation event — the runtime analog of SSH's "host key changed" alarm, wired to the quarantined-not-silent rule from testing pass 1.
+
+### Numbers for calibration (pass 3)
+
+| Quantity | Value | Source |
+|---|---|---|
+| Identity model | SPIFFE ID (URI) + SVID (X.509/JWT), mTLS | [spiffe.io] |
+| SVID lifetime | short-lived (≈hours), passive revocation by expiry | [spiffe.io; Spletzer, 2025] |
+| Identity basis | who (attested), not where (IP/host) | [Buoyant, 2026] |
+| Bootstrap rule | human anchors the root once; TOFU only below it | this dive |
+| Long-lived secrets in agent envs | target 0 (brokered, short-lived) | this dive |
+
+### References (pass 3)
+1. [SPIFFE] "Secure Production Identity Framework for Everyone." https://spiffe.io/ [verified: 2026-09-14]
+2. [Palo Alto Networks, 2026] "What is SPIFFE? Universal Workload Identity Framework." https://www.paloaltonetworks.com/cyberpedia/what-is-spiffe [verified: 2026-09-14, snippet]
+3. [Buoyant, 2026] "Who, Not Where: Workload Identity with SPIFFE." https://www.buoyant.io/blog/who-not-where-workload-identity-with-spiffe [verified: 2026-09-14, snippet]
+4. [Spletzer, 2025] "Zero to Trusted: SPIFFE and SPIRE, Demystified." https://www.spletzer.com/2025/03/zero-to-trusted-spiffe-and-spire-demystified/ [verified: 2026-09-14, snippet]
+5. [Aembit] "SPIFFE vs. OAuth: Access Control for Nonhuman Identities." https://aembit.io/blog/spiffe-vs-oauth-access-control-nonhuman-identities/ [verified: 2026-09-14, snippet]
+6. Cross-refs: pass 1 (Lethal Trifecta, microVM, externalized enforcement); Antigravity pass 2 (bwrap, macaroons); zcode pass 2 (MCP surface, signed SOULs); cicd-integration pass 2 (tj-actions credential dump); comms pass 3 (HLC envelopes); memory pass 3 (MV-Register authorship).
