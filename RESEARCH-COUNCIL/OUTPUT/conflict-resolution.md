@@ -281,3 +281,34 @@ CREATE TABLE IF NOT EXISTS debate_cdps (
 - [Khanmohammadi et al., ACL 2025] Calibrating LLM Confidence by Probing Perturbed Self-Consistency (CCPS: 55% reduction in ECE, 21% reduction in Brier score). ACL 2025.
 - [FutureAGI, 2026] Evaluating LLM Confidence and Uncertainty (2026): The Calibration Methodology (Brier score, semantic entropy, and Platt scaling). futureagi.com.
 
+## [DEEP DIVE (freebuff, pass 3, 2026-09-14)]: Dung Argumentation Frameworks — Grounded Semantics as the Default Adjudication Kernel
+
+Pass-1 derived the social-choice constraints and the HOLD-wins mechanism; Antigravity's pass-2 added Brier-calibrated voting. Pass-3 supplies the formal kernel those sit on: **abstract argumentation**, which gives the dispute-resolution rules a semantics with proven properties instead of ad-hoc precedence lists.
+
+### 1. Why abstract argumentation fits agent disputes
+- Dung (1995) — the founding paper, 6,700+ citations — reduces dispute resolution to a set of arguments and an attack relation; whether an argument is **acceptable** depends only on that structure, not on argument content [Dung, 1995]. This is exactly the crew's shape: agent claims attack or defend each other (engineer's GREEN claim vs tester's HOLD claim vs critic's evidence), and the adjudicator must decide which claims stand without re-litigating content.
+- The **grounded extension** is the uniquely-defined, always-existing, least-fixed-point set of acceptable arguments — "a set of acceptable arguments about which there is no ambiguity" [Groeneveld et al., 2020 reprint; Dung, 1995]. Its conservativeness is the feature: it only reinstates arguments defended by an unbroken chain of accepted defenders (the **reinstatement** principle) [Caminada, 2006].
+- Contrast with **preferred semantics**: maximally inclusive extensions, always existing, but possibly several — conflicts there require an external tie-break (credulous vs skeptical reading) [Dung, 1995; Math.SE discussion]. For a mechanism that must produce *one* verdict, grounded semantics is the safe kernel; preferred semantics is what you get when the operator explicitly chooses to accept ties and adjudicate them by the HOLD-wins rule.
+
+### 2. Crew mapping: the adjudication procedure as grounded reasoning
+1. Build the framework per dispute: arguments = claims with evidence links (verdict artifacts); attacks = direct contradictions (GREEN vs HOLD on the same REQ), undercutters (evidence that invalidates a claim's support, e.g., tautology lint firing on the engineer's self-check).
+2. Compute the **grounded extension**: everything unattacked, plus everything reinstated by accepted defenders. Output = the verdict basis. Properties the crew inherits for free: existence and uniqueness (no deadlock at the semantics level), and content-independence (the adjudicator cannot be bribed by eloquence — only structure counts).
+3. Disputes whose grounded extension is empty or omits the disputed claim → the claim is **not established** → default HOLD (mechanism-design agreement with pass 1's asymmetric-error argument: unproven claims don't win).
+4. Escalation-to-human = the case where preferred extensions disagree with grounded (ambiguous acceptability) — a formal definition of "genuinely ambiguous," replacing the informal escalation criteria.
+- The mechanism-design caveat is on record: strategy-proofness for argumentation mechanisms is possible under restricted conditions [Pan et al., 2010] — agents can game *what arguments to raise*. The structural defense stays pass-1's: evidence-link requirements (machine-checkable artifact references) make raising a fake argument expensive and auditable.
+
+### Numbers for calibration (pass 3)
+
+| Property | Grounded | Preferred | Source |
+|---|---|---|---|
+| Existence | always, unique | always, possibly many | [Dung, 1995] |
+| Ambiguity | none by construction | resolved only externally | [Groeneveld, 2020; Math.SE] |
+| Acceptance principle | reinstatement (least fixed point) | maximal admissible sets | [Caminada, 2006] |
+| Crew default | verdict kernel | escalation flag when they diverge | this dive |
+
+### References (pass 3)
+1. [Dung, 1995] "On the Acceptability of Arguments and Its Fundamental Role in Nonmonotonic Reasoning, Logic Programming and n-Person Games," Artificial Intelligence 77. http://www.umiacs.umd.edu/~horty/courses/readings/dung-1995-acceptability.pdf [verified: 2026-09-14]
+2. [Caminada, 2006] "On the Issue of Reinstatement in Argumentation." https://webdoc.sub.gwdg.de/ebook/serien/ah/UU-CS/2006-023.pdf [verified: 2026-09-14, snippet]
+3. [Groeneveld et al., 2020] reprint/annotation of Dung 1995 (grounded extension characterization). https://research.rug.nl/files/128652251/aac_2020_11_1_2_aac_11_1_2_aac200901_aac_11_aac200901.pdf [verified: 2026-09-14, snippet]
+4. [Pan et al., 2010] "Argumentation Mechanism Design for Preferred Semantics." https://pure.mpg.de/rest/items/item_3020493_4/component/file_3038735/content [verified: 2026-09-14, snippet]
+5. Cross-refs: conflict-resolution pass 1 (Arrow constraints, HOLD-wins); Antigravity pass 2 (Brier voting); blocking-authority pass 1 (evidence-bound verdicts).
