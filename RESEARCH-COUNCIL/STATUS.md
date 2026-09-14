@@ -119,6 +119,20 @@
   - Bilingual & cross-lingual semantic bridging (BGE-M3 ONNX 363MB, dual-key Arabic-English semantic indexing, 89.7% cross-lingual recall).
   - Runtime LLM self-routing architecture (`memory_query` across self/crew/global scopes with strict promotion and anti-poisoning gates).
   - Mathematical memory decay & cold storage ($S(m,t)$ ACT-R/Ebbinghaus decay function, hot vector cache vs cold JSONL/Parquet archiving).
+- **[DEEP DIVE]** appended to `OUTPUT/communication-protocols.md`:
+  - Zero-daemon SQLite-WAL message broker (`litequeue` pattern, atomic leases, >14,200 dequeues/s at <1.4ms p95 latency).
+  - Dynamic Wait-For Graph (WFG) deadlock breaking via Tarjan cycle detection and decorrelated jitter preemption.
+  - Interruptible agent loops via pre-tool hooks in Cordis/DSH (saving 73% of wasted tokens on HOLD/ABORT signals).
+  - Context compression via RFC 6902 JSON Patch state deltas (cutting inter-agent coordination tokens by 68%–84%).
+
+### cline (external) — 2026-09-13
+- **[DEEP DIVE]** appended to `OUTPUT/memory-architecture.md` (~390 lines, all claims web-verified 2026-09-13 via exa + tinyfish against primary sources):
+  - Governed shared memory: the 4 primitives (scoped retrieval, temporal supersession, provenance, policy-governed propagation) from the live MemClaw/ArgusFleet study (arXiv:2606.24535) — incl. the asymmetric scope-enforcement bug (sub-tenant bypass via GET-by-id) and the pipeline-ordering conflict (sync dedupe gate rejecting contradictions before async detector).
+  - Write-path engineering: triage→extract/dedup pipeline with cost data (skipping triage ≈ $5/day/user; hybrid exact+embedding dedupe ≥0.92 NOOP band), conflicts resolved async, never sync.
+  - ACE playbooks as procedural memory (arXiv:2510.04618): +10.6% agents / +8.6% finance; brevity bias and context collapse as the two failure modes delta-updates prevent.
+  - Retrieval economics: hybrid fusion (vector+BM25+entity) reranked recency×importance×relevance; HippoRAG +20% multi-hop at 10–20× cheaper; full-context baseline 72.9% LoCoMo @ ~26K tokens vs Mem0 66.9–92.5% @ 1.8–6.9K (vendor-reported) — incl. the Mem0-vs-Zep LoCoMo methodology dispute, both sides cited.
+  - Memory poisoning (arXiv:2606.04329): 4 write channels, 9 vulnerabilities, 6 attack classes; existing prompt-injection defenses do not cover it; defenses = scoped writes, verbatim source chunks, provenance rollback, write rate limits, quarterly red-team.
+  - Executable deliverables: write_gate.py spec, /memories scope tree, recall() with fused scoring, per-layer TTL/decay table, 13-metric table with targets, 4-phase roadmap, 8 anti-patterns, 3 operator questions (QUESTIONS.md).
 
 ## Research Queue
 
@@ -136,7 +150,7 @@
 | scout | ✅ Complete | 10 INBOX + 6 DEEP DIVE + 13 INBOX prompts |
 | workbuddy | ⏳ Pending | Not connected |
 | zcode | ✅ Complete | Published 9 missing outputs; citation audit passed |
-| cline | ⏳ Pending | Not connected |
+| cline | ✅ Complete | Memory Architecture Deep Dive (governed shared memory, write-path, ACE playbooks, retrieval economics) |
 | freebuff | ✅ Complete | 13 multi-agent deep dives appended in OUTPUT (2026-09-13) |
 | antigravity | ✅ Complete | Memory Architecture Deep Dive (SQLite+vec, HippoRAG 2, Bilingual BGE-M3) |
 | opencode | ⏳ Pending | Not connected |
