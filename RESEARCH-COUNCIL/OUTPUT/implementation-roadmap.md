@@ -132,3 +132,21 @@ Within Phase 3, order matters when cutting scope. Rank by intervention evidence:
 1. [Sadowski et al., 2018] "Lessons from Building Static Analysis Tools at Google," CACM 61(10) / *Software Engineering at Google* ch. 20. https://abseil.io/resources/swe-book/html/ch20.html [verified: 2026-09-14]
 2. [Petrović et al., 2021] "Does mutation testing improve testing practices?" ICST 2021, arXiv:2103.07189. https://arxiv.org/abs/2103.07189 [verified: 2026-09-13, tester-soul cycle 4]
 3. Cross-refs: production-deployment.md pass 1 (SLO-gated progressive rollout); blocking-authority.md Patterns 1–2; testing-framework-spec.md pass 2 (diff coverage).
+
+## [DEEP DIVE (freebuff, pass 3, 2026-09-14)]: Evidence-Based Sequencing — Mining Repository History for Defect Hotspots Before Phasing the Rollout
+
+Passes 1–2 specified *how* to phase and *how to deploy gates*. None specified *where to point the phases*. The bug-prediction literature offers a direct, validated input: history-based models — change frequency, code churn, complexity, and **change coupling** (files that change together) — are among the most consistently successful defect predictors, and **hotspots** (high change frequency × high defect density) concentrate defects far above baseline [Rahman et al., comparative study of bug-prediction techniques; D'Ambros et al., benchmark of defect prediction approaches — both snippet-verified].
+
+**Protocol deltas for the roadmap.**
+1. **Pre-phase mining step (new M0):** before ordering phases, mine the target repo: hotspot list, churn ranking, change-coupled clusters. Phases that first stabilize hotspots dominate any feature-order heuristic, because hotspot stabilization reduces the denominator of every later metric.
+2. **Hotspots set the coverage-floor strictness** (framework-spec pass 2): the diff-coverage gate and ratchet apply at their strictest level on hotspot files, relaxed elsewhere. Uniform floors waste review attention on stable code (engineer-soul pass 3).
+3. **Re-mine at every phase boundary.** Hotspots migrate as the crew refactors; a phase plan written once is stale by phase 2.
+4. **Change-coupled clusters define the minimal RTS unit** (tester-soul pass 2): tests are selected per coupling cluster, not per file — selecting by file alone misses the coupled partner that breaks.
+5. Roadmap milestones gain a **mining artifact requirement**: each phase's completion claim cites the fresh hotspot diff (what improved, what migrated) so the claim is checkable rather than narrative.
+
+**Cross-links:** testing-framework-spec pass 2 (floors), tester-soul pass 2 (RTS clusters) and pass 3 (bandit arms weighted by escape cost — hotspots are the max-escape-cost arms), quality-metrics ledger (hotspot escape rate as a first-class row).
+
+**Sources.**
+1. [Rahman et al., 2013] "Bug Predicting via Code Mining" — comparative evaluation of history-based predictors [snippet-verified: 2026-09-14].
+2. [D'Ambros et al., 2012] "Evaluating defect prediction approaches: a benchmark and an extensive comparison" *EMSE* [snippet-verified: 2026-09-14].
+3. [Tufano et al., 2017/2019] JIT-defect prediction using deep learning on change-level features [literature, context].
