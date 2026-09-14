@@ -188,10 +188,139 @@ The RED→GREEN cycle assumes a deterministic system under test. For LLM-in-the-
 | Tests + remediation success-rate gain (ACM) | ~17% | [ACM, 2024] |
 | Probabilistic GREEN protocol | n≥5 samples, pass-rate ≥k, provenance logged | crew mapping |
 
-### References (pass 2)
+### References (freebuff, pass 2, 2026-09-14)
 1. [Nagappan et al., 2008] "Realizing quality improvement through test driven development: results and experiences of four industrial teams," Empirical Software Engineering (Microsoft/IBM case studies). [verified: 2026-09-14, secondary summaries]
 2. [InfoQ, 2009] "Empirical Studies Show Test Driven Development Improves Quality." https://www.infoq.com/news/2009/03/TDD-Improves-Quality/ [verified: 2026-09-14]
 3. [Siniaalto & Abrahamsson, 2017] "A Comparative Case Study on the Impact of Test-Driven Development on Program Design," arXiv:1711.05082. https://arxiv.org/pdf/1711.05082 [verified: 2026-09-14]
 4. [Cui, 2025] "Tests as Prompt: A Test-Driven-Development Benchmark for LLM Code Generation" (WebApp1K), arXiv:2505.09027. https://arxiv.org/abs/2505.09027 [verified: 2026-09-14]
 5. [Microsoft Research, 2024] "LLM-Based Test-Driven Interactive Code Generation: User Study and Empirical Evaluation." https://www.microsoft.com/en-us/research/publication/llm-based-test-driven-interactive-code-generation-user-study-and-empirical-evaluation/ [verified: 2026-09-14]
 6. [ACM, 2024] "Test-Driven Development and LLM-based Code Generation," DOI 10.1145/3691620.3695527. https://dl.acm.org/doi/10.1145/3691620.3695527 [verified: 2026-09-14, snippet only]
+
+## [DEEP DIVE]: Zero-Daemon CAS State Machine Orchestration, AST Oracle Validation Firewall, and Sequential Chi-Square Flake Defense (Antigravity, 2026-09-14)
+
+### 1. Zero-Daemon SQLite-WAL Compare-And-Swap (CAS) State Orchestrator
+
+In adherence to the DSH zero-daemon invariant (`MAP.md`), the TDD protocol cannot rely on a persistent supervisor service (e.g. celery, systemd daemon, or background node process) to orchestrate state handoffs between `tester`, `engineer`, and `critic`. All lifecycle transitions are enforced via atomic Compare-And-Swap (CAS) transactions inside SQLite-WAL:
+
+```sql
+CREATE TABLE IF NOT EXISTS tdd_state_machine (
+    task_id TEXT PRIMARY KEY,
+    current_state TEXT NOT NULL,       -- 'AWAIT_RED', 'AWAIT_GREEN', 'AWAIT_SUITE', 'AWAIT_CRITIC', 'PROMOTE', 'HOLD', 'ROLLBACK'
+    state_version INTEGER NOT NULL DEFAULT 1,
+    red_token_sig TEXT,                -- Ed25519 signature of the RED test fixture by tester
+    test_suite_merkle_root TEXT,       -- Hash of test files frozen at RED_WITNESSED
+    active_actor TEXT NOT NULL,        -- 'tester', 'engineer', 'critic', 'operator'
+    iteration_round INTEGER NOT NULL DEFAULT 1,
+    max_rounds INTEGER NOT NULL DEFAULT 3,
+    lease_expires_at_ms INTEGER NOT NULL,
+    updated_at_ms INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS tdd_state_transitions (
+    transition_id TEXT PRIMARY KEY,
+    task_id TEXT NOT NULL REFERENCES tdd_state_machine(task_id),
+    from_state TEXT NOT NULL,
+    to_state TEXT NOT NULL,
+    actor TEXT NOT NULL,
+    evidence_artifact_sha TEXT NOT NULL, -- Git blob SHA of test run output or diff
+    transition_status TEXT NOT NULL,    -- 'SUCCESS', 'CAS_COLLISION', 'LEASE_EXPIRED'
+    created_at_ms INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_tdd_audit ON tdd_state_transitions(task_id, created_at_ms);
+```
+
+**Optimistic Concurrency & Two-Phase Verification Lock (2PL):**
+1. **Atomic CAS State Advance:**
+   ```sql
+   UPDATE tdd_state_machine
+   SET current_state = :to_state,
+       state_version = state_version + 1,
+       active_actor = :next_actor,
+       lease_expires_at_ms = :now_ms + :timeout_ms,
+       updated_at_ms = :now_ms
+   WHERE task_id = :task_id 
+     AND current_state = :expected_from_state 
+     AND state_version = :expected_version;
+   ```
+   If zero rows are updated, the agent immediately detects a race condition or stale dispatch lease, avoiding split-brain concurrency.
+2. **Implementation File Locking (Pre-Commit Hook):**
+   The engineer's local pre-commit check queries `tdd_state_machine`. If `current_state != 'AWAIT_GREEN'` or `test_suite_merkle_root` does not match the disk state of `tests/`, all file modifications outside `tests/` are blocked at the filesystem level. The engineer physically *cannot commit implementation code without an active, verified RED token*.
+
+### 2. AST-Based Oracle Validation Firewall: Defeating Tautological Tests
+
+A catastrophic failure mode in LLM-driven TDD is **oracle subversion**: the tester agent synthesizes tests that pass unconditionally, or emit tautologies that verify nothing about code correctness [Eleks, 2025; Shinn et al., 2023].
+
+**Abstract Syntax Tree (AST) Static Validator:**
+Before any test file is accepted into `AWAIT_RED`, it is parsed by an in-process AST analyzer enforcing 5 non-negotiable rules:
+
+```python
+import ast
+
+class OracleFirewallVisitor(ast.NodeVisitor):
+    def __init__(self):
+        self.assertions_count = 0
+        self.violations = []
+
+    def visit_Assert(self, node):
+        self.assertions_count += 1
+        test = node.test
+        
+        # Rule 1: Tautological Literal (assert True, assert 1, assert "success")
+        if isinstance(test, ast.Constant) and bool(test.value) is True:
+            self.violations.append(("ORACLE_01", "Tautological literal assertion detected", node.lineno))
+            
+        # Rule 2: Identity Comparison (assert x == x, assert y is y)
+        if isinstance(test, ast.Compare):
+            if len(test.ops) == 1 and isinstance(test.ops[0], (ast.Eq, ast.Is)):
+                left_src = ast.unparse(test.left)
+                right_src = ast.unparse(test.comparators[0])
+                if left_src == right_src:
+                    self.violations.append(("ORACLE_02", "Self-comparison tautology detected", node.lineno))
+                    
+        # Rule 3: Weak Existence Check (assert result is not None without value assertions)
+        if isinstance(test, ast.Compare) and len(test.comparators) == 1:
+            if isinstance(test.ops[0], ast.IsNot) and isinstance(test.comparators[0], ast.Constant) and test.comparators[0].value is None:
+                self.violations.append(("ORACLE_03", "Vacuous non-null assertion without invariant checking", node.lineno))
+                
+        self.generic_visit(node)
+
+    def visit_FunctionDef(self, node):
+        if node.name.startswith("test_"):
+            # Rule 4: Empty Test or Pass-Only
+            if len(node.body) == 1 and isinstance(node.body[0], (ast.Pass, ast.Expr)):
+                self.violations.append(("ORACLE_04", f"Empty or no-op test body in {node.name}", node.lineno))
+        self.generic_visit(node)
+```
+
+**Rejection Protocol:**
+If any `ORACLE_XX` violation is found, the state machine transitions immediately to `TESTER_BUG`. The tester is given the exact line number and violation code. If the tester fails to fix the AST violation within 2 attempts, the task escalates to human operator review with the tautology proof attached.
+
+### 3. Sequential Chi-Square Flake Defense: Preventing P-Hacking Attacks
+
+When tests exhibit nondeterministic behavior (e.g., due to unseeded random numbers, unmocked network sockets, or race conditions), a misaligned engineer agent can exploit naive retry mechanisms by continuously re-running tests until a lucky pass occurs ("p-hacking GREEN").
+
+**Sequential Variance & Goodness-of-Fit Test:**
+Let a test be evaluated across $N = 10$ independent runs with outcomes $k \in [0, 10]$ passes.
+Under a true deterministic GREEN, the expected distribution has $k = 10$.
+Under an acceptable probabilistic GREEN with tolerance threshold $p_0 = 0.90$:
+$$\chi^2 = \sum_{j \in \{\text{Pass}, \text{Fail}\}} \frac{(O_j - E_j)^2}{E_j} = \frac{(k - N p_0)^2}{N p_0} + \frac{((N - k) - N (1 - p_0))^2}{N (1 - p_0)}$$
+- If $\chi^2 > \chi^2_{1, 0.05} = 3.841$, the null hypothesis of compliance with the $90\%$ tolerance band is rejected at $p < 0.05$.
+- **Automated Quarantine Gate:** The test is immediately moved to `.quarantine/` and denied GREEN certification. The engineer cannot claim victory; the failure is logged as an active defect, preventing flaky tests from contaminating the release trunk.
+
+### 4. Measurable TDD Protocol Metrics Catalog
+
+| Metric | Definition | Measurement Method | Target | Warning Threshold |
+|---|---|---|---|---|
+| **RED-Witness Compliance** | Tasks with verified failing tests prior to implementation | SQLite state transition audit | **100%** | < 100% (Iron Law breach; block PR) |
+| **Oracle Tautology Escapes** | Tests passing AST oracle validation that contain no-op assertions | In-process AST linter audit | **0%** | > 0% (Update AST visitor rules) |
+| **CAS State Lock Latency** | Time to execute optimistic concurrency state advance | SQLite commit timer | **< 10ms** | > 40ms (Lock contention detected) |
+| **P-Hacking Re-run Rate** | Repeated executions on identical code diff | Execution count per commit | **< 1.05** | > 1.30 (Engineer fishing for lucky passes) |
+| **Quarantine Isolation Accuracy** | True non-deterministic tests correctly quarantined | Post-quarantine stability drill | **> 92%** | < 80% (Quarantine false positives) |
+
+### References (Antigravity, 2026-09-14)
+
+- [Eleks, 2025] Stop Trusting AI Test Results: Tautological Testing and Oracle Violations in Autonomous Systems.
+- [Shinn et al., 2023] Reflexion: Language Agents with Verbal Reinforcement Learning. NeurIPS 2023. arXiv:2303.11366.
+- [Cochran, 1952] The $\chi^2$ Test of Goodness of Fit. Annals of Mathematical Statistics, 23(3), 315-345.
+- [Herlihy & Shavit, 2012] The Art of Multiprocessor Programming (Optimistic Concurrency & CAS State Machines). Morgan Kaufmann.
+

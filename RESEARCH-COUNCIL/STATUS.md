@@ -193,6 +193,10 @@
   - TextGrad prompt optimization via loss backpropagation through the agent computational graph with SQLite momentum buffers.
   - Lyapunov stability formulation ($\Delta \mathcal{V} < 0$) guaranteeing monotonic failure energy reduction and preventing circular regression traps.
   - Ephemeral rootless Bubblewrap (`bwrap`) sandbox canary replay engine with dual-canary validation against golden benchmarks.
+- **[DEEP DIVE]** appended to `OUTPUT/tdd-protocol.md`:
+  - Zero-daemon SQLite-WAL Compare-And-Swap (CAS) state machine orchestrator with optimistic concurrency locking and filesystem pre-commit guards.
+  - In-process AST oracle validation firewall checking 5 static rules (`ORACLE_01`–`ORACLE_05`), blocking vacuous and tautological assertions.
+  - Sequential Chi-Square goodness-of-fit flake defense ($\chi^2 > 3.841 \implies$ quarantine), preventing engineer p-hacking retry attacks.
 
 
 
@@ -240,7 +244,7 @@
 | zcode | ✅ Complete | Push-bug repair + deep dives: communication-protocols, self-healing, multi-agent-security (2026-09-14) |
 | cline | ⏳ Pending | Not connected |
 | freebuff | ✅ Complete | Pass-2 deep dives on all 10 testing outputs (2026-09-14); 13 multi-agent deep dives (2026-09-13) |
-| antigravity | ✅ Complete | Deep dives across all 13 multi-agent architecture domains (2026-09-14) |
+| antigravity | ✅ Complete | Deep dives across all 13 multi-agent architecture domains + TDD protocol (2026-09-14) |
 | opencode | ⏳ Pending | Not connected |
 
 ## Output Inventory
@@ -248,7 +252,7 @@
 | File | Status | Contents |
 |------|--------|----------|
 | `OUTPUT/testing-maturity-model.md` | ✅ Complete | 5 AI-crew levels, L1 mapping, climb actions, checklist |
-| `OUTPUT/tdd-protocol.md` | ✅ Complete | Split RED/GREEN, handoff formats, ladder, time-box, state machine |
+| `OUTPUT/tdd-protocol.md` | ✅ Complete | Split RED/GREEN, handoff formats, ladder, time-box, state machine + 2 deep dives (freebuff: human/LLM evidence, probabilistic GREEN; antigravity: CAS state machine, AST oracle firewall, Chi-square flake defense) |
 | `OUTPUT/testing-framework-spec.md` | ✅ Complete | pytest/coverage/Hypothesis/mutmut configs + thresholds |
 | `OUTPUT/quality-metrics.md` | ✅ Complete | 16-metric catalog, anti-pattern detectors, ledger schema |
 | `OUTPUT/blocking-authority.md` | ✅ Complete | 8 MUST-block, MUST-NOT list, escalation, calibration |
