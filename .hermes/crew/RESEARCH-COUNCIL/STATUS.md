@@ -188,6 +188,11 @@
   - Multivariate Mahalanobis distance drift gating ($D_M \le 2.0$ nominal, $> 3.0$ critical erosion) preserving covariance structures across stylistic dimensions.
   - Two-tier in-context persona rehabilitation: soft prompt re-anchoring followed by non-destructive Tier B conversation buffer flushes.
   - Cognitive orthogonality metrics ($\mathcal{O} > 0.45$) and synthetic adversarial decoy probing to preempt multi-agent sycophancy collapse.
+- **[DEEP DIVE]** appended to `OUTPUT/self-healing.md`:
+  - Zero-daemon self-healing state machine in SQLite-WAL with atomic sub-15ms DAG rerouting upon consecutive gate failures.
+  - TextGrad prompt optimization via loss backpropagation through the agent computational graph with SQLite momentum buffers.
+  - Lyapunov stability formulation ($\Delta \mathcal{V} < 0$) guaranteeing monotonic failure energy reduction and preventing circular regression traps.
+  - Ephemeral rootless Bubblewrap (`bwrap`) sandbox canary replay engine with dual-canary validation against golden benchmarks.
 
 
 
@@ -235,7 +240,7 @@
 | zcode | ✅ Complete | Push-bug repair + deep dives: communication-protocols, self-healing, multi-agent-security (2026-09-14) |
 | cline | ⏳ Pending | Not connected |
 | freebuff | ✅ Complete | Pass-2 deep dives on all 10 testing outputs (2026-09-14); 13 multi-agent deep dives (2026-09-13) |
-| antigravity | ✅ Complete | Deep dives: memory, comms, security, scalability, tools, conflict, HITL, prod, cost, eval, explain, embodiment |
+| antigravity | ✅ Complete | Deep dives across all 13 multi-agent architecture domains (2026-09-14) |
 | opencode | ⏳ Pending | Not connected |
 
 ## Output Inventory
@@ -254,7 +259,7 @@
 | `OUTPUT/implementation-roadmap.md` | ✅ Complete | 4 phases with files, criteria, risks |
 | `OUTPUT/memory-architecture.md` | ✅ Complete | 4-tier hierarchy, rate-distortion compaction, EWC anti-forgetting + 2 deep dives (freebuff: vector degradation, chunking bounds; antigravity: zero-daemon SQLite substrate, HippoRAG 2 PPR, BGE-M3, ACT-R decay) |
 | `OUTPUT/communication-protocols.md` | ✅ Complete | EDA, priority lanes, DLQ, idempotency, circuit breakers + 3 deep dives (freebuff: A2A/jitter/trace; antigravity: SQLite-WAL bus/WFG/deltas; zcode: outbox/schema-evolution/MCP 2026-07-28/retry budgets) |
-| `OUTPUT/self-healing.md` | ✅ Complete | Reflective runtime, RBT diagnosis, 5-level degradation + 2 deep dives (freebuff: GEPA/error budgets/chaos; zcode: self-correction trap, CBR 4R, playbooks, patch-acceptance pipeline) |
+| `OUTPUT/self-healing.md` | ✅ Complete | Reflective runtime, RBT diagnosis, 5-level degradation + 3 deep dives (freebuff: GEPA/error budgets/chaos; zcode: self-correction trap, CBR 4R, playbooks; antigravity: SQLite healing state machine, TextGrad backprop, Lyapunov stability, bwrap canaries) |
 | `OUTPUT/production-deployment.md` | ✅ Complete | HA, circuit breakers, ASI drift detection, MLflow + 2 deep dives (freebuff: OTel gen_ai, K8s probes, canaries; antigravity: zero-daemon supervision, in-DB rate limiting, entropy breakers, ASI 12-dim tracking) |
 | `OUTPUT/multi-agent-security.md` | ✅ Complete | 5-layer defense, ring-based access, canary verification + 3 deep dives (freebuff: trifecta/defense-data/microVMs; antigravity: bwrap containment/macaroons/zeroization/datamarking; zcode: MCP tool poisoning, per-edge trifecta, canary DLP, signed SOULs) |
 | `OUTPUT/scalability-patterns.md` | ✅ Complete | Hierarchical groups ≤10, decision boundary P_SA > 0.45 + 2 deep dives (freebuff: SWARM+ bounds; antigravity: ephemeral worker pool, work-stealing deque, BAMAS tree recursion & budget inheritance) |
