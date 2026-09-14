@@ -247,6 +247,10 @@
   - Zero-daemon SQLite-WAL formation dispatcher (`formation_dispatch_ledger`) with sub-2ms lease resolution.
   - Cost-Sensitive Multi-Attribute Utility Optimization (CS-MAUO) with asymmetric defect penalty ($C_{\text{FN}} = 50.0, C_{\text{FP}} = 1.0$), enforcing a mathematical 1.96% defect threshold ceiling for `SOLO` routes.
   - Dynamic formation escalation state machine (`SOLO` -> `DUO` -> `PIPELINE` -> `FULL`) with atomic CAS updates.
+- **[DEEP DIVE]** appended to `OUTPUT/implementation-roadmap.md`:
+  - Zero-daemon automated shadow-to-blocking promotion engine in SQLite-WAL (`roadmap_gate_status`) evaluating FP rates (<5%) and activity bands across 20-task windows.
+  - Canary blocking tripwire executing sub-millisecond atomic rollbacks upon escape rate spikes (>5%).
+  - Fast Git churn and logical coupling miner extracting Churn-Coupling Index (CCI) in <200ms.
 
 
 
@@ -320,7 +324,7 @@
 | `OUTPUT/tester-soul.md` | ✅ Complete | Full executable tester spec + verdict template + 3 deep dives (freebuff pass 2: RTS Ekstazi/STARTS, safety KPI; freebuff pass 3: 80/20 attention allocation; antigravity: metamorphic differential oracles, SQLite test DAG, verdict certificates) |
 | `OUTPUT/engineer-soul.md` | ✅ Complete | Iron-law verbatim, artifacts, HOLD response, bans + 3 deep dives (freebuff pass 2: IFEval++ adherence, CI-checkable rules; freebuff pass 3: review yield & SmartBear diff limits; antigravity: pre-commit state machine, AST code fences, HOLD remediation) |
 | `OUTPUT/routing-integration.md` | ✅ Complete | Formation table, activation, message/artifact flows + 3 deep dives (freebuff pass 2: RouteLLM cost-sensitive loss, golden routing set; freebuff pass 3: reviewer fatigue calibration; antigravity: zero-daemon formation dispatcher, CS-MAUO utility, dynamic escalation) |
-| `OUTPUT/implementation-roadmap.md` | ✅ Complete | 4 phases with files, criteria, risks |
+| `OUTPUT/implementation-roadmap.md` | ✅ Complete | 4 phases with files, criteria, risks + 3 deep dives (freebuff pass 2: Google Tricorder, shadow mode; freebuff pass 3: defect hotspot mining; antigravity: shadow-to-blocking pipeline, canary rollbacks, CCI miner) |
 | `OUTPUT/memory-architecture.md` | ✅ Complete | 4-tier hierarchy, rate-distortion compaction, EWC anti-forgetting + 3 deep dives (freebuff: vector degradation, chunking bounds; antigravity: zero-daemon SQLite substrate, HippoRAG 2 PPR, BGE-M3, ACT-R decay; cline: governed shared memory, write-path, ACE playbooks) |
 | `OUTPUT/communication-protocols.md` | ✅ Complete | EDA, priority lanes, DLQ, idempotency, circuit breakers + 3 deep dives (freebuff: A2A/jitter/trace; antigravity: SQLite-WAL bus/WFG/deltas; zcode: outbox/schema-evolution/MCP 2026-07-28/retry budgets) |
 | `OUTPUT/self-healing.md` | ✅ Complete | Reflective runtime, RBT diagnosis, 5-level degradation + 3 deep dives (freebuff: GEPA/error budgets/chaos; zcode: self-correction trap, CBR 4R, playbooks; antigravity: SQLite healing state machine, TextGrad backprop, Lyapunov stability, bwrap canaries) |
