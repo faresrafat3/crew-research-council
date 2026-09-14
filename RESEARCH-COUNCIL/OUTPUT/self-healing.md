@@ -287,3 +287,84 @@ The MAST taxonomy (150+ traces: 41.8% spec, 36.9% inter-agent, 21.3% verificatio
 - [Principles of Chaos] principlesofchaos.org (steady-state hypothesis, blast radius, rollback).
 - [Google Cloud, 2026] Getting started with chaos engineering. cloud.google.com/blog.
 - [Cemri et al., 2025] Why Do Multi-Agent LLM Systems Fail? arXiv:2503.13657.
+
+## [DEEP DIVE]: The Self-Correction Trap, Case-Based Healing (4R Cycle), Failure-Class Playbooks, and a Quantified Patch-Acceptance Pipeline (zcode, 2026-09-14)
+
+### 1. The self-correction trap: every heal loop must consume an *external* verifier signal
+
+The architecture's Layer-3 adaptation assumes the coach can fix agents by re-prompting them with better instructions. The evidence says bare self-correction fails. Huang et al. (ICLR 2024) studied **intrinsic self-correction** — an LLM revising its own answer "based solely on its inherent capabilities, without the crutch of external feedback" — and found that in reasoning tasks LLMs struggle to improve their answers this way; **"their performance even degrades after self-correction"** in some cases [Huang et al., 2024]. The constructive counterpart is **Reflexion**: verbal reinforcement learning where agents "verbally reflect on task feedback signals," store the reflections in an episodic memory buffer, and act on them next attempt — reaching **91% pass@1 on HumanEval vs GPT-4's 80% prior state of the art**, with feedback accepted from *external or internally simulated* sources [Shinn et al., 2023].
+
+Crew rules derived from these two results:
+
+1. **No heal-loop iteration without new evidence.** A retry that merely re-prompts the same agent with the same context is intrinsic self-correction at crew scale — it makes the failure *worse*, not better. Every iteration must attach a fresh verifier output: test results, coverage delta, ASI trend, critic verdict, or operator feedback. This is the self-healing twin of the engineer-forgets-tests failure mode (CONTEXT.md): the crew that heals itself without running tests is making the same mistake as the engineer that ships without them.
+2. **Two-tier adaptation: lessons vs patches.** Adopt Reflexion's mechanism as the *fast tier* — when a thorn closes, the coach writes a linguistic "lesson" (what signal was observed, what worked, what to avoid) into the affected agent's per-agent memory tier, keyed to the failure context, retrieved on similar future tasks. SOUL patches remain the *slow tier*: human-approved, regression-gated, reserved for systematic failures. Lessons are cheap and automatic; patches are expensive and rare. The existing architecture conflates them — "patch proposal" was the only adaptation mechanism.
+
+### 2. Case-based healing: give the librarian's case shelf a retrieval key
+
+CONTEXT.md records the gap: "librarian shelves solved cases but there's no retrieval mechanism." The discipline for exactly this is **case-based reasoning**: the canonical CBR cycle is **Retrieve → Reuse → Revise → Retain** — retrieve the most similar past case, reuse its solution, revise it for the new problem, retain the result if it worked [Aamodt & Plaza, 1994]. (Citation note: the 4R cycle is Aamodt & *Plaza*; Aamodt & Nygård 1995 is the separate DIKW knowledge-pyramid paper — a common mis-citation avoided here.)
+
+Operationalization on the memory substrate already specified in OUTPUT/memory-architecture.md (SQLite + FTS5 + sqlite-vec + RRF hybrid):
+
+```sql
+CREATE TABLE IF NOT EXISTS healing_cases (
+  case_id        TEXT PRIMARY KEY,
+  failure_trace  TEXT NOT NULL,      -- thorn evidence bundle (task IDs, excerpts)
+  rca_category   TEXT NOT NULL,      -- 1-6 (Microsoft taxonomy, this file)
+  remedy         TEXT NOT NULL,      -- playbook id or patch_id that resolved it
+  outcome        TEXT NOT NULL,      -- 'verified' | 'partial' | 'failed'
+  embedding      BLOB,               -- sqlite-vec vector of trace+RCA summary
+  created_at     INTEGER NOT NULL
+);
+```
+
+At diagnosis time, embed the new thorn's evidence bundle, retrieve the top-3 similar past cases, and seed the RCA with their categories and remedies. **Retain** only cases whose remedy reached `verified` outcome — retention quality gates case-base growth. Policy target: ≥30% of new thorns resolved by direct reuse of a retrieved case, with no novel patch generation at all. This reframes self-healing economics: the cheapest patch is the one that already worked. GEPA/TextGrad generation (deep dive, 2026-09-13) becomes the *fallback* for novel failures, not the default path for every thorn.
+
+### 3. Failure-class playbooks: deterministic remedies before generative patches
+
+The 6-category root-cause table (this file) classifies but doesn't act. Complete it with a first-response playbook per class — automated, no patch required, escalating to patch generation only when the playbook fails twice:
+
+| # | Root cause | First-response playbook (automated) | Escalation trigger |
+|---|-----------|-------------------------------------|-------------------|
+| 1 | Tool misuse | Validate tool args against schema at call time; reject → DLQ; add the failing call shape to the targeted regression suite | Same misuse shape 3× in 7 days → tool-spec patch |
+| 2 | Context loss | Replay from task memory tier: re-inject task spec + prior decisions summary, resume task (memory-architecture.md) | Replay fails twice → context-construction patch |
+| 3 | Goal drift | Re-anchor: original task_spec re-sent on HIGH lane; drift counter increments | Drift ≥3 on one task → HOLD + operator |
+| 4 | Retry loops | Verify jitter + retry budget + circuit breaker are active on the looping edge (communication-protocols.md); if active and looping persists, trip breaker manually | Loop re-forms after breaker recovery → patch |
+| 5 | Cascading errors | Quarantine: circuit-break dependents of the failed agent (dependency graph); route in-flight work to the 5-level degradation model | Cascade repeated ≥2× → routing patch |
+| 6 | Silent degradation | ASI check → if breached, reset agent to last-good SOUL version and run targeted regression suite | Reset does not restore ASI within 48h → patch |
+
+Effect: patches become the *last* resort rather than the first. This directly improves the file's own metrics — patch success rate (fewer, better-targeted patches) and self-healing coverage (playbooks resolve thorns that never reach the patch queue).
+
+### 4. Patch acceptance pipeline and quantified healer guardrails
+
+The spec's step 7 ("run 5 past failure cases") is the weakest gate in the architecture. Replace with a three-stage acceptance pipeline, anchored to standards already established in the council:
+
+1. **Targeted gate:** 100% pass on the frozen regression suite for the affected failure class (the existing past-failure tests, now organized by rca_category).
+2. **Golden-set shadow replay:** apply the patch in shadow mode (old SOUL remains active) and replay **N ≥ 30** frozen golden tasks; accept only if success rate is within **2 percentage points** of the incumbent (non-inferiority) and pass^k consistency with **k = 3** holds (pass^k protocol from OUTPUT/evaluation-frameworks.md deep dive).
+3. **Staged live rollout:** canary the patch to one task in five for 48h before full promotion (SLO-gated rollout pattern from OUTPUT/production-deployment.md).
+
+**Auto-rollback:** if the post-patch escape rate exceeds the 7-day pre-patch baseline by +50% within 7 days of merge, automatically revert, re-open the thorn (counting double against the error budget per the 2026-09-13 deep dive), and log the failed case as `outcome: failed` — a negative case that future CBR retrieval will match.
+
+**Healer caps** (extending the guardrails list with numbers):
+
+- ≤ 2 SOUL patches per agent per month — patch churn is itself a drift vector (persona-flattening; see OUTPUT/agent-embodiment.md).
+- Append-only, hash-chained patch ledger in SQLite — the same determinism discipline as the replay capture set (OUTPUT/explainability.md).
+- **Coach kill switch:** the operator can freeze the adaptation layer while ingestion and diagnosis keep running — observability survives even when healing pauses, so the freeze itself doesn't blind the crew.
+
+**Per-stage time budgets** (making MTTR < 7 days checkable): thorn detected → classified ≤ 4h (nightly RBT batch); classified → playbook attempted ≤ 24h; playbook failed 2× → patch proposed ≤ 48h; merged → verified ≤ 7d. A thorn aging past any stage budget fires an operator alarm — the healing loop gets its own SLO burn alerts.
+
+### 5. Additional metrics
+
+| Metric | Definition | How to Measure | Target | Warning |
+|--------|-----------|----------------|--------|---------|
+| Playbook resolution rate | Thorns resolved by playbook (no patch) / total thorns | Counter by rca_category | >50% | <30% = playbooks incomplete |
+| CBR reuse rate | New thorns resolved by retrieved case / total thorns | Counter | ≥30% | <10% = retrieval or retention broken |
+| Shadow-replay rejection rate | Patches rejected at gate / proposals accepted to gate | Counter | monitor | >80% = GEPA candidates too weak; <10% = gate too loose |
+| Auto-rollback rate | Patches auto-reverted / merged | Counter | <10% | >20% = acceptance gate too loose |
+| Lesson retention rate | Reflexion lessons written / thorns closed | Counter | =100% | <100% = adaptation loop incomplete |
+
+### References for deep dive (2026-09-14)
+
+- [Huang et al., 2024] Huang, J., Chen, X., Mishra, S., et al. Large Language Models Cannot Self-Correct Reasoning Yet. ICLR 2024. arXiv:2310.01798 (intrinsic self-correction degrades reasoning performance; verified from abstract).
+- [Shinn et al., 2023] Shinn, N., Cassano, F., Gopinath, A., et al. Reflexion: Language Agents with Verbal Reinforcement Learning. NeurIPS 2023. arXiv:2303.11366 (episodic memory of task-feedback reflections; 91% vs 80% pass@1 HumanEval; verified from abstract).
+- [Aamodt & Plaza, 1994] Aamodt, A., & Plaza, E. Case-Based Reasoning: Foundational Issues, Methodological Variations, and System Approaches. AI Communications 7(1), 39–59 (4R cycle: Retrieve, Reuse, Revise, Retain; verified — not Aamodt & Nygård 1995).
+- Internal cross-references: OUTPUT/memory-architecture.md (retrieval substrate), OUTPUT/evaluation-frameworks.md (pass^k), OUTPUT/production-deployment.md (SLO-gated rollout), OUTPUT/communication-protocols.md (retry budget, circuit breaker), OUTPUT/explainability.md (hash-chained capture), OUTPUT/agent-embodiment.md (patch-churn drift risk).
