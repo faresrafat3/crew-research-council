@@ -91,3 +91,44 @@ The 4-phase order (Foundation → Mandatory → Gates → Improve) implements TM
 - [KnowMBA, 2025] Test Certified graduation, quarantine, budgets.
 - [IJECS, 2026] Consensus, HITL, safe auto-fix.
 - [Vocke, 2018] Practical Test Pyramid.
+
+---
+
+## [DEEP DIVE (freebuff, pass 2, 2026-09-14)]: Gate-Adoption Evidence — Tricorder Deployment Lessons and Shadow-Mode Rollout
+
+The pass-1 deep dive defended the phase *sequencing*. This one defends the *rollout mechanics* — how to turn each gate on without triggering the failure modes the roadmap already lists (workarounds, flake storms, metric theater). The best-evidenced playbook for rolling out automated quality gates comes from Google's static-analysis program.
+
+### R1. Tricorder's lessons, applied to the crew's gates
+
+Google's Tricorder program (*Software Engineering at Google*, ch. 20; CACM 2018) is the largest documented deployment of automated checks into developer workflow, and its findings transfer directly:
+- **Show results only where the developer is working:** "we focus analyses on files affected by a pending code change, and typically show analysis results only for edited files or lines" [Sadowski et al., 2018]. The crew's gates already do this (targeted mutation on touched lines; diff-coverage gate per testing-framework-spec pass 2) — keep it that way; project-wide blocking checks are the roadmap's "slow mutation" killer in new clothes.
+- **New warnings only, not legacy debt:** "we generally focus on newly introduced warnings; existing issues in otherwise working code are typically only worth highlighting (and fixing) if they are particularly important" [Sadowski et al., 2018]. Roadmap translation: gates never retro-block — a new mutation threshold applies to PRs filed after the policy commit, never to open work.
+- **False-positive discipline is the adoption gate:** tools are deployed only with low false-positive rates, with a live feedback loop where developers flag bad findings [Sadowski et al., 2018]. For the crew: a gate's FP rate (appeals overturned / blocks) must be below the ~5% line before it moves from advisory to blocking (calibration data already flows from blocking-authority.md §2).
+- **Happiness is a tracked metric:** "For a static analysis project to succeed, developers must feel they benefit from and enjoy using it" [Sadowski et al., 2018, abstract]. Crew analog: track fix-latency and appeal-rate per gate; a gate engineers (agents) routinely route around is failing regardless of its catch statistics.
+
+### R2. Shadow mode: every gate runs advisory before blocking
+
+The roadmap's Phase 2→3 transition flips gates to blocking the moment they're installed. Insert a shadow window first — the progressive-delivery pattern production-deployment.md pass 1 applied to agent patches, applied here to the gates themselves:
+1. Install gate in **comment mode** (posts findings to the task thread, never blocks) for a fixed window of 20 tasks.
+2. Measure: would-have-blocked rate, estimated FP rate (operator adjudication of each would-have-block), fix-latency for commented findings.
+3. Flip to blocking only if FP < 5% and would-have-blocked rate is in a sane band (not 0% — a gate that never fires is decorative, per blocking-authority.md Pattern 2; not >50% — Pattern 1, the overly strict gatekeeper).
+4. Keep the advisory lane permanently after flip: findings that would block *new* work but exist in *legacy* code surface as comments only (R1's new-warnings rule).
+
+Google's own results validate the endpoint: comment-first deployment built such trust that checks "educate developers and actually prevent antipatterns from entering the codebase," and the program reached effectively company-wide adoption [Sadowski et al., 2018].
+
+### R3. Sequencing evidence recap: gates with the strongest causal backing go first
+
+Within Phase 3, order matters when cutting scope. Rank by intervention evidence: (1) mutation findings presented as review comments — the Google interventional study showed exposure causally increased test strength [Petrović et al., 2021; tester-soul cycle 4 D7]; (2) the tautology/oracle lints — zero-FP by construction, pure AST checks; (3) diff-coverage — cheap and low-FP; (4) full mutation threshold — expensive, highest FP risk, last. This matches the roadmap's existing "targeted before full" instinct but gives it an evidence-based ordering and a shadow-mode wrapper.
+
+### Roadmap risk-table extension (pass 2)
+
+| Phase | Killer | Defense |
+|---|---|---|
+| 3 | Gate fatigue (agents route around noisy gates) | Shadow window + FP < 5% before blocking + per-gate appeal tracking [Sadowski et al., 2018] |
+| 3 | Retro-blocking legacy debt freezes delivery | New-warnings-only rule; advisory lane for pre-existing issues |
+| 4 | Gate decay after rollout | Quarterly adversarial drills on the gates (testing-maturity pass 2 §M3) |
+
+### References (pass 2)
+1. [Sadowski et al., 2018] "Lessons from Building Static Analysis Tools at Google," CACM 61(10) / *Software Engineering at Google* ch. 20. https://abseil.io/resources/swe-book/html/ch20.html [verified: 2026-09-14]
+2. [Petrović et al., 2021] "Does mutation testing improve testing practices?" ICST 2021, arXiv:2103.07189. https://arxiv.org/abs/2103.07189 [verified: 2026-09-13, tester-soul cycle 4]
+3. Cross-refs: production-deployment.md pass 1 (SLO-gated progressive rollout); blocking-authority.md Patterns 1–2; testing-framework-spec.md pass 2 (diff coverage).
