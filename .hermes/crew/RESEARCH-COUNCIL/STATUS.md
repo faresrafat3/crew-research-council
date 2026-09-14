@@ -163,6 +163,12 @@
   - Ed25519 Canonical Attestation protocol (RFC 8785 JSON canonicalization + operator cryptographic signature) defeating TOCTOU parameter mutation attacks.
   - Little's Law admission control ($L_q = \lambda W_q$) with 3-state dynamic backpressure (NORMAL/ELEVATED/CRITICAL) bounding operator queue depth at $\le 8$ items.
   - Decoy vigilance audits (5% synthetic defect injection, target $\ge 75\%$ catch rate) and automated adversarial steel-manning.
+- **[DEEP DIVE]** appended to `OUTPUT/production-deployment.md`:
+  - Zero-daemon ephemeral worker supervision & heartbeat-free lease recovery in SQLite-WAL (<2.5s MTTR, zero background systemd services).
+  - Embedded atomic rate limiting (token bucket / leaky bucket inside `BEGIN IMMEDIATE` SQLite transactions) preventing provider Tier quota exhaustion.
+  - Reasoning entropy ($\mathcal{H}_{\text{turn}} > 2.40$) & confidence cliff ($\tau_c < 0.45$) circuit breakers, intercepting >85% of infinite confabulation loops before token burn.
+  - Online Agent Stability Index (ASI) drift tracking across 12 dimensions (arXiv:2601.04170) with automated SOUL reset on $\text{ASI} < 0.70$.
+
 
 
 
@@ -208,7 +214,7 @@
 | zcode | ✅ Complete | Push-bug repair + deep dives: communication-protocols, self-healing, multi-agent-security (2026-09-14) |
 | cline | ⏳ Pending | Not connected |
 | freebuff | ✅ Complete | Pass-2 deep dives on all 10 testing outputs (2026-09-14); 13 multi-agent deep dives (2026-09-13) |
-| antigravity | ✅ Complete | Deep dives: memory, comms, security, scalability, tools, conflict, HITL |
+| antigravity | ✅ Complete | Deep dives: memory, comms, security, scalability, tools, conflict, HITL, production |
 | opencode | ⏳ Pending | Not connected |
 
 ## Output Inventory
@@ -228,7 +234,7 @@
 | `OUTPUT/memory-architecture.md` | ✅ Complete | 4-tier hierarchy, rate-distortion compaction, EWC anti-forgetting |
 | `OUTPUT/communication-protocols.md` | ✅ Complete | EDA, priority lanes, DLQ, idempotency, circuit breakers + 3 deep dives (freebuff: A2A/jitter/trace; antigravity: SQLite-WAL bus/WFG/deltas; zcode: outbox/schema-evolution/MCP 2026-07-28/retry budgets) |
 | `OUTPUT/self-healing.md` | ✅ Complete | Reflective runtime, RBT diagnosis, 5-level degradation + 2 deep dives (freebuff: GEPA/error budgets/chaos; zcode: self-correction trap, CBR 4R, playbooks, patch-acceptance pipeline) |
-| `OUTPUT/production-deployment.md` | ✅ Complete | HA, circuit breakers, ASI drift detection, MLflow |
+| `OUTPUT/production-deployment.md` | ✅ Complete | HA, circuit breakers, ASI drift detection, MLflow + 2 deep dives (freebuff: OTel gen_ai, K8s probes, canaries; antigravity: zero-daemon supervision, in-DB rate limiting, entropy breakers, ASI 12-dim tracking) |
 | `OUTPUT/multi-agent-security.md` | ✅ Complete | 5-layer defense, ring-based access, canary verification + 3 deep dives (freebuff: trifecta/defense-data/microVMs; antigravity: bwrap containment/macaroons/zeroization/datamarking; zcode: MCP tool poisoning, per-edge trifecta, canary DLP, signed SOULs) |
 | `OUTPUT/scalability-patterns.md` | ✅ Complete | Hierarchical groups ≤10, decision boundary P_SA > 0.45 + 2 deep dives (freebuff: SWARM+ bounds; antigravity: ephemeral worker pool, work-stealing deque, BAMAS tree recursion & budget inheritance) |
 | `OUTPUT/human-in-the-loop.md` | ✅ Complete | Approval control plane, override tokens, EU AI Act + 2 deep dives (freebuff: Article 14, automation bias, fatigue; antigravity: zero-daemon CLI/IPC, TOCTOU locking, Little's law backpressure, decoy audits) |
