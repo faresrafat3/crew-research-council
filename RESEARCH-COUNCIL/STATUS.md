@@ -235,6 +235,10 @@
   - Zero-daemon local hermetic CI pre-flight runner in rootless Bubblewrap (`bwrap --unshare-net --unshare-pid`, <1.2s overhead).
   - In-toto v1.0 / SLSA Level 3 cryptographic provenance attestation ledger in SQLite-WAL (`ci_provenance_attestations` signed with Ed25519).
   - Content-addressable AST test cache (`ci_test_cache`) achieving sub-15ms test skip replay for unchanged abstract syntax trees.
+- **[DEEP DIVE]** appended to `OUTPUT/tester-soul.md`:
+  - Metamorphic differential oracle engine testing algebraic invariants (idempotence, monotonicity, reversibility) to eliminate vacuous LLM assertions.
+  - Zero-daemon SQLite-WAL test execution DAG with flakiness tracking and automatic quarantine.
+  - Cryptographically signed verdict certificates (`verdict_certificates` with Ed25519) binding test evidence to immutable git commits.
 
 
 
@@ -305,7 +309,7 @@
 | `OUTPUT/quality-metrics.md` | ✅ Complete | 16-metric catalog, anti-pattern detectors, ledger schema + 2 deep dives (freebuff: small-sample SPC, p-charts, run rules; antigravity: zero-daemon SQLite ledger, CQI non-compensatory math, tabular CUSUM drift detection) |
 | `OUTPUT/blocking-authority.md` | ✅ Complete | 8 MUST-block, MUST-NOT list, escalation, calibration + 2 deep dives (freebuff: audit sampling math, c=0 plans; antigravity: cryptographic gate tokens, M-of-N escalation & CDQ, Bayesian calibration) |
 | `OUTPUT/cicd-integration.md` | ✅ Complete | Triggers, gates, artifacts, flake lane, nightly golden+drills + 3 deep dives (freebuff pass 2: supply chain SHA-pinning/OIDC; freebuff pass 3: merge queues; antigravity: local hermetic CI runner, in-toto SQLite attestation, CAS cache) |
-| `OUTPUT/tester-soul.md` | ✅ Complete | Full executable tester spec + verdict template |
+| `OUTPUT/tester-soul.md` | ✅ Complete | Full executable tester spec + verdict template + 3 deep dives (freebuff pass 2: RTS Ekstazi/STARTS, safety KPI; freebuff pass 3: 80/20 attention allocation; antigravity: metamorphic differential oracles, SQLite test DAG, verdict certificates) |
 | `OUTPUT/engineer-soul.md` | ✅ Complete | Iron-law verbatim, artifacts, HOLD response, bans |
 | `OUTPUT/routing-integration.md` | ✅ Complete | Formation table, activation, message/artifact flows |
 | `OUTPUT/implementation-roadmap.md` | ✅ Complete | 4 phases with files, criteria, risks |

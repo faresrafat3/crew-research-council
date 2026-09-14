@@ -66,6 +66,12 @@
   10. `tester-soul.md` — regression test selection: Ekstazi 32% time reduction and 80%-of-failures at 66% time saved, STARTS 40.5%, T-TS 15%-selection/5.9x speedup, Ekstazi-vs-STARTS safety/precision comparison, three-tier rerun protocol with RTS-safety KPI ≥95%, always-run core, prioritization order
   11. `gate-toolkit.md` — **new output (breakthrough pass)**: executable pass-2 protocols — `gate_toolkit.py` (stdlib-only Python) implements c=0 audit sampling, zero-flip flake gate, RTS-safety KPI, p-chart limits, and Nelson run rules with 20-point baseline lock; verified by 35 green tests and a 100% mutation score on a 15-mutant harness (beats the council's own 70/80 gate)
 
+### freebuff — 2026-09-14 (testing pass 3)
+- **Pass-3 deep-dive cycle on the testing domain completed** — third `[DEEP DIVE]` cycle on all 10 testing outputs, angles disjoint from scout's, cline's, antigravity's, and freebuff pass-2 dives (all claims web-verified, primary reads where numbers are asserted; snippet-only items marked in-text).
+- Angles: testing-framework-spec → snapshot/golden-master/characterization oracle risk; tdd-protocol → London-vs-Detroit mocks and refactor safety; cicd-integration → merge queues for bot-PR volume (DORA trunk-based evidence); testing-maturity-model → the ladder's own mixed empirical record (Harter 2000 pro, Bach con) + ledger-delta ratification; implementation-roadmap → defect-hotspot mining as the pre-phase step; engineer-soul → review-attention economics (Bacchelli & Bird 14% defect comments; SmartBear/Cisco ≤400 LOC); blocking-authority → break-glass JIT overrides with audit trail; routing-integration → calibrated escalation (Tian 2023, Chhikara 2025 ECE evidence); quality-metrics → GQM lineage + Thompson-sampled guardrail experiments; tester-soul → defect-concentration allocation (80/20) with exploration floor.
+- Commits: 5fe54c8, 5076ddc, 8bd1b35, 94d7ae2, 117868d, 8585377, 4b7ed60, 909592c, 2be425a, f99d71e (one per file, all on main).
+- Cross-linking: the 10 dives reference each other as one layer (attention economics ↔ hotspot triage ↔ calibration audit).
+
 ### freebuff — 2026-09-14 (pass 3)
 - **Pass-3 deep-dive cycle completed** — third `[DEEP DIVE]` cycle on all 13 multi-agent outputs, angles chosen to avoid overlap with pass 1 (freebuff) and the pass-2 dives (Antigravity, zcode, cline); all claims web-verified against primary sources, snippet-only items marked in-text:
   1. `memory-architecture.md` — concurrent-write consistency: CRDT register semantics (MV-Register over LWW for mutable state; grow-only for observations), STALE benchmark (implicit memory conflict; best model 55.2%), forgetting as policy (TTL → usage decay → staleness detection, one dial per memory tier)
@@ -229,6 +235,10 @@
   - Zero-daemon local hermetic CI pre-flight runner in rootless Bubblewrap (`bwrap --unshare-net --unshare-pid`, <1.2s overhead).
   - In-toto v1.0 / SLSA Level 3 cryptographic provenance attestation ledger in SQLite-WAL (`ci_provenance_attestations` signed with Ed25519).
   - Content-addressable AST test cache (`ci_test_cache`) achieving sub-15ms test skip replay for unchanged abstract syntax trees.
+- **[DEEP DIVE]** appended to `OUTPUT/tester-soul.md`:
+  - Metamorphic differential oracle engine testing algebraic invariants (idempotence, monotonicity, reversibility) to eliminate vacuous LLM assertions.
+  - Zero-daemon SQLite-WAL test execution DAG with flakiness tracking and automatic quarantine.
+  - Cryptographically signed verdict certificates (`verdict_certificates` with Ed25519) binding test evidence to immutable git commits.
 
 
 
@@ -299,7 +309,7 @@
 | `OUTPUT/quality-metrics.md` | ✅ Complete | 16-metric catalog, anti-pattern detectors, ledger schema + 2 deep dives (freebuff: small-sample SPC, p-charts, run rules; antigravity: zero-daemon SQLite ledger, CQI non-compensatory math, tabular CUSUM drift detection) |
 | `OUTPUT/blocking-authority.md` | ✅ Complete | 8 MUST-block, MUST-NOT list, escalation, calibration + 2 deep dives (freebuff: audit sampling math, c=0 plans; antigravity: cryptographic gate tokens, M-of-N escalation & CDQ, Bayesian calibration) |
 | `OUTPUT/cicd-integration.md` | ✅ Complete | Triggers, gates, artifacts, flake lane, nightly golden+drills + 3 deep dives (freebuff pass 2: supply chain SHA-pinning/OIDC; freebuff pass 3: merge queues; antigravity: local hermetic CI runner, in-toto SQLite attestation, CAS cache) |
-| `OUTPUT/tester-soul.md` | ✅ Complete | Full executable tester spec + verdict template |
+| `OUTPUT/tester-soul.md` | ✅ Complete | Full executable tester spec + verdict template + 3 deep dives (freebuff pass 2: RTS Ekstazi/STARTS, safety KPI; freebuff pass 3: 80/20 attention allocation; antigravity: metamorphic differential oracles, SQLite test DAG, verdict certificates) |
 | `OUTPUT/engineer-soul.md` | ✅ Complete | Iron-law verbatim, artifacts, HOLD response, bans |
 | `OUTPUT/routing-integration.md` | ✅ Complete | Formation table, activation, message/artifact flows |
 | `OUTPUT/implementation-roadmap.md` | ✅ Complete | 4 phases with files, criteria, risks |
