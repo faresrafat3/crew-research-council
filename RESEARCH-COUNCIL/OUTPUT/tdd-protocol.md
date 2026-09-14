@@ -151,3 +151,47 @@ DONE
 - [Hermes TDD Skill, 2026] Iron law, tracer bullets, RED/GREEN verification
 - [Hypothesis Docs, 2026] derandomize, seed, database profiles
 - [Priygop, 2026] Escalation Frameworks: timeout-based escalation
+
+---
+
+## [DEEP DIVE (freebuff, pass 2, 2026-09-14)]: Does TDD Actually Work? — Human Evidence, LLM Evidence, and What Changes for Probabilistic Code
+
+The pass-1 protocol inherits the human TDD tradition but never states the evidence base — or what must change when the system under test is probabilistic. Both gaps matter: the crew's iron law is expensive, and it deserves defense from data, not ceremony.
+
+### T1. The human evidence: real, modest, and conditioned
+- Nagappan, Maximilien, Bhat and Williams' case studies at Microsoft and IBM found pre-release defect density **40–90% lower** in the four TDD products relative to comparable non-TDD projects, at a cost of **15–35% more initial development time** [Nagappan et al., 2008]. A synthesis of the early empirical studies concludes TDD improves quality, especially in "test-infected" teams with mature test tooling [InfoQ, 2009].
+- The effect is not automatic: a comparative case study of three projects measuring TDD's effect on program design reports mixed results across projects and phases [Siniaalto & Abrahamsson, arXiv:1711.05082]. Crew translation: expect a **transient productivity dip** when the iron law lands (roadmap Phases 1–2) — the 15–35% initial-time-increase figure is the planning number, and the roadmap's phase exit criteria should not assume instant velocity parity.
+
+### T2. The LLM evidence: test-first prompting measurably helps LLM code generation
+- **WebApp1K** (1,000 tasks, 20 application domains, 19 frontier models) evaluates TDD where test cases serve as both prompt and verification. Findings: instruction following and in-context learning are the critical capabilities for TDD success — surpassing general coding proficiency — and *instruction loss in long prompts* is a top bottleneck [Cui, 2025, arXiv:2505.09027]. This is direct evidence for the crew's SPEC discipline: REQ-IDs must be short, explicit, and adjacent to the tests, because long context degrades exactly the capability TDD-for-LLMs depends on.
+- Microsoft Research's test-driven interactive code generation user study measured an average **+45.97% absolute pass@1 improvement** across datasets and LLMs within 5 feedback iterations [Microsoft Research, 2024].
+- An ACM study of TDD with LLM-based code generation found tests plus remediation strategies collectively raise success rates by **~17%**, with many difficult problems remaining [ACM, 2024, DOI 10.1145/3691620.3695527].
+- Note the ordering effect matters: pass-1's ban on engineer-authored oracles stands — these studies hand *tester-authored* tests to the generator, which is precisely the crew's RED→GREEN split (cross-ref engineer-soul.md pass-1: in-loop self-testing shows no gain).
+
+### T3. What changes for probabilistic code: GREEN needs tolerance bands
+The RED→GREEN cycle assumes a deterministic system under test. For LLM-in-the-loop components the GREEN event must be redefined, or the ledger fills with noise:
+1. **RED stays deterministic** — tester-authored tests from REQ-IDs remain the spec; a witnessed RED is still a binary fact.
+2. **GREEN becomes a rate** — for probabilistic paths, run n≥5 samples and require pass-rate ≥k (k set per REQ criticality; P0 = 1.0, P1 ≥ 0.8). Point-equality assertions are replaced by property invariants and schema checks (cross-ref cicd-integration.md golden-eval three layers).
+3. **GREEN records provenance** — model version, temperature, and pass-rate must accompany the GREEN log, else a later regression cannot be distinguished from sampling noise (cross-ref quality-metrics.md pass-2 SPC deep dive for the control-chart treatment).
+4. **Flake policy gains a new class** — a probabilistic-path failure that reproduces at the recorded model/temp/seed is a bug; one that does not is sampling variance, and belongs to the same quarantine lane as pass-1's flake tiers.
+
+### Numbers for calibration (pass 2)
+
+| Quantity | Value | Source |
+|---|---|---|
+| TDD defect-density reduction (MS/IBM, 4 products) | 40–90% | [Nagappan et al., 2008] |
+| TDD initial dev-time cost | +15–35% | same |
+| TDD effect on design (3-project case study) | mixed | [Siniaalto & Abrahamsson, 2017] |
+| WebApp1K scale | 1,000 tasks / 20 domains / 19 models | [Cui, 2025] |
+| WebApp1K critical capabilities | instruction following + ICL; instruction loss in long prompts | same |
+| Test-driven interactive codegen pass@1 gain | +45.97% absolute | [Microsoft Research, 2024] |
+| Tests + remediation success-rate gain (ACM) | ~17% | [ACM, 2024] |
+| Probabilistic GREEN protocol | n≥5 samples, pass-rate ≥k, provenance logged | crew mapping |
+
+### References (pass 2)
+1. [Nagappan et al., 2008] "Realizing quality improvement through test driven development: results and experiences of four industrial teams," Empirical Software Engineering (Microsoft/IBM case studies). [verified: 2026-09-14, secondary summaries]
+2. [InfoQ, 2009] "Empirical Studies Show Test Driven Development Improves Quality." https://www.infoq.com/news/2009/03/TDD-Improves-Quality/ [verified: 2026-09-14]
+3. [Siniaalto & Abrahamsson, 2017] "A Comparative Case Study on the Impact of Test-Driven Development on Program Design," arXiv:1711.05082. https://arxiv.org/pdf/1711.05082 [verified: 2026-09-14]
+4. [Cui, 2025] "Tests as Prompt: A Test-Driven-Development Benchmark for LLM Code Generation" (WebApp1K), arXiv:2505.09027. https://arxiv.org/abs/2505.09027 [verified: 2026-09-14]
+5. [Microsoft Research, 2024] "LLM-Based Test-Driven Interactive Code Generation: User Study and Empirical Evaluation." https://www.microsoft.com/en-us/research/publication/llm-based-test-driven-interactive-code-generation-user-study-and-empirical-evaluation/ [verified: 2026-09-14]
+6. [ACM, 2024] "Test-Driven Development and LLM-based Code Generation," DOI 10.1145/3691620.3695527. https://dl.acm.org/doi/10.1145/3691620.3695527 [verified: 2026-09-14, snippet only]
