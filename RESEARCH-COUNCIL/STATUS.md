@@ -168,6 +168,12 @@
   - Embedded atomic rate limiting (token bucket / leaky bucket inside `BEGIN IMMEDIATE` SQLite transactions) preventing provider Tier quota exhaustion.
   - Reasoning entropy ($\mathcal{H}_{\text{turn}} > 2.40$) & confidence cliff ($\tau_c < 0.45$) circuit breakers, intercepting >85% of infinite confabulation loops before token burn.
   - Online Agent Stability Index (ASI) drift tracking across 12 dimensions (arXiv:2601.04170) with automated SOUL reset on $\text{ASI} < 0.70$.
+- **[DEEP DIVE]** appended to `OUTPUT/cost-optimization.md`:
+  - Zero-daemon hierarchical cost accounting ledger in SQLite-WAL with recursive CTE tree rollup of subagent delegations down to micro-cents.
+  - Two-tier context buffer architecture preserving immutable Tier A cache anchors, eliminating Anthropic 1.25x cache-write penalties and guaranteeing 100% hits on static prefixes.
+  - RouteLLM cost-sensitive predictive routing (arXiv:2406.18665, LMSYS) via local 2.5MB ONNX embeddings, achieving >55% token savings at 95% frontier quality.
+  - Two-stage token budget enforcement with non-fatal emergency synthesis windows, salvaging >80% of partial artifacts upon budget exhaustion.
+
 
 
 
@@ -214,7 +220,7 @@
 | zcode | ✅ Complete | Push-bug repair + deep dives: communication-protocols, self-healing, multi-agent-security (2026-09-14) |
 | cline | ⏳ Pending | Not connected |
 | freebuff | ✅ Complete | Pass-2 deep dives on all 10 testing outputs (2026-09-14); 13 multi-agent deep dives (2026-09-13) |
-| antigravity | ✅ Complete | Deep dives: memory, comms, security, scalability, tools, conflict, HITL, production |
+| antigravity | ✅ Complete | Deep dives: memory, comms, security, scalability, tools, conflict, HITL, prod, cost |
 | opencode | ⏳ Pending | Not connected |
 
 ## Output Inventory
@@ -231,7 +237,7 @@
 | `OUTPUT/engineer-soul.md` | ✅ Complete | Iron-law verbatim, artifacts, HOLD response, bans |
 | `OUTPUT/routing-integration.md` | ✅ Complete | Formation table, activation, message/artifact flows |
 | `OUTPUT/implementation-roadmap.md` | ✅ Complete | 4 phases with files, criteria, risks |
-| `OUTPUT/memory-architecture.md` | ✅ Complete | 4-tier hierarchy, rate-distortion compaction, EWC anti-forgetting |
+| `OUTPUT/memory-architecture.md` | ✅ Complete | 4-tier hierarchy, rate-distortion compaction, EWC anti-forgetting + 2 deep dives (freebuff: vector degradation, chunking bounds; antigravity: zero-daemon SQLite substrate, HippoRAG 2 PPR, BGE-M3, ACT-R decay) |
 | `OUTPUT/communication-protocols.md` | ✅ Complete | EDA, priority lanes, DLQ, idempotency, circuit breakers + 3 deep dives (freebuff: A2A/jitter/trace; antigravity: SQLite-WAL bus/WFG/deltas; zcode: outbox/schema-evolution/MCP 2026-07-28/retry budgets) |
 | `OUTPUT/self-healing.md` | ✅ Complete | Reflective runtime, RBT diagnosis, 5-level degradation + 2 deep dives (freebuff: GEPA/error budgets/chaos; zcode: self-correction trap, CBR 4R, playbooks, patch-acceptance pipeline) |
 | `OUTPUT/production-deployment.md` | ✅ Complete | HA, circuit breakers, ASI drift detection, MLflow + 2 deep dives (freebuff: OTel gen_ai, K8s probes, canaries; antigravity: zero-daemon supervision, in-DB rate limiting, entropy breakers, ASI 12-dim tracking) |
@@ -241,7 +247,7 @@
 | `OUTPUT/conflict-resolution.md` | ✅ Complete | Weighted voting, reasoning trees, deadlock breaking + 2 deep dives (freebuff: Arrow's impossibility, HOLD-wins, judge bias; antigravity: Brier calibration, sequential consensus JSD, livelock preemption, SQLite CDPs) |
 | `OUTPUT/agent-embodiment.md` | ✅ Complete | 5-dimension personality, voice drift detection |
 | `OUTPUT/tool-differentiation.md` | ✅ Complete | Capability-based assignment, result sharing + 2 deep dives (freebuff: tool count failure curves; antigravity: dynamic toolsets v2, JetBrains observation masking, SQLite-WAL cache) |
-| `OUTPUT/cost-optimization.md` | ✅ Complete | 3-tier routing, caching, APC, budget enforcement |
+| `OUTPUT/cost-optimization.md` | ✅ Complete | 3-tier routing, caching, APC, budget enforcement + 2 deep dives (freebuff: FrugalGPT, cache-writes, unit cost; antigravity: SQLite cost ledger, cache anchors, RouteLLM, non-fatal preemption) |
 | `OUTPUT/evaluation-frameworks.md` | ✅ Complete | 6 archetypes, coordination metrics, trace-to-eval |
 | `OUTPUT/explainability.md` | ✅ Complete | Structured traces, time-travel debugging, root cause analysis |
 | *(all 13 multi-agent files above)* | ✅ Deep-dived | freebuff 2026-09-13: one `[DEEP DIVE]` cycle each — validation gates, standards alignment (A2A/MCP/OTel/W3C), and measured thresholds appended |
