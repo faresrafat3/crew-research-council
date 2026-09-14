@@ -222,7 +222,7 @@ Add a risk-class dimension to the Aegis-style override flow: a low-confidence *r
 
 This keeps human attention on the quadrant where Article 14's "decide not to use" actually matters.
 
-### References for deep dive
+### References for deep dive (freebuff, 2026-09-13)
 
 - [EU AI Act, 2025] Article 14: Human Oversight. artificialintelligenceact.eu/article/14; EU AI Act Service Desk.
 - [CSA, 2026] EU AI Act high-risk obligations: deployer monitoring, ≥6-month log retention. labs.cloudsecurityalliance.org.
@@ -232,3 +232,95 @@ This keeps human attention on the quadrant where Article 14's "decide not to use
 - [Beck et al., 2026] Bias in the Loop: How Humans Evaluate AI-Generated Content. Harvard Data Science Review.
 - [ResilientCyber, 2026] The Human-in-the-Loop Illusion (93% Claude Code approval rate, citing Anthropic). resilientcyber.io.
 - [Anthropic, 2026] How AI assistance impacts the formation of coding skills (RCT, n=52, -17% comprehension). anthropic.com/research/AI-assistance-coding-skills.
+
+## [DEEP DIVE]: Zero-Daemon CLI/IPC Interaction, TOCTOU Payload Cryptolocking, Little's Law Queue Backpressure, and Decoy Vigilance Audits (Antigravity, 2026-09-14)
+
+### 1. Zero-Daemon Local HITL Interface: SQLite-WAL Queue with IPC Terminal Signal Integration
+
+Architectural constraints (`MAP.md`: DSH zero-service invariant) prohibit running background WebUI servers, Redis brokers, or continuous Node/Python daemons for operator interaction. Crew v2 implements a zero-daemon local human oversight plane anchored directly in SQLite-WAL:
+
+```sql
+CREATE TABLE IF NOT EXISTS approval_queue (
+    request_id TEXT PRIMARY KEY,
+    task_id TEXT NOT NULL,
+    agent_id TEXT NOT NULL,
+    action_type TEXT NOT NULL,
+    risk_tier TEXT NOT NULL CHECK(risk_tier IN ('low', 'medium', 'high', 'critical')),
+    canonical_payload TEXT NOT NULL,
+    payload_sha256 TEXT NOT NULL,
+    adversarial_framing TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING', 'APPROVED', 'REJECTED', 'TIMEOUT')),
+    sla_expires_at INTEGER NOT NULL,
+    decided_at INTEGER,
+    decided_by TEXT,
+    operator_signature TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_approval_queue_pending ON approval_queue(status, risk_tier, sla_expires_at);
+```
+
+**Dual-Channel Interaction Modalities:**
+- **Synchronous Interactive Mode (Foreground / Pairing):** In direct developer CLI runs (`agy run` / `cordis`), when an agent attempts a Ring 2+ mutating tool call, the execution harness triggers a blocking pre-tool interceptor:
+  ```text
+  [APPROVAL REQUIRED] Agent 'engineer' requests 'execute_command' (risk: HIGH)
+  Command: git push origin main --force-with-lease
+  Skepticism: Overwrites remote history; uncommitted stash could cause branch divergency.
+  Decision [y=Approve, n=Reject, d=Diff, e=Explain]:
+  ```
+  The terminal process suspends turn execution, consumes operator input directly from `stdin`, and logs the decision receipt.
+- **Asynchronous Batch Mode (Autonomous Execution):** In autonomous headless runs, requests populate `approval_queue`. The human operator inspects, approves, or rejects requests via CLI commands (`agy queue list`, `agy approve <id>`, `agy reject <id> --reason "..."`), operating on the shared SQLite database with zero background daemons.
+
+### 2. Cryptographic Payload Locking: Defeating TOCTOU Parameter Mutation Attacks
+
+In autonomous multi-agent environments, Time-of-Check to Time-of-Use (TOCTOU) exploits occur when an agent seeks human approval for an action $A(p)$, but between human authorization and tool dispatch, the agent context shifts (or prompt injection alters arguments) mutating $p \to p'$ (e.g. human approves `deploy.sh --target staging`, but tool executes with `--target prod`) [Agent Native, 2026; Invariant Labs, 2025].
+
+**Ed25519 Canonical Attestation Protocol:**
+1. **RFC 8785 Canonical JSON Serialization:** The harness serializes tool name and argument dictionary into a canonical, key-sorted, whitespace-normalized string:
+   $$H_{\text{payload}} = \text{SHA256}\left(\text{CanonicalJSON}(\text{tool\_name}, \text{arguments})\right)$$
+2. **Operator Cryptographic Receipt:** Upon operator sign-off, the CLI signs an immutable attestation token using the operator's local Ed25519 key ($K_{\text{op}}$):
+   $$\sigma_{\text{op}} = \text{Sign}_{K_{\text{op}}}\left(H_{\text{payload}} \parallel \text{request\_id} \parallel \text{nonce} \parallel \text{sla\_expires\_at}\right)$$
+3. **Execution-Time Kernel Assertion:** Immediately before sandboxed process invocation, the tool runner re-hashes the actual arguments passed to the system call:
+   $$H_{\text{actual}} = \text{SHA256}\left(\text{CanonicalJSON}(\text{actual\_tool}, \text{actual\_args})\right)$$
+4. **Enforcement:** The sandbox executes the tool **if and only if** $H_{\text{actual}} == H_{\text{payload}}$ AND $\text{Verify}_{K_{\text{op\_pub}}}(\sigma_{\text{op}}) == \text{True}$. Any argument mutation—even a single altered flag or path—invalidates the signature, immediately triggering an unrecoverable `SECURITY_TOCTOU_ABORT` and freezing the agent turn.
+
+### 3. Queue Pressure-Aware Admission Control via Little's Law (Weir Model)
+
+When autonomous agent loops spawn tasks faster than human operators can review them, approval queues balloon. As queue depth expands, human operators experience severe approval fatigue, shifting into reflexive rubber-stamping (the "93% approval rate trap" [ResilientCyber, 2026; Agentmelt, 2026]).
+
+**Little's Law Queue Dynamics:**
+$$L_q = \lambda_{\text{agents}} \cdot W_q$$
+where $L_q$ represents pending approval queue depth, $\lambda_{\text{agents}}$ is the incoming approval request rate, and $W_q$ is human review latency. If $L_q$ exceeds operator working capacity ($Q_{\text{capacity}} = 8$), review quality collapses.
+
+**Dynamic Backpressure States:**
+- **State NORMAL ($L_q \le 4$):** Standard operations; normal SLA countdowns (300s–1800s).
+- **State ELEVATED ($4 < L_q \le 8$):** Non-critical subagent spawning is throttled by 50%; debounce windows expand from 30s to 120s to collapse near-duplicate requests.
+- **State CRITICAL ($L_q > 8$):** Hard admission control. The harness blocks all new agent turn dispatches via a SQLite task semaphore until $L_q \le 3$. Agents transition to low-power wait states, guaranteeing that human reviewers are never overwhelmed with high-cardinality backlogs.
+
+### 4. Decoy Vigilance Audits & Automated Adversarial Steel-Manning
+
+To satisfy EU AI Act Article 14's explicit mandate that human oversight must prevent automation bias rather than passively rubber-stamp it:
+- **Synthetic Decoy Injection:** The harness randomly injects synthetically flawed actions (~5% of all review requests) drawn from the golden regression suite (e.g. subtly inverted logic flags, deprecated library versions, or misconfigured permission masks).
+- **Vigilance Metric ($V_{\text{op}}$):**
+  $$V_{\text{op}} = \frac{\text{Decoys Correctly Rejected}}{\text{Total Decoys Injected}}$$
+  If $V_{\text{op}} < 0.75$ across a rolling 20-decoy window, the system alerts the lead engineer that operator vigilance has lapsed, automatically pausing auto-approval fallbacks.
+- **Automated Adversarial Steel-Manning:** Every approval card rendered to the operator is automatically augmented with a two-sentence adversarial critique generated by an orthogonal prompt pass (<150 tokens):
+  1. *Underlying Fragility:* Identifies the single most fragile assumption in the proposed action.
+  2. *Worst-Case Blast Radius:* Highlights the irreversible consequence if the change contains a latent regression.
+
+### 5. Measurable Human-in-the-Loop Governance Metrics Catalog
+
+| Metric | Definition | How to Measure | Target | Warning Threshold |
+|---|---|---|---|---|
+| **Operator Decision Latency** | Time from request queueing to human decision | SQLite queue timestamp diff | **$p50 < 3.5\text{m}$** | $p95 > 15\text{m}$ (Operator bottlenecked) |
+| **TOCTOU Tamper Incidents** | Discrepancies between approved hash and executed hash | Sandbox execution assertions | **0 incidents** | > 0 (Immediate agent containment) |
+| **Queue Backpressure Frequency** | Percentage of runtime spent in ELEVATED/CRITICAL queue states | Semaphore state timer | **< 5%** | > 15% (Recalibrate confidence thresholds) |
+| **Decoy Catch Rate ($V_{\text{op}}$)** | Synthetically flawed requests caught by operator | Decoy audit ledger | **≥ 75%** | < 60% (Severe operator automation bias) |
+| **Human Intervention Scarcity** | Proportion of agent actions requiring human approval | Global action counter | **< 3%** | > 8% (Gate uncalibrated / fatigue risk) |
+
+### References for deep dive (Antigravity, 2026-09-14)
+
+- [Agentmelt, 2026] Human-in-the-Loop for AI Agents in 2026: The Rubber-Stamping Problem (approvals pile up, humans optimize for throughput; why backpressure is mandatory). agentmelt.com/blog/hitl-agent-oversight-2026.
+- [RFC 8785, 2020] JSON Canonicalization Scheme (JCS) for deterministic cryptographic payload hashing. rfc-editor.org/rfc/rfc8785.
+- [Agent Native, 2026] Human-in-the-Loop Approval Flow Pattern: Cryptographic Payload Locking and Nonce Verification. agentnative.dev/patterns/hitl-approval-flow.
+- [Weir, 2026] Weir: Admission Control and Queue Pressure Management for Human Oversight in Agent Systems. github.com/VampiricCyborg/Weir.
+- [ResilientCyber, 2026] The Human-in-the-Loop Illusion (analyzing the 93% approval rate phenomenon and automation bias traps). resilientcyber.io.
+

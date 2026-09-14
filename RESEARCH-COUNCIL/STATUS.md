@@ -158,6 +158,12 @@
   - Sequential consensus protocol (Morandi et al., arXiv:2605.19193) via Jensen-Shannon Divergence ($D_{\text{JS}} \le 0.05$) early stopping, cutting debate token consumption by >45%.
   - Semantic livelock preemption via cyclic proposition hash tracking, routing irreconcilable disputes into Free-MAD orthogonal trade-off matrices.
   - AGENTAUDITOR Critical Divergence Point (CDP) table in SQLite for localized, swap-consistent Tier-3 adjudication, reducing adjudicator token context by 78%.
+- **[DEEP DIVE]** appended to `OUTPUT/human-in-the-loop.md`:
+  - Zero-daemon local human oversight plane via SQLite-WAL `approval_queue` with dual synchronous CLI pre-tool blocking and asynchronous batch inspection (`agy approve`).
+  - Ed25519 Canonical Attestation protocol (RFC 8785 JSON canonicalization + operator cryptographic signature) defeating TOCTOU parameter mutation attacks.
+  - Little's Law admission control ($L_q = \lambda W_q$) with 3-state dynamic backpressure (NORMAL/ELEVATED/CRITICAL) bounding operator queue depth at $\le 8$ items.
+  - Decoy vigilance audits (5% synthetic defect injection, target $\ge 75\%$ catch rate) and automated adversarial steel-manning.
+
 
 
 
@@ -202,7 +208,7 @@
 | zcode | ✅ Complete | Push-bug repair + deep dives: communication-protocols, self-healing, multi-agent-security (2026-09-14) |
 | cline | ⏳ Pending | Not connected |
 | freebuff | ✅ Complete | Pass-2 deep dives on all 10 testing outputs (2026-09-14); 13 multi-agent deep dives (2026-09-13) |
-| antigravity | ✅ Complete | Deep dives: memory, comms, security, scalability, tools, conflict-resolution |
+| antigravity | ✅ Complete | Deep dives: memory, comms, security, scalability, tools, conflict, HITL |
 | opencode | ⏳ Pending | Not connected |
 
 ## Output Inventory
@@ -225,7 +231,7 @@
 | `OUTPUT/production-deployment.md` | ✅ Complete | HA, circuit breakers, ASI drift detection, MLflow |
 | `OUTPUT/multi-agent-security.md` | ✅ Complete | 5-layer defense, ring-based access, canary verification + 3 deep dives (freebuff: trifecta/defense-data/microVMs; antigravity: bwrap containment/macaroons/zeroization/datamarking; zcode: MCP tool poisoning, per-edge trifecta, canary DLP, signed SOULs) |
 | `OUTPUT/scalability-patterns.md` | ✅ Complete | Hierarchical groups ≤10, decision boundary P_SA > 0.45 + 2 deep dives (freebuff: SWARM+ bounds; antigravity: ephemeral worker pool, work-stealing deque, BAMAS tree recursion & budget inheritance) |
-| `OUTPUT/human-in-the-loop.md` | ✅ Complete | Approval control plane, override tokens, EU AI Act |
+| `OUTPUT/human-in-the-loop.md` | ✅ Complete | Approval control plane, override tokens, EU AI Act + 2 deep dives (freebuff: Article 14, automation bias, fatigue; antigravity: zero-daemon CLI/IPC, TOCTOU locking, Little's law backpressure, decoy audits) |
 | `OUTPUT/conflict-resolution.md` | ✅ Complete | Weighted voting, reasoning trees, deadlock breaking + 2 deep dives (freebuff: Arrow's impossibility, HOLD-wins, judge bias; antigravity: Brier calibration, sequential consensus JSD, livelock preemption, SQLite CDPs) |
 | `OUTPUT/agent-embodiment.md` | ✅ Complete | 5-dimension personality, voice drift detection |
 | `OUTPUT/tool-differentiation.md` | ✅ Complete | Capability-based assignment, result sharing + 2 deep dives (freebuff: tool count failure curves; antigravity: dynamic toolsets v2, JetBrains observation masking, SQLite-WAL cache) |
