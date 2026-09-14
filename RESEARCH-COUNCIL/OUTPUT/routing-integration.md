@@ -78,3 +78,47 @@ The formation table's test mix (DUO: unit + PBT sample; PIPELINE: +70% mutation;
 - [Shah, 2025] System prompts as operational blueprints.
 - [KnowMBA, 2025] E2E caps and budgets.
 - [ArXiv, 2026] Self-testing gates at scale.
+
+---
+
+## [DEEP DIVE (freebuff, pass 2, 2026-09-14)]: Router Error Economics — Asymmetric Misrouting Costs, Learned Routing Evidence, and the Recall-First Design
+
+Pass-1 measures the router symmetrically ("misroute rate <5%, retune >5%"). The two error directions are not symmetric, and the evidence on learned routing changes how the router should be built and audited.
+
+### V1. Misrouting is asymmetric: recall-first, precision-floored
+
+- **False negative** (complex task routed SOLO, tester skipped): the COORD-01/02 failure class — code ships with zero tests. The cost is an escape, the crew's terminal metric; pass-1's own compliance data says assume ~100% skip without gating.
+- **False positive** (trivial task gets tester/PIPELINE): costs latency and compute only. The gate still runs, the verdict is PROMOTE, nothing escapes.
+
+With costs ordered FN ≫ FP, the needs_tester classifier must be **recall-first**: tuned so the FN rate approaches 0 (target ≤1%), accepting FP inflation up to the precision floor pass-1 already sets (>80% gated). The symmetric <5% misroute metric should be split into FN-misroute (target <1%, hard) and FP-misroute (target <25%, soft) — a single blended rate hides the dangerous direction. This is the standard cost-sensitive-threshold argument from detection theory applied to the router.
+
+### V2. Learned routing is proven technology — with one crucial adaptation
+
+RouteLLM (Ong et al., 2024; ICLR 2025) trains routers on human preference data to choose between a strong and weak model per query: **>2× cost reduction without quality loss** on public benchmarks; up to **85% cost reduction on MT Bench** at **95% of GPT-4 quality** (45% on MMLU, 35% on GSM8K) [Ong et al., arXiv:2406.18665; LMSYS blog, 2024; lm-sys/routellm]. Formation choice (SOLO/DUO/PIPELINE/FULL) is the same problem one level up: route each task to the cheapest pipeline that clears its quality bar, with the ledger's verdict history as the preference signal (which formations produced PROMOTEs without rework, at what token cost).
+
+The adaptation: RouteLLM's objective is quality-symmetric — it trades marginal quality against cost. Formation routing must weight FN asymmetrically (V1), so the router's loss function is cost-sensitive: `loss = C_FN × miss(test-needed) + C_FP × overshoot(test-not-needed) + λ × cost(formation)`, with C_FN set high enough that the calibrated router never trades a needed-tester miss for savings. The pass-1 skip list (narrow, verifiable) is the hand-written prior this learned layer must never override.
+
+### V3. The router needs its own regression suite
+
+Misroute rate is measured by review (pass-1: <5% retune). Add the software-engineering move the crew applies everywhere else: a **golden routing set** of 50–100 labeled tasks spanning the classification axes (complexity × verifiability × tool needs [Council Context, 2026]), rerun against every router threshold change, SOUL patch, or formation-table edit. A routing change that flips golden-set labels is a regression — blocked before deployment, exactly like a code change that reddens the suite (tdd-protocol state machine). Edge-case labels double as the adversarial drills testing-maturity pass-2 §M3 injects at the maturity gates.
+
+### V4. Log expected-vs-actual cost per route
+
+RouteLLM's headline numbers (85% savings) hold only while routing decisions are *correct*; wrong routing burns the expensive formation on cheap tasks (FULL for a trivial task) or the reverse. The ledger already records per-task metrics (quality-metrics 16 metrics); add **formation-cost variance** (expected tokens/wall-time for the chosen formation vs actual) as a standing router-calibration input. Systematically positive variance on SOLO→escalation paths is the FN signature; systematic overshoot on trivial FULL routes is the FP signature — both are actionable threshold moves at the quarterly calibration (blocking-authority §2).
+
+### Numbers for calibration (pass 2)
+
+| Quantity | Value | Source |
+|---|---|---|
+| RouteLLM cost reduction | >2× (up to 85% MT Bench / 45% MMLU / 35% GSM8K) | [Ong et al., 2024; LMSYS] |
+| Quality retained at max savings | 95% of GPT-4 (MT Bench) | same |
+| FN-misroute target | ≤1% (hard) | this dive, from COORD data |
+| FP-misroute target | <25% (soft; precision floor >80% gated) | pass-1 metrics reinterpreted |
+| Golden routing set | 50–100 labeled tasks, rerun on router changes | this dive |
+| Standing calibration input | formation-cost variance per route | this dive |
+
+### References (pass 2)
+1. [Ong et al., 2024] "RouteLLM: Learning to Route LLMs with Preference Data," arXiv:2406.18665 (ICLR 2025). https://arxiv.org/html/2406.18665v4 [verified: 2026-09-14]
+2. [LMSYS, 2024] "RouteLLM: An Open-Source Framework for Cost-Effective LLM Routing," 2024-07-01. https://www.lmsys.org/blog/2024-07-01-routellm/ [verified: 2026-09-14]
+3. [lm-sys/routellm] Framework README — "reduce costs by up to 85% while maintaining 95% GPT-4 performance." https://github.com/lm-sys/routellm [verified: 2026-09-14, snippet]
+4. Cross-refs: Council Context (classification axes); routing-integration pass 1 (activation rules, precision/recall metrics); blocking-authority pass 1 §2 (calibration); testing-maturity pass 2 (adversarial drills); tdd-protocol pass 1 (state machine).
