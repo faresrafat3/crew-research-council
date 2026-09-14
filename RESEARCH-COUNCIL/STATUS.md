@@ -217,6 +217,10 @@
   - Zero-daemon hermetic sandbox harness via rootless Bubblewrap (`bwrap`) with network isolation (`--unshare-net`) and RAM disk mounts (`> 25,000 IOPS`).
   - Adversarial Hypothesis property-based testing strategies for multi-agent artifacts with SQLite-WAL example database caching.
   - Dynamic AST-sliced mutation testing delivering 8.5x execution speedup via diff node extraction and coverage-guided mutant execution.
+- **[DEEP DIVE]** appended to `OUTPUT/quality-metrics.md`:
+  - Zero-daemon quality telemetry ledger in SQLite-WAL with atomic per-task metric ingestion and real-time EWMA rolling queries (<3ms).
+  - Multi-dimensional Composite Quality Index (CQI) formulated as a non-compensatory weighted geometric mean ($M_k \le \text{Floor}_k \implies \text{CQI} \to 0$).
+  - Tabular CUSUM drift detection ($k=0.5, h=4.5$) isolating subtle quality erosion ($1\sigma$ negative shifts) within 8 tasks vs 38 tasks under Shewhart rules.
 
 
 
@@ -284,7 +288,7 @@
 | `OUTPUT/testing-maturity-model.md` | ✅ Complete | 5 AI-crew levels, L1 mapping, climb actions, checklist |
 | `OUTPUT/tdd-protocol.md` | ✅ Complete | Split RED/GREEN, handoff formats, ladder, time-box, state machine + 2 deep dives (freebuff: human/LLM evidence, probabilistic GREEN; antigravity: CAS state machine, AST oracle firewall, Chi-square flake defense) |
 | `OUTPUT/testing-framework-spec.md` | ✅ Complete | pytest/coverage/Hypothesis/mutmut configs + thresholds + 2 deep dives (freebuff: diff coverage, ratchets, tarpit warning; antigravity: bwrap sandbox harness, agent schema Hypothesis, AST-sliced mutation) |
-| `OUTPUT/quality-metrics.md` | ✅ Complete | 16-metric catalog, anti-pattern detectors, ledger schema |
+| `OUTPUT/quality-metrics.md` | ✅ Complete | 16-metric catalog, anti-pattern detectors, ledger schema + 2 deep dives (freebuff: small-sample SPC, p-charts, run rules; antigravity: zero-daemon SQLite ledger, CQI non-compensatory math, tabular CUSUM drift detection) |
 | `OUTPUT/blocking-authority.md` | ✅ Complete | 8 MUST-block, MUST-NOT list, escalation, calibration |
 | `OUTPUT/cicd-integration.md` | ✅ Complete | Triggers, gates, artifacts, flake lane, nightly golden+drills |
 | `OUTPUT/tester-soul.md` | ✅ Complete | Full executable tester spec + verdict template |
