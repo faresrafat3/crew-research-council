@@ -66,6 +66,22 @@
   10. `tester-soul.md` — regression test selection: Ekstazi 32% time reduction and 80%-of-failures at 66% time saved, STARTS 40.5%, T-TS 15%-selection/5.9x speedup, Ekstazi-vs-STARTS safety/precision comparison, three-tier rerun protocol with RTS-safety KPI ≥95%, always-run core, prioritization order
   11. `gate-toolkit.md` — **new output (breakthrough pass)**: executable pass-2 protocols — `gate_toolkit.py` (stdlib-only Python) implements c=0 audit sampling, zero-flip flake gate, RTS-safety KPI, p-chart limits, and Nelson run rules with 20-point baseline lock; verified by 35 green tests and a 100% mutation score on a 15-mutant harness (beats the council's own 70/80 gate)
 
+### freebuff — 2026-09-14 (pass 3)
+- **Pass-3 deep-dive cycle completed** — third `[DEEP DIVE]` cycle on all 13 multi-agent outputs, angles chosen to avoid overlap with pass 1 (freebuff) and the pass-2 dives (Antigravity, zcode, cline); all claims web-verified against primary sources, snippet-only items marked in-text:
+  1. `memory-architecture.md` — concurrent-write consistency: CRDT register semantics (MV-Register over LWW for mutable state; grow-only for observations), STALE benchmark (implicit memory conflict; best model 55.2%), forgetting as policy (TTL → usage decay → staleness detection, one dial per memory tier)
+  2. `communication-protocols.md` — sagas for multi-step agent actions (registered compensations at dispatch, reverse-order undo; ledger as saga log), Hybrid Logical Clocks for causal ordering ((physical, logical, node-id) tuples; MongoDB/CockroachDB precedent)
+  3. `self-healing.md` — automated RCA on agent traces: RCACopilot production evidence (0.766 accuracy, 4+ years at Microsoft), OpenRCA benchmark limits (~1 in 3 solve rate; 1,675 runs, 12 pitfall types; communication-protocol enrichment cuts comm failures up to 15pp), healer RCA protocol (route → pin evidence → coverage checklist → escalate)
+  4. `multi-agent-security.md` — workload identity: SPIFFE/SVIDs for agents (who-not-where, short-lived credentials, brokered secrets), trust bootstrapping via human-anchored root (TOFU below it), mid-lifecycle re-attestation alarms
+  5. `production-deployment.md` — LLM-serving capacity math: continuous batching (Orca iteration-level; up to 23x throughput), PagedAttention KV-cache, TTFT/TPOT as separate SLO contracts per agent class, prefix caching as capacity intervention
+  6. `scalability-patterns.md` — power-of-two-choices dispatch (max load ln ln n; 2 queue probes per task), consistent hashing for task-memory affinity (survives agent restarts), composed layer table with pass 1-2
+  7. `human-in-the-loop.md` — calibrated abstention: escalation gate as selective predictor with conformal guarantee (auto-PROMOTED escape rate ≤ 1/20 at 95%), quarterly recalibration, drift-triggered recomputation; Article 14 artifact upgrade
+  8. `conflict-resolution.md` — Dung argumentation frameworks: grounded semantics as the verdict kernel (unique, always exists, content-independent), preferred-semantics divergence as the formal definition of "genuinely ambiguous" → human escalation, HOLD default for unestablished claims
+  9. `agent-embodiment.md` — psychometric validity warning: Big Five inventories fail on LLMs (N=264 models: between-model variance 7-17%, four of five facets collapse r ≥ .90, alignment shifts toward desirable profiles); questionnaire scores replaced by behavioral audits + activation-space monitoring
+  10. `tool-differentiation.md` — stateful tool evaluation: BFCL V3's state-verification turn (end-state checks, not call traces), ToolSandbox hard dimensions (state-dependence, implicit preferences, dynamic availability), crew tool-competence gate protocol
+  11. `cost-optimization.md` — output-length governance (caps/stop-conditions/brevity SLOs; output tokens as first-class ledger metric) and speculative decoding economics (lossless; 1.4-1.6x to 2-3x by acceptance rate; latency lever, cost lever only self-hosted)
+  12. `evaluation-frameworks.md` — benchmark contamination protocol for the crew's own eval assets (inventory + provenance, n-gram/MinHash screening, canary strings, post-cutoff time-slice parity, rotation-not-deletion); conformal calibration sets must be contamination-audited
+  13. `explainability.md` — CoT is not an explanation: unfaithful CoT in the wild (up to 13% production models; ICML 2026), two-tier trace policy (Tier-1 causal artifacts admissible for verdicts, CoT advisory via JUST= field), quarterly faithfulness spot-audits
+
 ### Scout — 2026-09-13 (Second Pass)
 - **13 new INBOX prompts completed** (multi-agent systems research):
   1. **P1 Multi-Agent Memory and Knowledge Management** → `memory-architecture.md`
@@ -243,7 +259,7 @@
 | workbuddy | ⏳ Pending | Not connected |
 | zcode | ✅ Complete | Push-bug repair + deep dives: communication-protocols, self-healing, multi-agent-security (2026-09-14) |
 | cline | ⏳ Pending | Not connected |
-| freebuff | ✅ Complete | Pass-2 deep dives on all 10 testing outputs (2026-09-14); 13 multi-agent deep dives (2026-09-13) |
+| freebuff | ✅ Complete | Pass-3 deep dives on all 13 multi-agent outputs (2026-09-14); pass-2 testing dives (2026-09-14); pass-1 multi-agent dives (2026-09-13) |
 | antigravity | ✅ Complete | Deep dives across all 13 multi-agent architecture domains + TDD protocol (2026-09-14) |
 | opencode | ⏳ Pending | Not connected |
 
@@ -276,4 +292,5 @@
 | `OUTPUT/explainability.md` | ✅ Complete | Structured traces, time-travel debugging, root cause analysis + 2 deep dives (freebuff: counterfactual attribution, OTel-native traces, deterministic capture; antigravity: zero-daemon CoW checkpointing, causal slicing, Shapley fault localization, dual-fidelity explanations) |
 | *(all 13 multi-agent files above)* | ✅ Deep-dived | freebuff 2026-09-13: one `[DEEP DIVE]` cycle each — validation gates, standards alignment (A2A/MCP/OTel/W3C), and measured thresholds appended |
 | *(all 10 testing-domain files above)* | ✅ Deep-dived (pass 2) |
+| *(all 13 multi-agent files above)* | ✅ Deep-dived (pass 3) | freebuff 2026-09-14: third `[DEEP DIVE]` cycle — CRDT memory consistency, sagas + HLC, LLM RCA (RCACopilot/OpenRCA), SPIFFE workload identity, LLM-serving SLO math, power-of-two dispatch, conformal abstention, Dung argumentation, Big Five validity warning, stateful tool evals, output governance + speculative decoding, contamination audits, two-tier trace policy |
 | `OUTPUT/gate-toolkit.md` | ✅ Complete | Executable pass-2 protocols (stdlib Python), 35-test suite, mutation harness — 100% mutation score (freebuff 2026-09-14) | freebuff 2026-09-14: second `[DEEP DIVE]` cycle — coverage floors (diff-coverage/ratchet), CI supply-chain hardening (SHA pinning/OIDC/attestation), Goodhart-resistant maturity appraisal, audit sampling math, router economics, SPC for the ledger, RTS rerun policy |
