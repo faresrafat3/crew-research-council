@@ -311,3 +311,42 @@ When runaway agents enter looping or deadlocked states, hard process termination
 - [Flexera, 2026] Prompt Caching Economic Breakdown: Break-even Analysis and Write-Surcharge Mechanics. flexera.com/blog.
 - [SQLite, 2024] SQLite Common Table Expressions (Hierarchical Tree Queries). sqlite.org/lang_with.html.
 
+## [DEEP DIVE (freebuff, pass 3, 2026-09-14)]: Output-Length Governance and Speculative Decoding — The Cost Levers Past the Cache
+
+Pass-1 covered FrugalGPT cascades and cache-write economics; pass-3 covers the two levers left out: **the output side** (where most token spend actually happens) and **inference-time speedups** that change the unit economics without changing the bill's token count.
+
+### 1. Output dominates the bill — govern it like a budget
+- The arithmetic is structural: output tokens typically price at a **multiple of input tokens** (commonly 3–5× across major providers) and agents generate far more output than their prompts are long across a task's turns. Yet the pass-1 cost controls (cascades, cache discipline) act almost entirely on the input side. The missing governance: **max-output-token caps per agent class** (tester verdicts and critic reviews get hard caps; draft artifacts get larger ones), **stop-condition discipline** (structured verdicts end at the template, not at ramble), and **brevity SLOs** in the SOUL ("verdict ≤ N lines") — each enforced by the verifiable-instruction pattern (engineer-soul pass 2: a cap is CI-checkable from the response metadata, unlike "be concise").
+- The routing layer (routing pass 2) interacts: a cascade that routes easy verdicts to a cheaper model only saves if the cheap model's *verbosity* is also controlled — cost-per-task is tokens × price, and cheap models that over-generate can erase the routing gain. Track **output tokens per task** as a first-class ledger metric alongside $/successful-task.
+
+### 2. Speculative decoding: the same bill, faster
+- Speculative decoding (draft model proposes k tokens; target verifies in parallel; rejected tokens are redrafted) is **lossless** — the target model's distribution is preserved exactly (rejection sampling guarantees the output distribution is unchanged) [Leviathan et al., ICML 2023; Chen et al., 2023]. Speedups scale with the draft-target **acceptance rate**: production measurements range from ~**1.4–1.6×** in vLLM deployments [jarvislabs, 2025] to **2–3×** with well-aligned draft models and high acceptance (>80%) [mindstudio, 2026; BentoML, 2025]; Online Speculative Decoding keeps the draft aligned by distilling on the live query stream, recovering acceptance as distribution drifts [arXiv:2310.07177].
+- Crew economics: speculative decoding changes **wall-clock per token, not $/token** (verification costs target-model FLOPs either way) — so it is a *latency* lever first (TTFT/TPOT pair, production pass 3) and a *cost* lever only where latency converts to money (interactive gates that burn human wait time, or self-hosted fleets where throughput = revenue). The honest ledger entries: tokens stay identical; p95 gate time drops; where the crew self-hosts, cost per task falls with the throughput gain.
+- Draft-model choice is a governance decision: the draft must be *aligned with the target's distribution* (distilled or same-family) or acceptance collapses — the same model-diversity logic as blocking-authority, inverted: here correlation is the feature.
+
+### 3. Composing the levers
+| Lever | Acts on | Effect on bill | Source dive |
+|---|---|---|---|
+| Prompt caching (APC) | input tokens | −input cost | pass 1 |
+| Cascades/routing | which model | price per token | pass 1 / routing pass 2 |
+| **Output caps + stop discipline** | output tokens | −output cost (the dominant term) | pass 3 (this dive) |
+| **Speculative decoding** | wall-clock/throughput | latency −; cost only if self-hosted | pass 3 (this dive) |
+
+### Numbers for calibration (pass 3)
+
+| Quantity | Value | Source |
+|---|---|---|
+| Output-vs-input pricing | commonly 3–5× | [provider pricing sheets, snippet-level] |
+| Speculative decoding guarantee | lossless (exact target distribution) | [Leviathan et al., 2023] |
+| Measured speedups | ~1.4–1.6× (vLLM) up to 2–3× (aligned drafts, >80% acceptance) | [jarvislabs, 2025; mindstudio, 2026] |
+| Acceptance-recovery | online distillation on live queries | [arXiv:2310.07177] |
+| New ledger metric | output tokens per task | this dive |
+
+### References (pass 3)
+1. [Leviathan et al., 2023] "Fast Inference from Transformers via Speculative Decoding," ICML 2023. [verified: 2026-09-14, standard citation]
+2. [Chen et al., 2023] "Accelerating Large Language Model Decoding with Speculative Sampling." [verified: 2026-09-14, standard citation]
+3. [arXiv:2310.07177] "Online Speculative Decoding." https://arxiv.org/html/2310.07177v4 [verified: 2026-09-14]
+4. [jarvislabs, 2025] "Speculative Decoding in vLLM" (1.4–1.6×). https://jarvislabs.ai/blog/speculative-decoding-vllm-faster-llm-inference [verified: 2026-09-14, snippet]
+5. [mindstudio, 2026] "Speculative Decoding Explained" (>80% acceptance → 2–3×). https://www.mindstudio.ai/blog/speculative-decoding-explained-ai-agents [verified: 2026-09-14, snippet]
+6. [BentoML, 2025] "3× Faster LLM Inference with Speculative Decoding." https://www.bentoml.com/blog/3x-faster-llm-inference-with-speculative-decoding [verified: 2026-09-14, snippet]
+7. [Provider pricing, contrast] output-token multiples vs input (3–5× typical). [unverified exact figures — cutoff-dependent; mark before quoting]
