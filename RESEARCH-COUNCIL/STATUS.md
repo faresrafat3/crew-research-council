@@ -183,6 +183,11 @@
   - Dynamic causal trace slicing constructing backwards reachable cones, pruning >85% of extraneous spans down to 4–7 candidate decision nodes.
   - Dataflow-aware Shapley value fault localization ($f(S)$ gate pass evaluation), mathematically isolating Root Causal Drivers with >90% attribution accuracy.
   - Dual-fidelity explanation architecture: Level-0 RFC 6902 machine proofs paired with Level-1 operator summaries bounded by 100% semantic faithfulness verification.
+- **[DEEP DIVE]** appended to `OUTPUT/agent-embodiment.md`:
+  - Zero-daemon stylometric (TTR, MSL, readability, passive voice, jargon) and semantic voice tracking ledger in SQLite-WAL.
+  - Multivariate Mahalanobis distance drift gating ($D_M \le 2.0$ nominal, $> 3.0$ critical erosion) preserving covariance structures across stylistic dimensions.
+  - Two-tier in-context persona rehabilitation: soft prompt re-anchoring followed by non-destructive Tier B conversation buffer flushes.
+  - Cognitive orthogonality metrics ($\mathcal{O} > 0.45$) and synthetic adversarial decoy probing to preempt multi-agent sycophancy collapse.
 
 
 
@@ -230,7 +235,7 @@
 | zcode | ✅ Complete | Push-bug repair + deep dives: communication-protocols, self-healing, multi-agent-security (2026-09-14) |
 | cline | ⏳ Pending | Not connected |
 | freebuff | ✅ Complete | Pass-2 deep dives on all 10 testing outputs (2026-09-14); 13 multi-agent deep dives (2026-09-13) |
-| antigravity | ✅ Complete | Deep dives: memory, comms, security, scalability, tools, conflict, HITL, prod, cost, eval, explain |
+| antigravity | ✅ Complete | Deep dives: memory, comms, security, scalability, tools, conflict, HITL, prod, cost, eval, explain, embodiment |
 | opencode | ⏳ Pending | Not connected |
 
 ## Output Inventory
@@ -255,7 +260,7 @@
 | `OUTPUT/scalability-patterns.md` | ✅ Complete | Hierarchical groups ≤10, decision boundary P_SA > 0.45 + 2 deep dives (freebuff: SWARM+ bounds; antigravity: ephemeral worker pool, work-stealing deque, BAMAS tree recursion & budget inheritance) |
 | `OUTPUT/human-in-the-loop.md` | ✅ Complete | Approval control plane, override tokens, EU AI Act + 2 deep dives (freebuff: Article 14, automation bias, fatigue; antigravity: zero-daemon CLI/IPC, TOCTOU locking, Little's law backpressure, decoy audits) |
 | `OUTPUT/conflict-resolution.md` | ✅ Complete | Weighted voting, reasoning trees, deadlock breaking + 2 deep dives (freebuff: Arrow's impossibility, HOLD-wins, judge bias; antigravity: Brier calibration, sequential consensus JSD, livelock preemption, SQLite CDPs) |
-| `OUTPUT/agent-embodiment.md` | ✅ Complete | 5-dimension personality, voice drift detection |
+| `OUTPUT/agent-embodiment.md` | ✅ Complete | 5-dimension personality, voice drift detection + 2 deep dives (freebuff: persona vectors, collapse dynamics, DPC metric; antigravity: stylometric voice vectors, Mahalanobis drift gating, in-context re-anchoring, anti-sycophancy probing) |
 | `OUTPUT/tool-differentiation.md` | ✅ Complete | Capability-based assignment, result sharing + 2 deep dives (freebuff: tool count failure curves; antigravity: dynamic toolsets v2, JetBrains observation masking, SQLite-WAL cache) |
 | `OUTPUT/cost-optimization.md` | ✅ Complete | 3-tier routing, caching, APC, budget enforcement + 2 deep dives (freebuff: FrugalGPT, cache-writes, unit cost; antigravity: SQLite cost ledger, cache anchors, RouteLLM, non-fatal preemption) |
 | `OUTPUT/evaluation-frameworks.md` | ✅ Complete | 6 archetypes, coordination metrics, trace-to-eval + 2 deep dives (freebuff: Agent-as-a-Judge, Goodhart discipline, flake budgets; antigravity: zero-daemon replay compiler, synergy ratio, Wald SPRT, McNemar paired testing) |
