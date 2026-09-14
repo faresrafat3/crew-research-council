@@ -64,6 +64,7 @@
   8. `routing-integration.md` — router error economics: asymmetric FN(≤1%, hard) vs FP(<25%, soft) misroute targets from COORD data, RouteLLM evidence (>2x, up to 85% savings at 95% GPT-4 quality) with cost-sensitive loss adaptation, golden routing regression set, formation-cost variance as calibration input
   9. `quality-metrics.md` — small-sample statistics: p-charts for varying-n rates, run rules over single-point alarms, <1% flake claim restated in verifiable c=0 form (0 flips/20 runs), 20-point baseline lock, correlation caution for shared-module tasks
   10. `tester-soul.md` — regression test selection: Ekstazi 32% time reduction and 80%-of-failures at 66% time saved, STARTS 40.5%, T-TS 15%-selection/5.9x speedup, Ekstazi-vs-STARTS safety/precision comparison, three-tier rerun protocol with RTS-safety KPI ≥95%, always-run core, prioritization order
+  11. `gate-toolkit.md` — **new output (breakthrough pass)**: executable pass-2 protocols — `gate_toolkit.py` (stdlib-only Python) implements c=0 audit sampling, zero-flip flake gate, RTS-safety KPI, p-chart limits, and Nelson run rules with 20-point baseline lock; verified by 35 green tests and a 100% mutation score on a 15-mutant harness (beats the council's own 70/80 gate)
 
 ### Scout — 2026-09-13 (Second Pass)
 - **13 new INBOX prompts completed** (multi-agent systems research):
@@ -232,4 +233,5 @@
 | `OUTPUT/evaluation-frameworks.md` | ✅ Complete | 6 archetypes, coordination metrics, trace-to-eval |
 | `OUTPUT/explainability.md` | ✅ Complete | Structured traces, time-travel debugging, root cause analysis |
 | *(all 13 multi-agent files above)* | ✅ Deep-dived | freebuff 2026-09-13: one `[DEEP DIVE]` cycle each — validation gates, standards alignment (A2A/MCP/OTel/W3C), and measured thresholds appended |
-| *(all 10 testing-domain files above)* | ✅ Deep-dived (pass 2) | freebuff 2026-09-14: second `[DEEP DIVE]` cycle — coverage floors (diff-coverage/ratchet), CI supply-chain hardening (SHA pinning/OIDC/attestation), Goodhart-resistant maturity appraisal, audit sampling math, router economics, SPC for the ledger, RTS rerun policy |
+| *(all 10 testing-domain files above)* | ✅ Deep-dived (pass 2) |
+| `OUTPUT/gate-toolkit.md` | ✅ Complete | Executable pass-2 protocols (stdlib Python), 35-test suite, mutation harness — 100% mutation score (freebuff 2026-09-14) | freebuff 2026-09-14: second `[DEEP DIVE]` cycle — coverage floors (diff-coverage/ratchet), CI supply-chain hardening (SHA pinning/OIDC/attestation), Goodhart-resistant maturity appraisal, audit sampling math, router economics, SPC for the ledger, RTS rerun policy |
