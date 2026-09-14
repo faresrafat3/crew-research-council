@@ -134,3 +134,76 @@ quarterly_calibration():
 - [Eleks, 2025] Independent Oracle: oracle separation, tautology detection
 - [ArXiv, 2025] MutGen: mutation gate catches weak assertions
 - [TMMi Foundation, 2018] Level 5: calibration, process optimization
+
+---
+
+## [DEEP DIVE (freebuff, pass 2, 2026-09-14)]: Audit Sampling Mathematics — How Many Verdicts to Review and What the Sample Can Prove
+
+Pass-1 anti-collusion measure #5 says: "Human reviews 5% of PROMOTED tasks randomly." It names no sample size, no confidence level, and no detection claim — and that gap matters, because the human audit is the only layer that can catch collusion *between* the machine gates (§4's other defenses each assume at least one uncorrupted component). An undersized audit delivers false assurance, which is worse than no audit: it is rubber-stamping with an alibi.
+
+### B1. The c=0 zero-acceptance plan: deriving n
+
+For attribute sampling with zero tolerated bad verdicts, the sample size needed to have confidence C of catching at least one bad verdict when the true bad rate is p is:
+
+```
+n = ln(1 − C) / ln(1 − p)
+```
+
+This is the standard c=0 acceptance-sampling plan (zero-nonconformity plans); LTPD-style plans and OC curves are the classical framing [NIST/SEMATECH Engineering Statistics Handbook; NCSS c=0 procedure; variation.com]. Evaluation is attribute-style: a sampled verdict is either validated or defective — no partial credit.
+
+**Derived sample sizes at 95% confidence:**
+
+| True bad-verdict rate p | Required n = ln(0.05)/ln(1−p) |
+|---|---|
+| 10% | 29 |
+| 5% | 59 |
+| 2% | 149 |
+| 1% | 299 |
+
+### B2. What a 5% sample actually detects
+
+The pass-1 "5% of PROMOTEs" rule scales n with volume: 200 quarterly PROMOTEs → n=10 sampled verdicts. Detection probability for a true bad rate p is 1−(1−p)^n:
+
+| True rate p | Detection probability (n=10) |
+|---|---|
+| 10% | 65% |
+| 5% | 40% |
+| 2% | 18% |
+
+A 5% sample leaves a 5%-rate collusion undetected **60% of the time**. The fix is not sampling *more of everything* (B4) but sampling to a *stated claim*: the operator should pick the worst tolerable collusive/defective verdict rate and review the c=0-derived n. Recommendation: "95% confidence of detecting collusion affecting ≥5% of verdicts" → **n=59 per quarter**, volume-independent.
+
+### B3. Rule of three: reading a clean sample
+
+When the audit finds zero defects in n sampled verdicts, the 95% upper bound on the bad rate is ≈ 3/n (rule of three). A clean 59-verdict audit certifies a bad rate below ~5.1% — no better. This bounds what calibration can conclude from audit data: pass-1's §2 calibration algorithm moves thresholds on FP signals, but a *clean sample* is absence of evidence, not evidence of absence; threshold moves justified only by audit cleanliness should be conservative (the ±5% clamp already encodes this).
+
+### B4. Stratify before you randomize
+
+Uniform random sampling spends n on high-volume trivial verdicts. Stratify the quarterly plan by information value:
+1. **Appeal-overturned blocks** — oversample 3×; an overturned block is already half a collusion signal (§1 Pattern 3).
+2. **FULL formation verdicts** — highest blast radius; every FULL PROMOTE in the quarter should be *eligible* with elevated selection weight.
+3. **New-module or new-agent verdicts** — fresh failure surfaces.
+4. **Maintenance verdicts** — lowest weight.
+
+Stratified attribute sampling is standard audit practice; the AQL/OC-curve machinery applies per stratum [SixSigma.us attribute sampling; NIST/SEMATECH].
+
+### B5. Audit cadence and the fatigue budget
+
+Pass-1's fatigue model (Pattern 5: >5 escalations/week degrades human review) applies to the audit itself: 59 verdicts/quarter ≈ 5/week of *audit* review on top of escalations. Two mitigations keep the audit inside the attention budget: batch the audit into one weekly 60-minute session (5 verdicts × ~10 min evidence review, verdict evidence is machine-fetched by the auditor agent), and rotate auditors if more than one human operator exists. If the audit backlog grows, reduce scope by *tightening p* honestly (declare a 10% detection target → n=29) rather than silently skimming the sample — a silently skimmed audit is Pattern 2 (the rubber stamp) wearing an auditor's badge.
+
+### Numbers for calibration (pass 2)
+
+| Quantity | Value | Source |
+|---|---|---|
+| n for 95% confidence @ p=5% | 59 | c=0 plan, derived [NIST/SEMATECH] |
+| n for 95% confidence @ p=1% | 299 | same |
+| 5%-sample (n=10) detection of 5% rate | 40% (1−0.95¹⁰) | derived |
+| Clean-sample upper bound (rule of three) | ≈3/n | [NCSS; standard] |
+| Pass-1 audit rule, revised | fixed-n c=0 stratified plan, not 5% volume share | this dive |
+| Audit load at n=59 | ~5 verdicts/week | derivation |
+
+### References (pass 2)
+1. [NIST/SEMATECH] Engineering Statistics Handbook, §7.2.2 "Lot Acceptance Sampling Plans" — LTPD, OC curves. https://www.itl.nist.gov/div898/handbook/pmc/section2/pmc22.htm [verified: 2026-09-14]
+2. [NCSS] "Acceptance Sampling for Attributes with Zero Nonconformities" (c=0 plans). https://www.ncss.com/wp-content/themes/ncss/pdf/Procedures/PASS/Acceptance_Sampling_for_Attributes_with_Zero_Nonconformities.pdf [verified: 2026-09-14, doc page]
+3. [variation.com] "Selecting Statistically Valid Sampling Plans" — AQL, 95% acceptance mechanics. https://variation.com/selecting-statistically-valid-sampling-plans/ [verified: 2026-09-14, snippet]
+4. [SixSigma.us] "How Attribute Sampling Works" — AQL, OC curves, plan selection. https://www.6sigma.us/six-sigma-in-focus/attribute-sampling/ [verified: 2026-09-14, snippet]
+5. Cross-refs: blocking-authority.md pass 1 §2 (calibration algorithm), §4 (anti-collusion), Pattern 5 (fatigue); tester-soul.md cycle 4 (escape-classification).
