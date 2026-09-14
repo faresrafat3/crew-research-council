@@ -324,3 +324,22 @@ $$\chi^2 = \sum_{j \in \{\text{Pass}, \text{Fail}\}} \frac{(O_j - E_j)^2}{E_j} =
 - [Cochran, 1952] The $\chi^2$ Test of Goodness of Fit. Annals of Mathematical Statistics, 23(3), 315-345.
 - [Herlihy & Shavit, 2012] The Art of Multiprocessor Programming (Optimistic Concurrency & CAS State Machines). Morgan Kaufmann.
 
+
+## [DEEP DIVE (freebuff, pass 3, 2026-09-14)]: London vs Detroit — Mockist and Classicist TDD, and What Mocks Do to Refactoring Safety
+
+Pass 2 established *whether* TDD works (human and LLM evidence) and the probabilistic-GREEN variant. One axis remains unexamined: *which* TDD. Fowler's taxonomy separates **mockist (London-school)** TDD — driving design top-down with interaction tests on mock collaborators — from **classicist (Detroit-school)** TDD — real collaborators, state assertions [Fowler, "Mocks Aren't Stubs," martinfowler.com — verified].
+
+**The tradeoff that matters for agents.** Mock-heavy suites couple tests to implementation details: a behavior-preserving refactor breaks tests because call sequences changed. Meszaros catalogs this as the fragile-test problem; Fowler notes the mockist style risks "tests coupled to implementation" while classicist risks late failure localization [Fowler 2007; Meszaros, *xUnit Test Patterns* — literature]. For human teams this is a preference; for the crew it is an economics problem, because agent-authored refactors are frequent and test breakage forces reviewer cycles (engineer-soul pass 3). The TDD defect evidence from pass 2 does not condition on school — so the cheaper-maintenance default should win.
+
+**Protocol deltas for the TDD protocol.**
+1. **Default classicist**: real collaborators within the repo; state assertions over interaction assertions.
+2. Mocks are permitted **only at true boundaries** already defined as ports/adapters in the framework spec (HTTP, filesystem, clock, external model APIs). A mock inside the repo boundary is a review-blockable offense.
+3. Interaction assertions are restricted to **protocol contracts** (message shapes, ordering guarantees), never internal call counts — the latter are exactly what a legitimate refactor changes.
+4. **Refactor checkpoint rule** (extends pass-2 probabilistic-GREEN): if a pure refactor breaks a test that mocks nothing, the test is misclassified — fix the test's classification before proceeding, and log the misclassification to the quality ledger as a suite-accuracy signal (tester-soul pass 2 RTS-safety already measures the analogous quantity for selection).
+
+**Cross-links:** testing-framework-spec pass 3 (characterization tests are the sanctioned exception to refactor-safety), engineer-soul pass 3 (review cost of broken suites), tester-soul pass 2 (RTS-safety KPI ≥95% — misclassification erodes it).
+
+**Sources.**
+1. [Fowler, 2007] "Mocks Aren't Stubs." https://martinfowler.com/articles/mocksArentStubs.html [verified: 2026-09-14]
+2. [Meszaros, 2007] *xUnit Test Patterns: Refactoring Test Code* — fragile test taxonomy [literature].
+3. [Freeman & Pryce, 2009] *Growing Object-Oriented Software, Guided by Tests* — the London-school methodology, read here as the counterpoint [literature].
