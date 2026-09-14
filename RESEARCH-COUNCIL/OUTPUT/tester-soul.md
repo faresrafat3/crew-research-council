@@ -178,3 +178,53 @@ One optional field: `MUTF=<shown>/<acted>` — mutant findings surfaced vs acted
 8. [Papadakis et al., 2018] "Are Mutation Scores Correlated with Real Fault Detection? A Large-Scale Empirical Study," IEEE TSE. [verified: 2026-09-13, TinyFish search snippets, 2 independent hosts]
 9. [Spotify Engineering, 2018] "Testing of Microservices." https://engineering.atspotify.com/2018/01/testing-of-microservices/ [verified: 2026-09-13, TinyFish fetch]
 10. [Wikipedia, 2026] "GPT-5.2" — release date 2025-12-11 (auxiliary date for ref 5). https://en.wikipedia.org/wiki/GPT-5.2 [verified: 2026-09-13, TinyFish fetch]
+
+## [DEEP DIVE (freebuff, pass 2, 2026-09-14)]: Which Tests to Run — Regression Test Selection, Prioritization, and the Safety-Measured Rerun Policy
+
+Cycles 1–4 covered what the tester's tests must assert (oracle quality, assertion strength, determinism, mutation deployment). This cycle covers the tester's most frequent daily decision, which the base spec leaves implicit: **what to run on every engineer change**. The base spec and cycle 4 mandate full-suite reruns (never accept stale runs); for a growing suite that collides with the <10-minute fast-gate budget (cicd-integration pass 1). Regression test selection (RTS) is the measured compromise — with safety data the tester must track, not assume.
+
+### S1. The RTS evidence: real savings, measurable safety cost
+
+- **Ekstazi** (file-content-hash-based selection, Java) reduced end-to-end testing time by **32% on average** vs running all tests across its evaluation projects [Gligorić et al., 2015]; in industrial automated-testing deployments, optimized suites detected **on average 80% of failures while saving 66% of execution time** (vs 81% failure detection for full runs) [Gligorić et al., 2015 / industrial deployment data].
+- **STARTS** (method-level selection) saved **40.5% of testing time** vs rerunning everything in a 2023 case study [Dang, 2023].
+- Industrial targeted selection goes further: T-TS selects **15% of tests**, cutting execution time **5.9×** and pipeline latency **5.6×** on live industrial data [arXiv:2509.10279, 2025].
+- The cost is two-sided: selection can miss failures (**safety violations**) or fail spuriously on unaffected code (**precision violations**). In a four-technique comparison, STARTS and Ekstazi showed no difference in safety violations, but Ekstazi had **significantly fewer precision violations** [Shin et al., 2022, JSS].
+
+### S2. Crew rerun protocol: three tiers with a measured safety KPI
+
+1. **PR fast gate — selection + always-run core.** Ekstazi-style file-hash selection, PLUS an always-run set: every test mapped to a touched REQ-ID (from the routing artifacts), every test that caught a fault in the trailing 90 days (ledger history), and every test adjacent to a quarantine event. The always-run core exists because RTS's failure mode is exactly the test you needed and didn't select.
+2. **Nightly — full suite.** The full run is the safety *measurement*, not just a safety net: any failure the PR-gate selected set missed is labeled in the ledger as an RTS miss.
+3. **Safety KPI.** `RTS-safety = (failures caught by selected set) / (failures caught by full run)`, tracked in the 16-metric ledger. Target ≥95% measured over a 20-task window before RTS may gate PRs; below that, selection runs advisory only (shadow mode, per implementation-roadmap pass-2 §R2). Precision violations (selected test fails, full run passes) route to the flake lane — they are indistinguishable from flakes by symptom.
+
+### S3. Prioritization when selection still exceeds the budget
+
+When even the selected set overflows the latency budget, **prioritize — never truncate silently**. Order:
+1. Tests mapped to changed REQ-IDs (highest information per second — they gate the change's stated purpose).
+2. Tests with recent fault-coupling history (ledger: caught a fault in trailing 90 days).
+3. Fastest-first within classes (maximize tests executed inside the budget).
+
+This is the classic test-prioritization objective — maximizing rate of fault detection per unit time (Elbaum, Malishevsky & Rothermel line of work, early 2000s) [unverified — lineage from training knowledge, not fetched this session] — adapted to ledger data the crew already has. The silent-truncation alternative is the worst option: it produces a green gate that ran an unknown subset, destroying the gate's meaning.
+
+### S4. RTS and the mutation gate share one principle
+
+Cycle 4's change-based mutation discipline (Google: mutants only on covered, changed lines [Petrović et al., 2021]) and cycle 4's long-standing-mutant baseline are the *mutant-side* of the same idea: scope work to the change, keep a stable baseline for trend comparability. RTS is the *test-side* of the same principle. Together they keep the fast gate inside its 10-minute budget as both suite and mutant population grow — the alternative (growing the gate until it blocks for an hour) is the E2E-bloat failure mode pass 1 already documents, reappearing one layer down.
+
+### Calibration numbers (pass 2)
+
+| Quantity | Value | Source |
+|---|---|---|
+| Ekstazi end-to-end time reduction | 32% avg | [Gligorić et al., 2015] |
+| Industrial RTS: failures detected / time saved | 80% / 66% (vs 81% full) | same |
+| STARTS time saved | 40.5% | [Dang, 2023] |
+| T-TS industrial: selection / exec time / pipeline | 15% / 5.9× / 5.6× | [arXiv:2509.10279, 2025] |
+| Ekstazi vs STARTS precision violations | Ekstazi significantly fewer; safety equal | [Shin et al., 2022] |
+| RTS-safety gate KPI | ≥95% over 20 tasks before blocking | this dive |
+| Always-run core | REQ-mapped ∪ recent-fault ∪ quarantine-adjacent | this dive |
+
+### References (pass 2)
+1. [Gligorić et al., 2015] "Ekstazi: Lightweight Test Selection," ICSE 2015 (tool paper). https://users.ece.utexas.edu/~gligoric/papers/GligoricETAL15EkstaziTool.pdf [verified: 2026-09-14]; industrial deployment figures via https://www.researchgate.net/publication/308869790_Ekstazi_Lightweight_Test_Selection [verified: 2026-09-14, snippet]
+2. [Ekstazi project] https://github.com/gliga/ekstazi [verified: 2026-09-14, repo page]
+3. [Shin et al., 2022] "An empirical comparison of four Java-based regression test selection techniques," Journal of Systems and Software. https://www.sciencedirect.com/science/article/am/pii/S0164121221002582 [verified: 2026-09-14, snippet]
+4. [Dang, 2023] "Reducing Testing Costs by Applying Regression Test Selection" (STARTS case study, HAW Hamburg). https://reposit.haw-hamburg.de/bitstream/20.500.12738/16796/1/BA_Reducing%20Testing%20Costs%20by%20Applying%20Regression%20Test%20Selection.pdf [verified: 2026-09-14, snippet]
+5. [arXiv:2509.10279, 2025] "Targeted Test Selection Approach in Continuous Integration." https://arxiv.org/html/2509.10279v1 [verified: 2026-09-14]
+6. Cross-refs: tester-soul cycles 1–4; cicd-integration pass 1 (fast-gate budget); implementation-roadmap pass 2 (shadow mode); quality-metrics pass 2 (ledger statistics).
