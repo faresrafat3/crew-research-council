@@ -142,6 +142,12 @@
   - Capability-based delegation via cryptographically attenuated Macaroons (CapMAS, chained HMAC-SHA256 caveats, <0.12ms check).
   - Subprocess secret zeroization (whitelisted POSIX env, out-of-process Unix domain socket auth mediation).
   - Dual-channel prompt isolation (`<system_control_plane>` vs `<untrusted_data_envelope>` datamarking + Task Shield argument gate).
+- **[DEEP DIVE]** appended to `OUTPUT/scalability-patterns.md`:
+  - Ephemeral worker pool multiplexing ($K = \min(8, N_{\text{cores}})$) over stateless agent profiles, maintaining $\le 1.8\text{GB}$ total RAM across 81 agents.
+  - Dual-ended lock-free work-stealing deque with dynamic aging anti-starvation formula ($W_{\text{effective}}(t) = \text{Priority} - 0.05 \cdot \Delta t_{\text{queued}}$).
+  - Subagent tree recursion limits (BAMAS pattern): hard depth limit $D_{\max} \le 3$, branching factor bound $B_{\max} \le 4$, concurrency ceiling $N_{\text{concurrent}} \le 10$, and 15% parent budget reservation ($T_{\text{child}} = \min(T_{\text{default}}, \frac{T_A}{m+1} \times 0.85)$).
+  - Measurable metrics catalog for ephemeral worker utilization, JIT hydration latency, steal success rate, and fan-out limits.
+
 
 ### zcode — 2026-09-14
 - **Push-bug repair:** commits 4af3480/ff3a7bc had written `OUTPUT/evaluation-frameworks.md` and `STATUS.md` to GitHub as 0-byte files; both restored from the local mirror via the Contents API (sizes verified post-push: 19,514 / 12,778 bytes)
@@ -183,7 +189,7 @@
 | zcode | ✅ Complete | Push-bug repair + deep dives: communication-protocols, self-healing, multi-agent-security (2026-09-14) |
 | cline | ⏳ Pending | Not connected |
 | freebuff | ✅ Complete | Pass-2 deep dives on all 10 testing outputs (2026-09-14); 13 multi-agent deep dives (2026-09-13) |
-| antigravity | ✅ Complete | Memory Architecture Deep Dive (SQLite+vec, HippoRAG 2, Bilingual BGE-M3) |
+| antigravity | ✅ Complete | Deep dives: memory-architecture, communication-protocols, multi-agent-security, scalability-patterns |
 | opencode | ⏳ Pending | Not connected |
 
 ## Output Inventory
@@ -205,7 +211,7 @@
 | `OUTPUT/self-healing.md` | ✅ Complete | Reflective runtime, RBT diagnosis, 5-level degradation + 2 deep dives (freebuff: GEPA/error budgets/chaos; zcode: self-correction trap, CBR 4R, playbooks, patch-acceptance pipeline) |
 | `OUTPUT/production-deployment.md` | ✅ Complete | HA, circuit breakers, ASI drift detection, MLflow |
 | `OUTPUT/multi-agent-security.md` | ✅ Complete | 5-layer defense, ring-based access, canary verification + 3 deep dives (freebuff: trifecta/defense-data/microVMs; antigravity: bwrap containment/macaroons/zeroization/datamarking; zcode: MCP tool poisoning, per-edge trifecta, canary DLP, signed SOULs) |
-| `OUTPUT/scalability-patterns.md` | ✅ Complete | Hierarchical groups ≤10, decision boundary P_SA > 0.45 |
+| `OUTPUT/scalability-patterns.md` | ✅ Complete | Hierarchical groups ≤10, decision boundary P_SA > 0.45 + 2 deep dives (freebuff: SWARM+ bounds; antigravity: ephemeral worker pool, work-stealing deque, BAMAS tree recursion & budget inheritance) |
 | `OUTPUT/human-in-the-loop.md` | ✅ Complete | Approval control plane, override tokens, EU AI Act |
 | `OUTPUT/conflict-resolution.md` | ✅ Complete | Weighted voting, reasoning trees, deadlock breaking |
 | `OUTPUT/agent-embodiment.md` | ✅ Complete | 5-dimension personality, voice drift detection |

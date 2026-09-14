@@ -52,6 +52,19 @@
   12. `evaluation-frameworks.md` — Agent-as-a-Judge (DevAI: 58% vs 32% human agreement, 18% cost), Goodhart metric pairs, flaky-eval budget (Google/Microsoft baselines), unified evaluation calendar
   13. `explainability.md` — counterfactual attribution via checkpoint replay, OTel-native trace storage, deterministic replay capture set (hash-validated), TTD SLO ladder, trace-store privacy boundary (ring ACLs + write-time redaction)
 
+### freebuff — 2026-09-14
+- **Pass-2 deep-dive cycle completed** — second `[DEEP DIVE]` cycle on all 10 testing-domain outputs, covering the operator-named themes (coverage floors, CI YAML, maturity assessments) plus adjacent gaps (all claims web-verified against primary sources; snippet-only items marked in-text):
+  1. `testing-framework-spec.md` — coverage floors without gaming: per-PR diff-coverage gate (diff-cover; Codacy 2026), never-down ratchet replacing the static 80% floor, tarpit warning (Stack Overflow Blog 2025), diff-gate + targeted-mutation pairing
+  2. `tdd-protocol.md` — TDD effectiveness evidence (Nagappan et al.: 40-90% defect-density reduction at 15-35% initial-time cost; mixed design results), LLM TDD evidence (WebApp1K: instruction loss in long prompts; MS Research +45.97% pass@1), probabilistic-GREEN protocol (n≥5 samples, pass-rate bands, model/temp provenance)
+  3. `cicd-integration.md` — CI supply-chain hardening: tj-actions/changed-files compromise (CVE-2025-30066, >23k repos, CISA alert), full-SHA pinning rule, script-injection ban on `${{ }}` interpolation (agent text is untrusted CI input), OIDC over stored secrets, Sigstore artifact attestations for calibration inputs, hashed toolchain pinning
+  4. `testing-maturity-model.md` — Goodhart-resistant appraisal: gaming vectors per level gate with countermeasures, structurally independent machine-executable checklists (ledger-only evidence), quarterly adversarial gate drills (inject tautologies/fake REDs/retro-edited ledger rows)
+  5. `implementation-roadmap.md` — gate-adoption mechanics from Google Tricorder (edited-files-only results, new-warnings-only, FP<5% before blocking), shadow-mode rollout (20-task advisory window per gate), evidence-ranked gate ordering
+  6. `engineer-soul.md` — instruction-adherence data: IFEval++ nuance-reliability drop up to 61.8% across 46 models (explains the COORD skip rate), verifiable-instruction architecture (every SOUL rule → CI-checkable artifact property), point-of-action restatement + cousin-prompt drills
+  7. `blocking-authority.md` — audit sampling mathematics: c=0 zero-acceptance plans (n=59 at 95% confidence for a 5% rate), 5%-volume sampling detects a 5% rate only 40% of the time, rule-of-three bound on clean samples, stratification by appeal/FULL/new-module, audit load inside the fatigue budget
+  8. `routing-integration.md` — router error economics: asymmetric FN(≤1%, hard) vs FP(<25%, soft) misroute targets from COORD data, RouteLLM evidence (>2x, up to 85% savings at 95% GPT-4 quality) with cost-sensitive loss adaptation, golden routing regression set, formation-cost variance as calibration input
+  9. `quality-metrics.md` — small-sample statistics: p-charts for varying-n rates, run rules over single-point alarms, <1% flake claim restated in verifiable c=0 form (0 flips/20 runs), 20-point baseline lock, correlation caution for shared-module tasks
+  10. `tester-soul.md` — regression test selection: Ekstazi 32% time reduction and 80%-of-failures at 66% time saved, STARTS 40.5%, T-TS 15%-selection/5.9x speedup, Ekstazi-vs-STARTS safety/precision comparison, three-tier rerun protocol with RTS-safety KPI ≥95%, always-run core, prioritization order
+
 ### Scout — 2026-09-13 (Second Pass)
 - **13 new INBOX prompts completed** (multi-agent systems research):
   1. **P1 Multi-Agent Memory and Knowledge Management** → `memory-architecture.md`
@@ -129,6 +142,12 @@
   - Capability-based delegation via cryptographically attenuated Macaroons (CapMAS, chained HMAC-SHA256 caveats, <0.12ms check).
   - Subprocess secret zeroization (whitelisted POSIX env, out-of-process Unix domain socket auth mediation).
   - Dual-channel prompt isolation (`<system_control_plane>` vs `<untrusted_data_envelope>` datamarking + Task Shield argument gate).
+- **[DEEP DIVE]** appended to `OUTPUT/scalability-patterns.md`:
+  - Ephemeral worker pool multiplexing ($K = \min(8, N_{\text{cores}})$) over stateless agent profiles, maintaining $\le 1.8\text{GB}$ total RAM across 81 agents.
+  - Dual-ended lock-free work-stealing deque with dynamic aging anti-starvation formula ($W_{\text{effective}}(t) = \text{Priority} - 0.05 \cdot \Delta t_{\text{queued}}$).
+  - Subagent tree recursion limits (BAMAS pattern): hard depth limit $D_{\max} \le 3$, branching factor bound $B_{\max} \le 4$, concurrency ceiling $N_{\text{concurrent}} \le 10$, and 15% parent budget reservation ($T_{\text{child}} = \min(T_{\text{default}}, \frac{T_A}{m+1} \times 0.85)$).
+  - Measurable metrics catalog for ephemeral worker utilization, JIT hydration latency, steal success rate, and fan-out limits.
+
 
 ### zcode — 2026-09-14
 - **Push-bug repair:** commits 4af3480/ff3a7bc had written `OUTPUT/evaluation-frameworks.md` and `STATUS.md` to GitHub as 0-byte files; both restored from the local mirror via the Contents API (sizes verified post-push: 19,514 / 12,778 bytes)
@@ -145,6 +164,12 @@
   - Case-based healing: Aamodt & Plaza 1994 4R cycle (Retrieve/Reuse/Revise/Retain) over the librarian's shelved cases; SQLite `healing_cases` table on the sqlite-vec/RRF substrate; ≥30% reuse-rate target; GEPA generation demoted to novel-failure fallback
   - Failure-class playbooks: deterministic first-response remedy for each of the 6 root-cause categories (schema validation, memory replay, re-anchor, breaker check, quarantine, SOUL reset), patches as last resort
   - Quantified patch-acceptance pipeline: frozen regression gate + N≥30 golden-set shadow replay (non-inferiority 2pp, pass^k k=3) + 48h canary; auto-rollback on escape rate +50%; healer caps (≤2 patches/agent/month, hash-chained ledger, coach kill switch); per-stage time budgets with aging alarms
+- **[DEEP DIVE]** appended to `OUTPUT/multi-agent-security.md` (stacks after antigravity's Bubblewrap/Macaroons dive — no overlap):
+  - MCP attack surface (Invariant Labs 2025, verified): tool poisoning via tool descriptions (sidenote exfil), rug pulls (post-approval description change), cross-server tool shadowing → pinned hash-verified tool manifests, per-ring MCP allowlist, cross-server dataflow boundaries
+  - MCP authorization hardening (spec-verified): token passthrough MUST NOT (audience-bound tokens per agent), confused-deputy per-client consent, SSRF private-range blocking + Smokescreen egress proxy, progressive scope minimization (no wildcards)
+  - Per-edge trifecta audit: Willison's lethal trifecta applied to trust edges, not just agents — researcher→engineer edge is the crew's most load-bearing control (safe iff engineer egress stays denied); inter-agent messages are data (spotlighting), router decides causality
+  - Canary-token DLP (Thinkst): unique marker strings in memory tiers + sensitive paths, Layer-5 exact-match scan → deterministic exfil detection, zero false positives; detect-not-prevent caveat paired with quarantine response
+  - Signed SOULs: Ed25519-signed policy versions (verify-before-load), two-person rule for Ring 0/1 changes, patch ledger as chain of custody; OWASP Agentic AI T1–T15 + Top 10 Agentic Applications 2026 (ASI01–ASI10) mapped; 6/10 vectors exploited in the wild by April 2026 [Lyrie]
 
 ## Research Queue
 
@@ -161,10 +186,10 @@
 | researcher (internal) | ✅ Complete | TMMi + TDD findings |
 | scout | ✅ Complete | 10 INBOX + 6 DEEP DIVE + 13 INBOX prompts |
 | workbuddy | ⏳ Pending | Not connected |
-| zcode | ✅ Complete | Push-bug repair + communication-protocols deep dive (2026-09-14) |
+| zcode | ✅ Complete | Push-bug repair + deep dives: communication-protocols, self-healing, multi-agent-security (2026-09-14) |
 | cline | ⏳ Pending | Not connected |
-| freebuff | ✅ Complete | 13 multi-agent deep dives appended in OUTPUT (2026-09-13) |
-| antigravity | ✅ Complete | Memory Architecture Deep Dive (SQLite+vec, HippoRAG 2, Bilingual BGE-M3) |
+| freebuff | ✅ Complete | Pass-2 deep dives on all 10 testing outputs (2026-09-14); 13 multi-agent deep dives (2026-09-13) |
+| antigravity | ✅ Complete | Deep dives: memory-architecture, communication-protocols, multi-agent-security, scalability-patterns |
 | opencode | ⏳ Pending | Not connected |
 
 ## Output Inventory
@@ -185,8 +210,8 @@
 | `OUTPUT/communication-protocols.md` | ✅ Complete | EDA, priority lanes, DLQ, idempotency, circuit breakers + 3 deep dives (freebuff: A2A/jitter/trace; antigravity: SQLite-WAL bus/WFG/deltas; zcode: outbox/schema-evolution/MCP 2026-07-28/retry budgets) |
 | `OUTPUT/self-healing.md` | ✅ Complete | Reflective runtime, RBT diagnosis, 5-level degradation + 2 deep dives (freebuff: GEPA/error budgets/chaos; zcode: self-correction trap, CBR 4R, playbooks, patch-acceptance pipeline) |
 | `OUTPUT/production-deployment.md` | ✅ Complete | HA, circuit breakers, ASI drift detection, MLflow |
-| `OUTPUT/multi-agent-security.md` | ✅ Complete | 5-layer defense, ring-based access, canary verification |
-| `OUTPUT/scalability-patterns.md` | ✅ Complete | Hierarchical groups ≤10, decision boundary P_SA > 0.45 |
+| `OUTPUT/multi-agent-security.md` | ✅ Complete | 5-layer defense, ring-based access, canary verification + 3 deep dives (freebuff: trifecta/defense-data/microVMs; antigravity: bwrap containment/macaroons/zeroization/datamarking; zcode: MCP tool poisoning, per-edge trifecta, canary DLP, signed SOULs) |
+| `OUTPUT/scalability-patterns.md` | ✅ Complete | Hierarchical groups ≤10, decision boundary P_SA > 0.45 + 2 deep dives (freebuff: SWARM+ bounds; antigravity: ephemeral worker pool, work-stealing deque, BAMAS tree recursion & budget inheritance) |
 | `OUTPUT/human-in-the-loop.md` | ✅ Complete | Approval control plane, override tokens, EU AI Act |
 | `OUTPUT/conflict-resolution.md` | ✅ Complete | Weighted voting, reasoning trees, deadlock breaking |
 | `OUTPUT/agent-embodiment.md` | ✅ Complete | 5-dimension personality, voice drift detection |
@@ -195,3 +220,4 @@
 | `OUTPUT/evaluation-frameworks.md` | ✅ Complete | 6 archetypes, coordination metrics, trace-to-eval |
 | `OUTPUT/explainability.md` | ✅ Complete | Structured traces, time-travel debugging, root cause analysis |
 | *(all 13 multi-agent files above)* | ✅ Deep-dived | freebuff 2026-09-13: one `[DEEP DIVE]` cycle each — validation gates, standards alignment (A2A/MCP/OTel/W3C), and measured thresholds appended |
+| *(all 10 testing-domain files above)* | ✅ Deep-dived (pass 2) | freebuff 2026-09-14: second `[DEEP DIVE]` cycle — coverage floors (diff-coverage/ratchet), CI supply-chain hardening (SHA pinning/OIDC/attestation), Goodhart-resistant maturity appraisal, audit sampling math, router economics, SPC for the ledger, RTS rerun policy |
