@@ -280,3 +280,58 @@ for iteration in range(4):  # converges in ~4 iterations
 - [ArXiv, 2025] MutGen: 100%/4% coverage/mutation gap, 4-iteration convergence
 - [ACM, 2025] Python Mutation Tools comparison: operator effectiveness
 - [Eleks, 2025] Oracle violation: code-derived constant detection
+
+---
+
+## [DEEP DIVE (freebuff, pass 2, 2026-09-14)]: Coverage Floors Without Gaming — Diff Coverage, Ratchets, and the Tarpit Problem
+
+The pass-1 spec gates on a global `--cov-fail-under=80`. A global floor is the weakest form of the coverage gate: it ignores *where* the uncovered lines are, lets one legacy file hold the whole repo hostage, and — when enforced on untouched code — actively distorts engineering decisions [Stack Overflow Blog, 2025]. This deep dive upgrades the floor to the form the evidence supports: per-PR **diff coverage** as the blocking gate, a global **ratchet** as the slow-moving target, and the mutation gate as the anti-gaming companion.
+
+### C1. Diff coverage is the right unit for a blocking gate
+
+Diff coverage is the percentage of *new or modified executable lines* that are executed by tests [Bachmann1234/diff_cover; qlty, 2026]. It is now a first-class PR gate in commercial CI — Codacy shipped a per-PR diff-coverage quality-gate rule in March 2026 [Codacy, 2026] — and vendor guidance is uniform: gate new/changed code first, and only tighten global thresholds once the team has had time to stabilize [Harness, 2026].
+
+Crew mapping (three changes to the pass-1 config):
+1. Remove `--cov-fail-under=80` from the blocking fast-gate `addopts`.
+2. Add a diff-coverage step to the PR gate:
+```bash
+diff-cover artifacts/cov.json \
+  --compare-branch=origin/main \
+  --fail-under=90 \
+  --json-report=artifacts/diff-cov.json
+```
+3. Keep 80% as the *nightly ratchet target*, not the commit gate.
+
+The 90% diff floor is deliberately stricter than the 80% global target: new code is cheap to test (it was just written), and tester-authored RED tests should already cover it — the diff gate enforces REQ-coverage at line granularity [qlty, 2026; cross-ref routing-integration.md REQ-COV gate].
+
+### C2. The ratchet: never down, slowly up
+
+A ratchet replaces the binary floor with a monotonicity rule: incoming code must maintain or increase coverage, with no hard target — one team's CI implementation of exactly this rule is documented practitioner practice [Reddit r/programming, ~2024, snippet-only]. Suggested crew policy: record global coverage per nightly run in the 16-metric ledger; a PR fails only if it *decreases* the 30-task rolling average; TEST-POLICY.md quarterly review may raise the ratchet by ≥1pt toward the 80% band. This preserves quality-metrics.md's target-setting method (baseline first, P50+1σ, quarterly tightening) while eliminating the cliff-edge failure where one big refactor PR puts the whole repo below a static floor and blocks unrelated work.
+
+### C3. The tarpit warning: blanket floors distort decisions
+
+The strongest recent caution: "Maintaining a minimum of 80% code coverage affects code decisions and not always for the better" — blanket floors push effort into hard-to-test legacy code (tarpits), where tests assert little and catch less [Stack Overflow Blog, 2025]. Crew translation: the diff gate applies to `src/crew/` business logic; explicitly exempt generated code, migrations, and `__main__` entrypoints; treat legacy modules as ratchet territory only when touched. This is Google's Tricorder principle applied to coverage: present issues only for edited files/lines, and deploy only checks developers find correct "at least 90% of the time" [Sadowski et al., 2018].
+
+### C4. Coverage floors are necessary-not-sufficient — pair with the mutation gate
+
+Pass 1 established that a suite can hit 90% coverage with a 4% mutation score [ArXiv, 2025]. The diff-coverage upgrade inherits that failure mode: a tester optimizing for 90% diff coverage can still write no-assertion tests. The combined gate is therefore: **diff-coverage ≥90% AND targeted mutation ≥70% on the same diff** (mutants-as-findings reporting per tester-soul.md cycle 4). Coverage proves the lines ran; mutation proves the assertions bite.
+
+### Numbers for calibration (pass 2)
+
+| Quantity | Value | Source |
+|---|---|---|
+| Diff coverage definition | % of new/modified executable lines covered | [Bachmann1234/diff_cover; qlty, 2026] |
+| Per-PR diff gate availability | Codacy quality-gate rule, 2026-03 | [Codacy, 2026] |
+| Recommended sequencing | diff gate first; global tightening after stabilization | [Harness, 2026] |
+| Blanket 80% floor caution | "affects code decisions, not always for the better" | [Stack Overflow Blog, 2025] |
+| Google check-trust bar | findings must be ≥90% actual issues | [Sadowski et al., 2018] |
+| Anti-gaming companion | targeted mutation ≥70% on the same diff | [ArXiv, 2025; tester-soul cycle 4] |
+
+### References (pass 2)
+1. [Bachmann1234/diff_cover] "diff-cover: Automatically find diff lines that need test coverage." https://github.com/Bachmann1234/diff_cover [verified: 2026-09-14]
+2. [qlty, 2026] "Coverage Metrics — Diff Coverage." https://docs.qlty.sh/coverage/metrics [verified: 2026-09-14]
+3. [Codacy, 2026] "Diff coverage: new metric and quality gate rule," 2026-03-30. https://blog.codacy.com/diff-coverage [verified: 2026-09-14]
+4. [Harness, 2026] "Code Coverage: Measure, Improve, and Scale Quality in CI," 2026-03-23. https://www.harness.io/blog/code-coverage-measure-improve-and-scale-quality-in-ci [verified: 2026-09-14]
+5. [Stack Overflow Blog, 2025] "Making your code base better will make your code coverage worse," 2025-12-22. https://stackoverflow.blog/2025/12/22/making-your-code-base-better-will-make-your-code-coverage-worse/ [verified: 2026-09-14]
+6. [Reddit r/programming, ~2024] Practitioner report: "maintain or increase" CI rule, no hard target. https://www.reddit.com/r/programming/comments/194htrz/ [verified: 2026-09-14, snippet only]
+7. [Sadowski et al., 2018] "Lessons from Building Static Analysis Tools at Google," CACM / *Software Engineering at Google* ch. 20. https://abseil.io/resources/swe-book/html/ch20.html [verified: 2026-09-14]
