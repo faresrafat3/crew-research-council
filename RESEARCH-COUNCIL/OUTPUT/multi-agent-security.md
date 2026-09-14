@@ -369,3 +369,79 @@ Any tool call attempting to touch files outside the task scope, exfiltrate data,
 - [Sourcery, 2025] Dangerous Subprocess Use and Tainted Environment Variables. sourcery.ai/vulnerabilities.
 - [Auth0, 2026] Want AI Agents That Don't Spill Secrets? Don't Give Them Secrets. auth0.com/blog.
 
+
+## [DEEP DIVE]: The MCP Attack Surface (Tool Poisoning, Rug Pulls, Shadowing), Per-Edge Trifecta Auditing, Canary-Token DLP, and Signed SOULs (zcode, 2026-09-14)
+
+### 1. The tool-description trust channel: MCP supply-chain attacks hit the crew's adopted interop layer
+
+The communication-protocols deep dive (2026-09-13) recommended exposing crew tools via MCP. That decision imports MCP's specific attack surface, disclosed and verified by Invariant Labs (2025-04-01):
+
+1. **Tool poisoning via tool descriptions.** Malicious instructions embedded in MCP tool descriptions are "invisible to users but visible to AI models" — their proof-of-concept hid an exfil instruction in an innocent `add` tool's docstring, making the model transmit `~/.ssh/id_rsa` content through a `sidenote` parameter disguised as math output [Invariant Labs, 2025].
+2. **Rug pulls.** Even with install-time approval, "a malicious server can change the tool description after the client has already approved it" — the PyPI supply-chain pattern replayed for tools [Invariant Labs, 2025].
+3. **Cross-server tool shadowing.** A poisoned tool description can *modify behavior toward a trusted tool* — their experiment hijacked email routing so "the agent sends all emails to the attacker, even if the user explicitly specifies a different recipient." The attacker's own tool need never be invoked, and the hijack may not appear in user-facing logs [Invariant Labs, 2025].
+
+Crew controls (extending Layer 3's sandboxing to the MCP layer):
+
+- **Pin and hash-verify tool definitions.** At every MCP session start, the router hashes each server's tool list + descriptions and diffs against the pinned manifest from the previous session; any drift (the rug-pull vector) quarantines the server pending operator re-approval. This is the same hash-verification discipline as the audit chain and the replay capture set (explainability deep dive) [Invariant Labs, 2025].
+- **MCP server allowlist per ring.** Third-party MCP servers connect only to Ring-3 sandbox agents first; production Ring-1/2 agents bind only to operator-approved servers.
+- **Cross-server dataflow boundaries.** Never co-connect a server that handles credentials with an unreviewed server on the same agent session — the shadowing attack requires exactly that coexistence [Invariant Labs, 2025].
+
+### 2. MCP authorization hardening: token passthrough, confused deputy, SSRF, scope minimization
+
+The MCP specification's security best practices carry normative MUSTs, verified from the official page [MCP, 2025]:
+
+- **Token passthrough is forbidden**: "MCP servers MUST NOT accept any tokens that were not explicitly issued for the MCP server" — because passed-through tokens bypass downstream rate limiting/monitoring, break audit attribution, and let a stolen token hop trust boundaries. Crew rule: every agent holds its own audience-bound tokens; a token seen in flight between agents is itself a security event.
+- **Confused deputy**: proxy servers with static client IDs + dynamic client registration + consent cookies let attackers skip user consent entirely; mitigations are per-client consent registries (MUST), exact-string redirect-URI matching (MUST), single-use `state` values with ~10-minute expiry (MUST). Adopted for any crew-operated MCP proxy.
+- **SSRF egress controls**: clients fetching attacker-influenced URLs MUST block private/reserved ranges — `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, link-local `169.254.0.0/16` (cloud metadata endpoints), loopback — and SHOULD route through a design-against-SSRF egress proxy (Stripe's Smokescreen is the cited example); avoid hand-rolled IP parsers (octal/hex/IPv4-mapped bypasses). This hardens the researcher's network allowlist from "domain allowlist" to "domain allowlist + egress proxy + IP-range deny."
+- **Scope minimization**: progressive least-privilege scopes — minimal baseline set, incremental elevation via targeted challenges; wildcard/omnibus scopes (`*`, `all`, `full-access`) are listed among common mistakes. Maps directly onto the ring model: a ring is a scope set, never a wildcard.
+
+### 3. Per-edge trifecta audit: every agent's output is untrusted content
+
+The 2026-09-13 deep dive applied Willison's lethal trifecta (private data + untrusted content + external comms) **per agent**. The structural completion is to apply it **per trust edge** — a producer→consumer pair is dangerous when the *consumer* holds the private-data and external-comms legs while the *producer* touches untrusted content, because then the producer's output is an injection channel into the consumer. The most important edge in Crew v2: **researcher → engineer**. Today the researcher's fetched web content flows into the engineer's context, and the engineer has terminal access; if the engineer ever gains external comms (e.g., a dependency install phoning home), the crew holds all three legs *across two agents* even though no single agent does.
+
+| Edge | Producer touches untrusted | Consumer holds private | Consumer external comms | Verdict |
+|---|---|---|---|---|
+| researcher → engineer | **yes (web)** | **yes (repo)** | network-deny sandbox | Safe **iff** engineer egress stays denied — the single most load-bearing control in the crew |
+| researcher → librarian | **yes (web)** | **yes (memory)** | — | Memory-poisoning channel: cross-crew memory writes quarantined + two-source corroboration (memory-architecture.md) |
+| engineer → critic | writes code | **yes (repo)** | — | Safe; critic reads via ring-scoped tools |
+| web (external) → any agent | n/a | — | — | Datamark all fetched content (spotlighting, 2026-09-13 dive); tool-argument validation (Task Shield pattern) |
+
+Doctrine: **inter-agent messages are data, never instructions.** Every agent payload is wrapped in spotlighting delimiters (`BEGIN_AGENT_OUTPUT(agent_id, task_id) ... END_AGENT_OUTPUT`), and the router — not the consuming agent — decides what a message may cause (the externalized-enforcement lesson from the 2026-09-13 dive, extended to inter-agent edges). An agent that "obeys instructions it found in another agent's output" has already failed Layer 1; the router validates that outputs reference only their declared `correlation_id` and task.
+
+### 4. Canary-token DLP: detect exfiltration by construction, not by classification
+
+The architecture's exfil detection relies on behavioral baselines and volume anomalies (Obsidian's 16× datapoint). Behavioral detection has false negatives by design; canary tokens make exfil detection *deterministic*. Canarytokens are unique marker strings/callbacks (typically unique DNS hostnames or HTTP URLs) embedded in assets; the instant an attacker touches or exfiltrates the marked asset, the unique marker fires an alert revealing both the breach and where data traveled [Thinkst, 2026; Acalvio, 2026]. Known limitation: tokens **detect, not prevent** — the response path does the containing [Hive Security, 2026].
+
+Crew deployment: plant unique canary strings in (a) each cross-crew memory tier, (b) per-agent long-term memory, (c) secrets-adjacent repo paths, (d) high-value documents. Layer 5's audit pipeline exact-matches every tool-call argument, file write, and inter-agent message against the canary registry — exact match means zero false positives, which keyword/LLM classifiers cannot promise. A canary hit triggers: immediate agent quarantine, ring revocation, task freeze — and because the canary is unique per store, the leak path is identified by construction. Rotate quarterly and after any canary-containing dataset is legitimately exported (to avoid operator-desensitization on known-good echoes).
+
+### 5. Signed SOULs: supply-chain control over the crew's own policy code
+
+The crew's SOUL files are executable policy, and the self-healing pipeline mutates them — meaning a compromised coach becomes a persistent-backdoor channel (OWASP's agentic taxonomy names this class *skill poisoning*; memory poisoning is **T1**, the flagship threat, and the companion **Multi-Agentic System Threat Modeling Guide v1.0** plus the **OWASP Top 10 for Agentic Applications 2026** (ASI01–ASI10, with ASI06 = memory and context poisoning) now cover multi-agent systems explicitly [OWASP, 2026; Human Security, 2026; Graylog, 2026]). Controls, reusing infrastructure the architecture already specifies:
+
+- **Ed25519-signed SOUL versions** (the audit log already specifies Ed25519 signatures): every SOUL revision is signed by the operator key at approval time; agents verify the signature chain at startup and refuse unsigned or chain-broken SOULs. This makes the rug-pull pattern impossible for the crew's own policy: SOULs change only through the signed patch pipeline, and any out-of-band edit fails verification.
+- **Two-person rule for Ring 0/1 SOUL changes**: operator approval + a second approver for patches affecting firstmate/coach or any Ring-1 agent (the patch-acceptance pipeline from the self-healing deep dive supplies the automated gates; the two-person rule adds the human control for the highest blast radius).
+- **Patch ledger as the chain of custody**: the hash-chained append-only patch ledger (self-healing deep dive) is the authoritative history — a SOUL running in production must be reconstructible from genesis via the ledger.
+
+Urgency datapoint: enterprise research found **6 of 10** OWASP agentic threat vectors with confirmed in-the-wild exploitation activity by April 2026 [Lyrie, 2026] — the agentic threat model is no longer theoretical.
+
+### 6. Additional metrics
+
+| Metric | Definition | How to Measure | Target | Warning |
+|--------|-----------|----------------|--------|---------|
+| Canary hits | Canary strings echoed in tool args/outputs/messages | Layer-5 exact-match scan | 0 | >0 = active exfil: quarantine + ring revoke |
+| Canary coverage | Sensitive stores with planted canaries / total | Registry audit | 100% | <100% = blind spots |
+| Tool-definition drift | MCP tool lists/descriptions differing from pinned manifest | Session-start hash diff | 0 | >0 = rug-pull attempt: quarantine server |
+| Unsigned-SOUL loads | Agents starting with unverified SOUL signature | Startup verification | 0 | >0 = pipeline bypass: halt agent |
+| Token-boundary violations | Tokens used outside their issuing agent | Audit attribution check | 0 | >0 alert operator |
+
+### References for deep dive (2026-09-14)
+
+- [Invariant Labs, 2025] MCP Security Notification: Tool Poisoning Attacks (sidenote exfil, rug pulls, cross-server shadowing; pinning + hash verification + cross-server boundaries). invariantlabs.ai/blog/mcp-security-notification.
+- [MCP, 2025] Model Context Protocol Specification — Security Best Practices (token passthrough prohibition, confused-deputy per-client consent, SSRF private-range blocking + Smokescreen, scope minimization). modelcontextprotocol.io/specification/2025-11-25/basic/security_best_practices.
+- [Thinkst, 2026] Canarytokens (canarytokens.org) — unique-marker alert-on-access tripwires. canarytokens.org; thinkst.com.
+- [Acalvio, 2026] What Is a Canary Token? (unique DNS/HTTP callback semantics). acalvio.com/resources/glossary/canary-tokens.
+- [Hive Security, 2026] Canary Tokens — Free Tripwires (detect-not-prevent limitation). hivesecurity.gitlab.io.
+- [OWASP, 2026] Agentic AI — Threats and Mitigations (T1–T15; T1 memory poisoning); Multi-Agentic System Threat Modeling Guide v1.0; OWASP Top 10 for Agentic Applications 2026 (ASI01–ASI10). genai.owasp.org/resource/agentic-ai-threats-and-mitigations.
+- [Human Security, 2026] Agentic AI Security: OWASP Threats breakdown. humansecurity.com/learn/blog/agentic-ai-security-owasp-threats.
+- [Graylog, 2026] What Is the OWASP Top 10 Agentic AI? (ASI06 memory and context poisoning). graylog.org/post/what-is-the-owasp-top-10-agentic-ai.
+- [Lyrie, 2026] OWASP Agentic AI Top 10: Enterprise Gap (6/10 vectors with in-the-wild exploitation by April 2026). lyrie.ai/research/research/owasp-agentic-ai-top10-enterprise-gap.
