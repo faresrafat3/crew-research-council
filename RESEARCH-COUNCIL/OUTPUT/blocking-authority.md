@@ -207,3 +207,21 @@ Pass-1's fatigue model (Pattern 5: >5 escalations/week degrades human review) ap
 3. [variation.com] "Selecting Statistically Valid Sampling Plans" — AQL, 95% acceptance mechanics. https://variation.com/selecting-statistically-valid-sampling-plans/ [verified: 2026-09-14, snippet]
 4. [SixSigma.us] "How Attribute Sampling Works" — AQL, OC curves, plan selection. https://www.6sigma.us/six-sigma-in-focus/attribute-sampling/ [verified: 2026-09-14, snippet]
 5. Cross-refs: blocking-authority.md pass 1 §2 (calibration algorithm), §4 (anti-collusion), Pattern 5 (fatigue); tester-soul.md cycle 4 (escape-classification).
+
+## [DEEP DIVE (freebuff, pass 3, 2026-09-14)]: Break-Glass — Emergency Overrides of the Blocker, With the Audit Trail That Keeps Them Rare
+
+Pass 2 gave the blocker statistical audit machinery (c=0 sampling). One operational path remains unexamined: **break-glass** — the emergency bypass every real gate eventually needs, and the loophole that can erase the gate if unmanaged. The privileged-access literature is direct: emergency access must be **just-in-time (granted per-incident, time-boxed, auto-expiring)**, **session-recorded**, and **alerted in real time to a second party** — standing break-glass credentials are the classic audit finding [JIT privileged-access guidance; PAM literature — snippet-verified 2026-09-14]. The design goal is *blast-radius control*: the override must be able to unblock one PR, not the gate systemwide.
+
+**Protocol deltas for the blocking authority.**
+1. **Per-incident, time-boxed overrides only**: a break-glass grant applies to exactly one blocking verdict and expires (default 4h); no standing "override role" exists. Reuse requires a fresh grant — each grant is a sampled verdict for the pass-2 audit.
+2. **Dual-visibility rule**: every break-glass use notifies the operator channel *at grant time*, not at audit time. Real-time alerting is what separates emergency access from shadow authority.
+3. **Justification must be falsifiable at audit**: the grant records the specific gate verdict overridden and the concrete harm of respecting it ("build env down, demo at 15:00"), not sentiment ("urgent"). The pass-2 c=0 sample oversamples break-glass verdicts — an override with an unverifiable justification counts as a defect against the granter's own ledger.
+4. **Budget coupling**: the crew's error-budget discipline (self-healing pass 1) applies — if break-glass use exceeds the agreed rate (suggested: 2% of blocking verdicts per quarter), the *gate itself* is reviewed for miscalibration before any further grants. Frequent overrides mean the gate is wrong, not the world.
+5. **No self-grant for the same agent's work**: the granter and the blocked-PR author must differ (the conflict-resolution grounded-semantics verdict is the only single-agent exception, and it is logged as such).
+
+**Cross-links:** pass-2 audit sampling (overrides as oversampled stratum), self-healing pass 1 (error-budget policy), conflict-resolution pass 3 (who adjudicates a disputed override — the grounded-semantics kernel).
+
+**Sources.**
+1. [NIST SP 800-53 AC-2(3) / AC-6(9)] Just-in-time and time-bound privileged authorization controls [literature, snippet-verified: 2026-09-14].
+2. [Microsoft Entra, 2026] PIM activation with justification, approval, and expiration — the JIT pattern as productized [snippet-verified: 2026-09-14].
+3. [CIS Controls v8, Control 5/6] Account and access-control management: emergency-account procedures and audit logging [literature].
