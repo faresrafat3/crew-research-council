@@ -178,6 +178,11 @@
   - Steiner's process loss mathematical formulation: Collective Synergy Ratio ($\mathcal{S} > 1.15$) and Coordination Tax Index ($\mathcal{C}_{\text{tax}} < 15\%$) for architecture-task alignment gating.
   - Wald's Sequential Probability Ratio Test (SPRT) early-stopping protocol for CI benchmarking, cutting evaluation tokens by 42–58% with guaranteed false-positive bounds ($\alpha=0.05, \beta=0.10$).
   - Paired McNemar non-parametric discordance testing and BCa bootstrap confidence intervals for SOUL release regression prevention.
+- **[DEEP DIVE]** appended to `OUTPUT/explainability.md`:
+  - Zero-daemon Copy-on-Write (CoW) state checkpointing tree in SQLite-WAL with Merkle workspace diffs and sub-200ms time-travel branching.
+  - Dynamic causal trace slicing constructing backwards reachable cones, pruning >85% of extraneous spans down to 4–7 candidate decision nodes.
+  - Dataflow-aware Shapley value fault localization ($f(S)$ gate pass evaluation), mathematically isolating Root Causal Drivers with >90% attribution accuracy.
+  - Dual-fidelity explanation architecture: Level-0 RFC 6902 machine proofs paired with Level-1 operator summaries bounded by 100% semantic faithfulness verification.
 
 
 
@@ -225,7 +230,7 @@
 | zcode | ✅ Complete | Push-bug repair + deep dives: communication-protocols, self-healing, multi-agent-security (2026-09-14) |
 | cline | ⏳ Pending | Not connected |
 | freebuff | ✅ Complete | Pass-2 deep dives on all 10 testing outputs (2026-09-14); 13 multi-agent deep dives (2026-09-13) |
-| antigravity | ✅ Complete | Deep dives: memory, comms, security, scalability, tools, conflict, HITL, prod, cost, eval |
+| antigravity | ✅ Complete | Deep dives: memory, comms, security, scalability, tools, conflict, HITL, prod, cost, eval, explain |
 | opencode | ⏳ Pending | Not connected |
 
 ## Output Inventory
@@ -254,7 +259,7 @@
 | `OUTPUT/tool-differentiation.md` | ✅ Complete | Capability-based assignment, result sharing + 2 deep dives (freebuff: tool count failure curves; antigravity: dynamic toolsets v2, JetBrains observation masking, SQLite-WAL cache) |
 | `OUTPUT/cost-optimization.md` | ✅ Complete | 3-tier routing, caching, APC, budget enforcement + 2 deep dives (freebuff: FrugalGPT, cache-writes, unit cost; antigravity: SQLite cost ledger, cache anchors, RouteLLM, non-fatal preemption) |
 | `OUTPUT/evaluation-frameworks.md` | ✅ Complete | 6 archetypes, coordination metrics, trace-to-eval + 2 deep dives (freebuff: Agent-as-a-Judge, Goodhart discipline, flake budgets; antigravity: zero-daemon replay compiler, synergy ratio, Wald SPRT, McNemar paired testing) |
-| `OUTPUT/explainability.md` | ✅ Complete | Structured traces, time-travel debugging, root cause analysis |
+| `OUTPUT/explainability.md` | ✅ Complete | Structured traces, time-travel debugging, root cause analysis + 2 deep dives (freebuff: counterfactual attribution, OTel-native traces, deterministic capture; antigravity: zero-daemon CoW checkpointing, causal slicing, Shapley fault localization, dual-fidelity explanations) |
 | *(all 13 multi-agent files above)* | ✅ Deep-dived | freebuff 2026-09-13: one `[DEEP DIVE]` cycle each — validation gates, standards alignment (A2A/MCP/OTel/W3C), and measured thresholds appended |
 | *(all 10 testing-domain files above)* | ✅ Deep-dived (pass 2) |
 | `OUTPUT/gate-toolkit.md` | ✅ Complete | Executable pass-2 protocols (stdlib Python), 35-test suite, mutation harness — 100% mutation score (freebuff 2026-09-14) | freebuff 2026-09-14: second `[DEEP DIVE]` cycle — coverage floors (diff-coverage/ratchet), CI supply-chain hardening (SHA pinning/OIDC/attestation), Goodhart-resistant maturity appraisal, audit sampling math, router economics, SPC for the ledger, RTS rerun policy |
