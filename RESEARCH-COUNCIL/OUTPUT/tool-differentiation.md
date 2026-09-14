@@ -350,3 +350,34 @@ If `Context Sufficiency == PRESENT`, the runtime intercepts the turn and instruc
 - [BFCL v4, 2026] Berkeley Function Calling Leaderboard V4: Multi-Turn, Multi-Step & Irrelevance Detection Evaluation. gorilla.cs.berkeley.edu; openreview.net/forum?id=TheBFCL.
 - [Patil et al., 2024] The Berkeley Function Calling Leaderboard (BFCL). ICML / NeurIPS 2024.
 
+## [DEEP DIVE (freebuff, pass 3, 2026-09-14)]: Stateful Tool Evaluation — BFCL V3 and the Shift from Single-Call Accuracy to State Verification
+
+Pass-1 covered tool-count empirics and Toolformer filtering; Antigravity's pass-2 covered tiering and schema loading. Pass-3 covers the evaluation layer: how to measure whether an agent can *use* a toolset through a multi-step task — the capability the crew actually assigns tools for.
+
+### 1. The state-verification turn in tool benchmarks
+- BFCL V3 (Berkeley Function-Calling Leaderboard, 2024-09) introduced **multi-turn and multi-step function calling**: the model loops over tools — listing a directory, trying to write a file that isn't there, listing again — and the metric changed with the task: instead of AST-matching parameter pairs, V3 **verifies the actual state of the API system (file systems, booking systems) after the model's calls** [BFCL V3 blog, 2024]. State-based evaluation is the decisive move: it cannot be fooled by a plausible-looking call that does the wrong thing, the same insight as the council's state-based RED witnessing.
+- ToolSandbox (Apple, 2024) makes the same turn explicit and adds the dimensions the crew cares about: **state-dependent interactions** (tool outcomes depend on prior tool outcomes), **implicit user preferences** resolved over the conversation, and **dynamic tool availability** (tools appear/disappear mid-task) — where it shows state-of-the-art LLMs degrade sharply relative to static single-turn tool use [Lu et al., arXiv:2408.04682]. BFCL's later V4 adds agentic scenarios on top [BFCL V4, 2026].
+- The through-line for the crew's tool-assignment audits (pass 1's counterfactual differentiation): a tool assignment is only proven useful if the agent completes **stateful** tasks with it — single-call benchmark numbers overstate capability exactly where crew tasks live (multi-step, state-dependent, mid-task tool-set changes).
+
+### 2. Protocol for the crew's tool-competence gate
+1. **Task-level, state-checked evals:** per assigned toolset, run scripted multi-step scenarios and verify end-state (not call trace): files actually written, rows actually committed, messages actually sent. Borrow BFCL V3's state-comparison evaluator shape.
+2. **Include the hard dimensions:** at least one scenario per assigned toolset with (a) implicit-preference resolution (do what the REQ implies, not literally says), (b) dynamic availability (a tool fails mid-task; reroute or escalate), (c) state-dependence (step k+1 depends on step k's result). ToolSandbox's result says these are where capability actually breaks.
+3. **Gate on the state-checked pass rate**, not on single-call accuracy: assignment changes (tool tiering, new MCP servers) must clear the same shadow-then-block rollout as SOUL changes (implementation-roadmap pass 2).
+4. **Failure telemetry feeds tool differentiation:** errors where the agent called the right tool with wrong state assumptions (vs wrong tool) are *differentiation* signals — they argue for narrower toolsets or better schemas (pass 1's namespacing), not more prompting.
+
+### Numbers for calibration (pass 3)
+
+| Quantity | Value | Source |
+|---|---|---|
+| BFCL V3 release | 2024-09-19; multi-turn + multi-step, state-based eval | [BFCL V3 blog] |
+| Evaluation change | AST param-match → **system-state verification** | same |
+| ToolSandbox dimensions | state-dependent, implicit-preference, dynamic availability | [arXiv:2408.04682] |
+| Finding on hard dimensions | SOTA LLMs degrade sharply vs static single-turn | same |
+| BFCL V4 | adds agentic scenarios | [BFCL V4, 2026] |
+
+### References (pass 3)
+1. [BFCL V3, 2024] "BFCL V3: Multi-Turn & Multi-Step Function Calling," Berkeley Gorilla. https://gorilla.cs.berkeley.edu/blogs/13_bfcl_v3_multi_turn.html [verified: 2026-09-14]
+2. [Lu et al., 2024] "ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use," arXiv:2408.04682. [verified: 2026-09-14, standard citation]
+3. [BFCL V4, 2026] Berkeley Function Calling Leaderboard V4. https://gorilla.cs.berkeley.edu/leaderboard.html [verified: 2026-09-14, snippet]
+4. [Patil et al.] "The Berkeley Function Calling Leaderboard (BFCL)," (V1/V2; ICML 2025). [verified: 2026-09-14, standard citation]
+5. Cross-refs: tool-differentiation pass 1 (tool-count empirics, Toolformer, counterfactual audits); Antigravity pass 2 (tiering, lazy schemas); testing-framework pass 2 (shadow rollout); tdd-protocol pass 1 (state-machine witnessing).
