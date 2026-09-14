@@ -228,3 +228,25 @@ Cycle 4's change-based mutation discipline (Google: mutants only on covered, cha
 4. [Dang, 2023] "Reducing Testing Costs by Applying Regression Test Selection" (STARTS case study, HAW Hamburg). https://reposit.haw-hamburg.de/bitstream/20.500.12738/16796/1/BA_Reducing%20Testing%20Costs%20by%20Applying%20Regression%20Test%20Selection.pdf [verified: 2026-09-14, snippet]
 5. [arXiv:2509.10279, 2025] "Targeted Test Selection Approach in Continuous Integration." https://arxiv.org/html/2509.10279v1 [verified: 2026-09-14]
 6. Cross-refs: tester-soul cycles 1–4; cicd-integration pass 1 (fast-gate budget); implementation-roadmap pass 2 (shadow mode); quality-metrics pass 2 (ledger statistics).
+
+## [DEEP DIVE (freebuff, pass 3, 2026-09-14)]: The Tester's Ledger of Attention — Where Test Effort Actually Pays (and the Allocation Rule That Follows)
+
+Passes 1–2 covered mutation deployment, RTS, and the rerun policy. The unexamined resource is again **attention**: the tester crew cannot test everything deeply, so where does deep testing pay? The empirical defect-distribution literature gives a sharp answer — defects concentrate — and allocation should follow the concentration, not fairness.
+
+**Evidence.**
+- Defect concentration is one of the most replicated findings in empirical SE: roughly **20% of modules hold ~60–80% of defects** (the "80/20" rule; Basili/Perricone 1984 on change concentration; Endres 1975; Ostrand et al. 2005 on file-level concentration persisting across releases) [literature, snippet-verified 2026-09-14].
+- Review/testing effectiveness is bounded per unit (SmartBear ≤400 LOC; ~300 LOC/hr — engineer-soul pass 3), so effort spread uniformly is effort wasted outside hotspots.
+- Feature (new-code) defects dominate over legacy in active development — the diff-coverage argument (framework pass 2) is the incremental complement of the hotspot argument.
+
+**Protocol deltas for the tester soul.**
+1. **Effort allocation follows measured escape cost, with an exploration floor**: deep suites (property-based, mutation-targeted) go to hotspot modules; stable modules get the standard suite only. But the allocation is Thompson-sampled (quality-metrics pass 3) with a floor — every module's suite is re-exercised at minimum monthly, so a de-stabilized module is rediscovered by evidence rather than by surprise.
+2. **Tester verdicts are priced, not free**: each deep-test invocation is a ledger row (module, cost, defects found/escaped). The tester soul's own KPI becomes marginal: defects-found-per-deep-test-hour by module, reviewed quarterly, arms reallocated accordingly. A deep suite that finds nothing for two consecutive quarters is demoted (the suite itself goes stale — pass-2's suite-evolution hazard applies to testers too).
+3. **Escape forensics close the loop**: every escaped defect gets a post-mortem row (which arm should have caught it, why it didn't — oracle gap, selection miss, flake). This is the tester-side analog of blameless postmortems (self-healing pass 1) and feeds the router's P(escape) calibration audit (routing pass 3).
+4. **Testing the tester's new angles**: when a new test angle is proposed (like this pass), it enters as an experiment in shadow mode (roadmap pass 2) against the ledger before becoming standing policy.
+
+**Cross-links:** roadmap pass 3 (hotspot mining defines where deep suites go), quality-metrics pass 3 (Thompson allocation + guardrails), routing pass 3 (escape forensics feed calibration), engineer-soul pass 3 (the same attention economics on the review side).
+
+**Sources.**
+1. [Basili & Perricone, 1984] "Software Errors and Complexity: An Empirical Investigation," CACM — change/defect concentration [literature].
+2. [Ostrand, Weyuker & Bell, 2005] "Predicting the location and number of faults in large software systems," TSE — file-level concentration across releases [snippet-verified: 2026-09-14].
+3. [Endres, 1975] "An Analysis of Errors and Their Causes in System Programs," IEEE TSE — early concentration evidence [literature].
