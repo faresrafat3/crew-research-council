@@ -408,3 +408,41 @@ To evaluate candidate agent changes against champion baselines without falling v
 - [McNemar, 1947] Note on the sampling error of the difference between correlated proportions or percentages. Psychometrika, 12(2), 153-157.
 - [Efron & Tibshirani, 1993] An Introduction to the Bootstrap. Chapman & Hall/CRC. (BCa bootstrap formulation).
 - [Google Research, 2025] Towards a science of scaling agent systems: when and why agent systems work. arXiv:2512.08296. (Architecture-task alignment and coordination overhead).
+
+## [DEEP DIVE (freebuff, pass 3, 2026-09-14)]: Benchmark Contamination — Detecting Whether the Eval Set Leaked into Training
+
+Pass-1 covered Agent-as-a-Judge and flaky-eval budgets; zcode's pass-2 covered executable benchmarks and pass^k. Pass-3 covers the validity threat under both: **contamination** — if the crew's eval tasks (golden sets, routing golden set, tool-competence scenarios) leak into any model's training data, scores measure memorization, not capability, and every gate built on them is miscalibrated.
+
+### 1. Why it matters for a *crew's private* evals, not just public benchmarks
+- The public-benchmark story is documented: leaked test sets inflate scores substantially (practitioner estimates run **5–15 points**; famous cases include Codeforces-style leaks) [tianpan, 2026; llm-stats, 2026]. A survey of the field organizes detection into dataset-inspection methods (n-gram/character/exact overlap between train and eval), model-behavior methods (membership inference, order/canary sensitivity), and time-based analysis (eval items created *before* a model's cutoff vs after) [arXiv:2502.14425, 2025].
+- The crew-specific twist: the crew's evals are private, but they are built *from* public material — REQ templates echo public task formats; golden sets are seeded from public examples; and the models the crew uses are trained on web-scale data that includes the *sources* the crew drew from. So contamination here is partial-overlap memorization ("the model has seen near-variants of this"), which is precisely the case n-gram/MinHash methods are built to detect [mbrenndoerfer, 2026].
+- One more trap the crew inherits from its own doctrine: Garg et al.'s benchmark-mutation result (implementation-roadmap pass 1) shows eval robustness itself needs perturbation testing — a contaminated eval is the degenerate case where no perturbation was ever needed because answers were memorized.
+
+### 2. Detection protocol for the crew's eval assets
+1. **Inventory eval assets** (golden sets, routing golden set, tool-competence scenarios, break-drill REQ pool) with creation dates and source provenance — the provenance column is what makes time-based analysis possible.
+2. **N-gram/MinHash overlap screening** of each eval item against a corpus proxy: for frontier APIs, a practical proxy is the order/membership-inference battery — query the model with eval prefixes and measure completion likelihood vs matched control items the crew knows were private; for self-hosted or open models, direct train-corpus n-gram screening where the corpus is inspectable.
+3. **Canary insertion (honorary canaries):** seed each eval asset with unique synthetic strings (random identifiers, invented entity names); a model that completes or "knows" them has contamination *from the crew's own assets* — e.g., an eval set that leaked via a shared drive, a published output, or a fine-tune — which is the leak path a private crew actually faces.
+4. **Time-split validation:** maintain a rolling **post-cutoff eval slice** (items created after the newest deployed model's training cutoff, verified via documented cutoff dates with [verified:] tags); score parity between the full set and the post-cutoff slice is the running contamination indicator — a large gap is the alarm.
+5. **Respond by rotation, not deletion:** contaminated items are replaced with re-derived, perturbed variants (benchmark-mutation discipline) and the affected historical scores are annotated in the ledger, not silently trusted.
+
+### 3. Governance hooks
+- Evaluation pass 1's calendar gains a **quarterly contamination audit**; evaluation pass 2's pass^k consistency gets a contamination covariate (inconsistent-under-repetition + high overlap = memorization signature, not reasoning noise).
+- The conformal calibration set (HITL pass 3) must be contamination-audited too — a calibrated guarantee computed on memorized items is void.
+
+### Numbers for calibration (pass 3)
+
+| Quantity | Value | Source |
+|---|---|---|
+| Public-benchmark inflation (practitioner) | 5–15 points | [tianpan, 2026] |
+| Detection families | dataset inspection / model behavior / time-based | [arXiv:2502.14425] |
+| Crew canary design | unique synthetic strings per eval asset | this dive |
+| Running indicator | full-set vs post-cutoff-slice parity | this dive |
+| Response | rotate + perturb, annotate history | this dive |
+
+### References (pass 3)
+1. [arXiv:2502.14425, 2025] "A Survey on Data Contamination for Large Language Models." https://arxiv.org/html/2502.14425v2 [verified: 2026-09-14]
+2. [tianpan, 2026] "The benchmark leak" (5–15 point inflation; audit mechanics). https://tianpan.co/blog/2026/04/23/benchmark-leak-eval-contamination [verified: 2026-09-14, snippet]
+3. [mbrenndoerfer, 2026] "Benchmark Contamination in LLMs: Detection & Mitigation" (n-gram/MinHash). https://mbrenndoerfer.com/writing/benchmark-contamination-llm-detection-mitigation [verified: 2026-09-14, snippet]
+4. [llm-stats, 2026] "What Is a Contaminated LLM?" (cases, five methods). https://llm-stats.com/blog/research/what-is-a-contaminated-llm [verified: 2026-09-14, snippet]
+5. [Garg et al., 2025] "Saving SWE-Bench: Benchmark Mutation" (perturbation robustness; cited in implementation-roadmap pass 1). arXiv:2510.08996 [verified: 2026-09-13]
+6. [Bordt et al.] "How Much Can We Forget about Data Contamination?" (n-gram overlap ≠ overfitting; scale matters). https://openreview.net/forum?id=Pf0PaYS9KG [verified: 2026-09-14, snippet]
