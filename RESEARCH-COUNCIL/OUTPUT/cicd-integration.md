@@ -531,3 +531,47 @@ steps:
 - [Tenki, 2026] Flaky Test Quarantine: same-commit flip detection
 - [Mutagen, 2026] Mutation-gated LLM test generation: exit-2 gate
 - [FlakyTest, 2026] Detect, quarantine, fix: quarantine patterns
+
+---
+
+## [DEEP DIVE (freebuff, pass 2, 2026-09-14)]: CI Supply-Chain Hardening — SHA Pinning, Script Injection, OIDC, and Artifact Attestation
+
+The pass-1 workflows are functionally correct but security-naive: they run third-party actions and install tooling with access to a secrets-bearing runner. The CI gate is part of the trust boundary the tester verdicts depend on — a compromised gate invalidates every PROMOTE it ever blessed. The threat is proven, not hypothetical.
+
+### W1. SHA pinning: the immutable-reference rule
+- **The incident:** `tj-actions/changed-files` was compromised in March 2025 (CVE-2025-30066, GHSA-mrrh-fwg8-r2c3): historical version tags were repointed at a malicious commit that dumped runner memory — including secrets — into build logs, impacting **over 23,000 repositories**; CISA issued an alert on 2025-03-18 [GitHub Advisory Database; CISA, 2025; StepSecurity, 2025].
+- **The rule:** third-party actions must be pinned to a **full-length 40-character commit SHA**, not a tag or branch — "Pinning an action to a full-length commit SHA is currently the only way to use an action as an immutable release" [GitHub Docs, Secure use]. Tags are mutable refs; the tj-actions attack worked precisely because tags were.
+- **Crew mapping:** pass-1 YAML uses `dorny/test-reporter@v1` (third-party → pin to SHA). `actions/checkout@v4`, `actions/setup-python@v5`, `actions/upload-artifact@v4` are first-party `actions/*` org refs — lower risk, but SHA-pin them too for defense in depth.
+
+### W2. Script injection: model-generated text is untrusted CI input
+Never interpolate `${{ github.event.* }}` fields (PR titles, branch names, commit messages) directly into `run:` blocks — a PR title containing a backtick-payload executes in the runner shell; pass such values through `env:` instead [GitHub Docs, Secure use; StepSecurity, 2025; aquilax, 2026]. Crew-specific hazard beyond the usual: **tester verdicts, REQ titles, and agent messages are model-generated text that flows into CI context** (branch names, PR descriptions from agent commits). The `crew.testing.*` CLI steps in pass-1 YAML take arguments — keep them fed via environment variables, never string-interpolated into the shell line.
+
+### W3. Least privilege and OIDC over stored secrets
+- Pass-1 YAML already declares explicit `permissions:` per workflow — keep it, and add `permissions: {}` at workflow level with per-job elevation only where needed [OpenSSF, 2024].
+- For any step needing cloud resources (e.g., ledger backups to object storage), use **OIDC short-lived tokens** federated to a cloud IAM role instead of long-lived stored secrets [GitHub Docs; OpenSSF, 2024]. The gate's `GITHUB_TOKEN` should be the *only* credential the fast path needs.
+
+### W4. Attestation: sign the artifacts that drive calibration
+GitHub artifact attestations generate Sigstore-signed SLSA provenance for artifacts built in Actions, bound to the workflow's OIDC identity via short-lived certificates logged to a public transparency log [GitHub Docs, Artifact attestations; sigstore.dev blog]. Crew mapping: the nightly artifacts (`cov.json`, `mutation-report.json`, `drill-results.json`) are the audit trail that quarterly calibration consumes (blocking-authority.md §2). If a compromised runner can silently swap those reports, the calibration loop eats poisoned data and adjusts thresholds in the attacker's preferred direction. Generate attestations for the artifact bundle; verify before ledger ingestion.
+
+### W5. Toolchain pinning inside the runner
+`pip install -r requirements-dev.txt` at gate time is itself a supply-chain surface: the gate installs pytest, mutmut, Hypothesis, pytest-cov with floating constraints. A malicious or hijacked release of a test tool runs with the runner's full secret access. Use hashed requirements (`pip install --require-hashes -r requirements-dev.lock`) refreshed via a reviewed, scheduled PR — not ad-hoc float on every run. This complements the runner-level isolation argument in multi-agent-security.md pass 1 (microVM sandboxing).
+
+### Numbers for calibration (pass 2)
+
+| Quantity | Value | Source |
+|---|---|---|
+| tj-actions/changed-files impact | >23,000 repositories | [GitHub Advisory Database, 2025] |
+| CVE / GHSA | CVE-2025-30066 / GHSA-mrrh-fwg8-r2c3 | same |
+| CISA alert date | 2025-03-18 | [CISA, 2025] |
+| Pinning rule | full-length 40-char commit SHA (only immutable ref) | [GitHub Docs, Secure use] |
+| Injection rule | env vars, never `${{ }}` interpolation in `run:` | [GitHub Docs; StepSecurity] |
+| Attestation chain | Sigstore keyless, OIDC-bound, transparency log | [GitHub Docs, Artifact attestations] |
+
+### References (pass 2)
+1. [GitHub Advisory Database, 2025] GHSA-mrrh-fwg8-r2c3 — tj-actions/changed-files remote code execution, >23,000 repos. https://github.com/advisories/ghsa-mrrh-fwg8-r2c3 [verified: 2026-09-14]
+2. [CISA, 2025] "Supply Chain Compromise of Third-Party tj-actions/changed-files (CVE-2025-30066)," alert 2025-03-18. https://www.cisa.gov/news-events/alerts/2025/03/18/supply-chain-compromise-third-party-tj-actionschanged-files-cve-2025-30066-and-reviewdogaction [verified: 2026-09-14]
+3. [StepSecurity, 2025] "Harden-Runner detection: tj-actions/changed-files action is compromised." https://www.stepsecurity.io/blog/harden-runner-detection-tj-actions-changed-files-action-is-compromised [verified: 2026-09-14]
+4. [GitHub Docs] "Secure use reference" — SHA pinning and script-injection guidance. https://docs.github.com/en/actions/reference/security/secure-use [verified: 2026-09-14]
+5. [OpenSSF, 2024] "Mitigating Attack Vectors in GitHub Workflows," 2024-08-12. https://openssf.org/blog/2024/08/12/mitigating-attack-vectors-in-github-workflows/ [verified: 2026-09-14]
+6. [GitHub Docs] "Artifact attestations" — Sigstore keyless signing bound to Actions OIDC. https://docs.github.com/en/actions/concepts/security/artifact-attestations [verified: 2026-09-14]
+7. [aquilax, 2026] "GitHub Actions Security: Hardening Your CI/CD Workflows," 2026-03-19. https://aquilax.ai/blog/github-actions-security-hardening [verified: 2026-09-14, snippet only]
