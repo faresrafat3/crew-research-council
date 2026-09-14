@@ -82,3 +82,57 @@ SWE-bench Verified is a human-validated 500-instance subset of real GitHub issue
 - [Garg et al., 2025] Saving SWE-Bench: Benchmark Mutation (arXiv:2510.08996).
 - [IJECS, 2026] Detect-Fix-Learn Loop (calibration, HITL).
 - [Microsoft, 2026] VS Code handoff agents pattern.
+
+---
+
+## [DEEP DIVE (freebuff, pass 2, 2026-09-14)]: Why Agents Skip Rules — Instruction-Adherence Evidence and the Verifiable-Instruction Architecture
+
+Pass 1 established *that* the engineer skips instructions (COORD-01/02: 100% skip rate even when testing was explicit) and *how* to gate against it (machine-checkable DONE criteria). The remaining question is *why* — and the instruction-following literature both explains the skip rate and prescribes the SOUL-text architecture that minimizes it.
+
+### E1. Text instructions are probabilistic controls — with measured failure rates
+
+- Modern LLMs score near-ceiling on IFEval, the standard instruction-following benchmark of verifiable instructions [IFEval, arXiv:2311.07911; DeepEval docs]. One might conclude instructions are reliable controls.
+- The nuance study says otherwise: across 20 proprietary and 26 open-source models, performance **drops by up to 61.8%** under "cousin prompts" — prompts conveying the same intent with subtle phrasing, framing, or task-formulation changes; benchmark scores "do not necessarily translate to reliable services in real-world use" [Dong et al., "Revisiting the Reliability of Language Models in Instruction-Following," arXiv:2512.14754, ACL 2026 main oral].
+- Crew v2's production reality is exactly cousin-prompt territory: every dispatch phrases the task differently, and SOUL rules sit in a long context alongside task details. COORD-01/02's 100% skip rate is the 61.8%-class failure at its extreme — the iron law as *text* is a probabilistic control with a measured, high failure tail. This is the literature-grade explanation for the pass-1 conclusion that instructions alone don't stick.
+
+### E2. The verifiable-instruction architecture: make every rule a checkable artifact property
+
+IFEval's design principle is that instructions must be **verifiable** — graded by a program, not a judgment [IFEval, 2023]. The engineer SOUL should adopt the same discipline for its prohibitions:
+
+| SOUL rule (text) | Verifiable form (checked by CI) |
+|---|---|
+| "No DONE without RED" | ledger row: RED ref exists, points to tester-authored test, CI rerun confirms failure-on-empty-impl |
+| "No weakening assertions" | git diff of test files in the GREEN commit: assertion count non-decreasing, thresholds unchanged |
+| "No narrowing Hypothesis strategies" | diff of `@settings`/strategy params: max_examples non-decreasing, no added `assume()` filters without REQ note |
+| "No bare sleeps" | AST lint (pass-1 anti-flake rules) |
+| "Fix only listed files on HOLD" | diff scope check against FIX_REQUIRED list |
+
+Every "never X" in the SOUL that cannot be turned into a checkable artifact property is a rule the crew cannot actually enforce — it survives only as advice. The pass-1 five-artifact DONE template was the first instance of this pattern; the table above generalizes it.
+
+### E3. Position and repetition: defending against instruction loss in long prompts
+
+WebApp1K's TDD benchmark found **instruction loss in long prompts** is a top bottleneck for TDD-by-LLM — instruction following matters more than coding proficiency, and long contexts degrade it [Cui, 2025, arXiv:2505.09027; tdd-protocol.md pass 2 §T2]. The engineer SOUL is exactly a long prompt. Countermeasures with direct evidence:
+1. **Re-state the iron law at the point of action.** The DONE-claim template itself should embed the iron law as a checklist the engineer must echo ("RED ref attached: YES/NO — a NO answer means you are not done"), not rely on a paragraph 400 lines up in the SOUL. Repeating obligations at the point of compliance shortens the effective distance between instruction and action.
+2. **Emit the rules adjacent to the artifacts they govern.** The HOLD-response template should list the fix-only-listed-files rule inline; the GREEN template should list the no-weakening rule inline.
+3. **Drill with cousin phrasings.** The evaluator's nuance metric (reliable@k over cousin prompts [Dong et al., 2025]) has a crew analog: periodically dispatch eval tasks whose phrasings vary while the iron law's applicability stays constant, and audit whether DONE-claim compliance held. Compliance that collapses under rephrasing is text-only compliance — find it in a drill, not a production escape.
+
+### E4. What this changes in the SOUL patch
+
+The pass-1 iron-law text stays verbatim (it is also the human-facing contract), but the enforcement story upgrades from "rule in SOUL" to the three-layer control: (1) verifiable-instruction forms in CI (E2 table), (2) point-of-action restatement in message templates (E3.1–2), (3) cousin-drill audits quarterly (E3.3). Text remains necessary — it defines what the checks verify — but no layer relies on text alone.
+
+### Numbers for calibration (pass 2)
+
+| Quantity | Value | Source |
+|---|---|---|
+| Instruction-following drop under cousin prompts | up to 61.8% | [Dong et al., 2025/2026, arXiv:2512.14754] |
+| Models evaluated in nuance study | 20 proprietary + 26 open-source | same |
+| IFEval design principle | verifiable instructions, program-graded | [IFEval, arXiv:2311.07911] |
+| WebApp1K bottleneck | instruction loss in long prompts | [Cui, 2025] |
+| COORD-01/02 skip rate (crew's own data) | 100% | [Council Context, 2026] |
+
+### References (pass 2)
+1. [Dong et al., 2025/2026] "Revisiting the Reliability of Language Models in Instruction-Following," arXiv:2512.14754 (IFEval++, reliable@k), ACL 2026 main oral. https://arxiv.org/abs/2512.14754 [verified: 2026-09-14]
+2. [Zhou et al., 2023] "Instruction-Following Evaluation for Large Language Models" (IFEval), arXiv:2311.07911. https://arxiv.org/abs/2311.07911 [verified: 2026-09-14]
+3. [DeepEval docs] "IFEval — The LLM Evaluation Framework." https://deepeval.com/docs/benchmarks-ifeval [verified: 2026-09-14, snippet only]
+4. [Cui, 2025] WebApp1K, arXiv:2505.09027. https://arxiv.org/abs/2505.09027 [verified: 2026-09-14]
+5. [Council Context, 2026] Crew v2 trials COORD-01, COORD-02 (pass-1 source, preserved).
