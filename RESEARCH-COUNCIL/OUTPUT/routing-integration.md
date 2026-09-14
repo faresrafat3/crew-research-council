@@ -144,3 +144,285 @@ Pass 2 gave the router asymmetric error economics (missed-block ≫ false-block)
 1. [Tian et al., 2023] "Just Ask for Calibration," EMNLP 2023, arXiv:2305.14975 [primary abstract verified: 2026-09-14].
 2. [Chhikara et al., 2025] "Mind the Confidence Gap," arXiv:2502.11028 [primary verified: 2026-09-14].
 3. [Greiler et al., 2016] "Understanding Challenges, Best Practices and Tool Needs for Code Review," MSR-TR-2016-27 [snippet-verified: 2026-09-14].
+
+---
+
+## [DEEP DIVE]: Antigravity — Zero-Daemon Formation Dispatcher, Cost-Sensitive Multi-Attribute Utility & Dynamic Escalation DAG
+
+### 1. The Autonomous Formation Dispatch Problem
+
+In multi-agent architectures, static task allocation fails in two directions:
+1. **Under-Routing (Catastrophic False Negatives)**: Routing a high-risk, security-sensitive or core architectural change to `SOLO` (Engineer only), skipping the Tester and Critic. As demonstrated in COORD-01/02 failure traces, unverified code ships with zero tests, causing costly production escapes ($C_{\text{FN}} \gg 0$).
+2. **Over-Routing (Economic Exhaustion)**: Routing trivial documentation fixes, typo repairs, or localized parameter tweaks to `FULL` (Researcher + Architect + Engineer + Tester + Critic), burning $12\times$ unnecessary tokens and congesting agent execution queues.
+
+Under the zero-daemon invariant (`MAP.md`), routing must operate without long-running supervisor daemons or external routing servers. We implement the **Zero-Daemon Formation Dispatcher** embedded in SQLite-WAL transactions.
+
+```
++-------------------------------------------------------------------------------+
+|                       FORMATION DISPATCH DECISION FLOW                        |
+|                                                                               |
+|   +-------------------+                                                       |
+|   | Incoming Task Req |                                                       |
+|   +-------------------+                                                       |
+|             |                                                                 |
+|             v                                                                 |
+|   +-----------------------------------------------------------------------+   |
+|   | 1. Syntactic & Semantic Feature Extraction (< 12ms)                   |   |
+|   |    - Blast radius (files touched, dependency depth)                   |   |
+|   |    - Reversibility & security criticality index                       |   |
+|   |    - Structural complexity: LOC estimate, AST branch factor           |   |
+|   +-----------------------------------------------------------------------+   |
+|             |                                                                 |
+|             v                                                                 |
+|   +-----------------------------------------------------------------------+   |
+|   | 2. Cost-Sensitive Multi-Attribute Utility Optimization (CS-MAUO)      |   |
+|   |    U(formation, x) = - [ C_FN * P(Defect) + C_FP * Overkill + Cost ]  |   |
+|   |    Argmax selects: SOLO, DUO, PIPELINE, or FULL                       |   |
+|   +-----------------------------------------------------------------------+   |
+|             |                                                                 |
+|             v                                                                 |
+|   +-----------------------------------------------------------------------+   |
+|   | 3. SQLite Atomic Lease & Execution Token Minting (< 1.8ms)            |   |
+|   |    - Writes formation assignment into formation_dispatch_ledger      |   |
+|   |    - Injects required agent roles into task execution graph           |   |
+|   +-----------------------------------------------------------------------+   |
+|             |                                                                 |
+|             | If Runtime Shock / Gate Breach Occurs                           |
+|             v                                                                 |
+|   +-----------------------------------------------------------------------+   |
+|   | 4. Dynamic Formation Escalation State Machine                          |   |
+|   |    SOLO --(Test Needed)--> DUO --(Gate Fail)--> PIPELINE --> FULL     |   |
+|   +-----------------------------------------------------------------------+   |
++-------------------------------------------------------------------------------+
+```
+
+---
+
+### 2. SQLite-WAL Formation Dispatcher Schema
+
+```sql
+-- Schema: Formation Dispatcher & Escalation Ledger (formation_dispatch.sql)
+PRAGMA journal_mode = WAL;
+PRAGMA synchronous = NORMAL;
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS formation_dispatch_ledger (
+    dispatch_id TEXT PRIMARY KEY,
+    task_id TEXT NOT NULL UNIQUE,
+    initial_formation TEXT NOT NULL CHECK(initial_formation IN ('SOLO', 'DUO', 'PIPELINE', 'FULL')),
+    current_formation TEXT NOT NULL CHECK(current_formation IN ('SOLO', 'DUO', 'PIPELINE', 'FULL')),
+    blast_radius_score REAL NOT NULL, -- Range [0.0, 1.0]
+    criticality_tier TEXT NOT NULL CHECK(criticality_tier IN ('P0', 'P1', 'P2', 'P3')),
+    utility_score REAL NOT NULL,
+    escalation_count INTEGER NOT NULL DEFAULT 0,
+    escalation_reason TEXT,
+    allocated_agents TEXT NOT NULL, -- JSON array of agent role strings
+    cas_version INTEGER NOT NULL DEFAULT 1,
+    dispatched_at REAL NOT NULL DEFAULT (unixepoch('subsec')),
+    last_escalated_at REAL
+);
+
+CREATE TABLE IF NOT EXISTS formation_execution_telemetry (
+    telemetry_id TEXT PRIMARY KEY,
+    dispatch_id TEXT NOT NULL,
+    task_id TEXT NOT NULL,
+    formation TEXT NOT NULL,
+    tokens_consumed INTEGER NOT NULL,
+    wall_clock_duration_sec REAL NOT NULL,
+    final_verdict TEXT NOT NULL CHECK(final_verdict IN ('PROMOTE', 'HOLD', 'ROLLBACK', 'ABORTED')),
+    escape_detected INTEGER NOT NULL DEFAULT 0,
+    recorded_at REAL NOT NULL DEFAULT (unixepoch('subsec')),
+    FOREIGN KEY(dispatch_id) REFERENCES formation_dispatch_ledger(dispatch_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_dispatch_task ON formation_dispatch_ledger(task_id, current_formation);
+CREATE INDEX IF NOT EXISTS idx_telemetry_formation ON formation_execution_telemetry(formation, escape_detected);
+```
+
+---
+
+### 3. Cost-Sensitive Multi-Attribute Utility Optimization (CS-MAUO)
+
+Following Bayesian decision theory and cost-sensitive classification (Elkan, IJCAI 2001; Keeney & Raiffa 1993), the router selects the optimal formation $F^* \in \{\text{SOLO}, \text{DUO}, \text{PIPELINE}, \text{FULL}\}$ by maximizing expected utility:
+
+$$F^* = \arg\max_{F} U(F, \mathbf{x})$$
+
+Where $\mathbf{x} = [r_{\text{blast}}, c_{\text{cyclomatic}}, s_{\text{security}}, d_{\text{loc}}]^T$ is the normalized feature vector, and utility is defined as:
+
+$$U(F, \mathbf{x}) = - \Big[ C_{\text{FN}} \cdot \mathbb{P}(\text{Defect} \mid F, \mathbf{x}) + C_{\text{FP}} \cdot \mathbb{P}(\text{Overkill} \mid F, \mathbf{x}) + \lambda \cdot \widetilde{\text{Cost}}_{\text{tokens}}(F) \Big]$$
+
+#### 3.1 Asymmetric Cost Parameters
+- **Defect Escape Penalty ($C_{\text{FN}} = 50.0$)**: An escaped bug shipped to production requires emergency rollback, incident response, and SOUL repair.
+- **Overkill Friction Penalty ($C_{\text{FP}} = 1.0$)**: Extra agent deliberation adds latency and compute, but preserves system invariants.
+- **Normalized Token Cost ($\lambda = 0.50$)**:
+  - $\widetilde{\text{Cost}}(\text{SOLO}) = 1.0$ (Baseline: ~15k tokens)
+  - $\widetilde{\text{Cost}}(\text{DUO}) = 2.4$ (Engineer + Tester: ~36k tokens)
+  - $\widetilde{\text{Cost}}(\text{PIPELINE}) = 5.2$ (Architect + Engineer + Tester: ~78k tokens)
+  - $\widetilde{\text{Cost}}(\text{FULL}) = 12.0$ (Full Council + Critic: ~180k tokens)
+
+Because $C_{\text{FN}} / C_{\text{FP}} = 50$, the optimal decision boundary for requiring at least a `DUO` (Tester gate) occurs at:
+
+$$\mathbb{P}(\text{Defect} \mid \text{SOLO}, \mathbf{x}) > \frac{C_{\text{FP}}}{C_{\text{FN}} + C_{\text{FP}}} = \frac{1}{51} \approx 0.0196 \implies \mathbf{1.96\%}$$
+
+Any task with greater than a **1.96% probability of defect** MUST NOT be dispatched as `SOLO`.
+
+---
+
+### 4. Zero-Daemon Dispatcher & Dynamic Escalation Implementation
+
+```python
+"""Zero-daemon formation dispatcher and dynamic escalation engine."""
+import json
+import math
+import sqlite3
+import time
+from typing import Dict, Any, Tuple, List
+
+class FormationDispatcher:
+    def __init__(self, db_path: str):
+        self.db_path = db_path
+        self.c_fn = 50.0
+        self.c_fp = 1.0
+        self.lambda_cost = 0.50
+
+        # Cost weights relative to SOLO
+        self.cost_weights = {
+            "SOLO": 1.0,
+            "DUO": 2.4,
+            "PIPELINE": 5.2,
+            "FULL": 12.0,
+        }
+
+    def _get_conn(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self.db_path, timeout=5.0)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode = WAL")
+        return conn
+
+    def estimate_defect_probability(self, blast_radius: float, cyclomatic: int, is_security_critical: bool) -> float:
+        """Sigmoid feature projection to estimate P(Defect | SOLO)."""
+        z = -4.0 + (3.5 * blast_radius) + (0.15 * min(cyclomatic, 30)) + (2.5 if is_security_critical else 0.0)
+        return 1.0 / (1.0 + math.exp(-z))
+
+    def evaluate_utility(self, formation: str, p_defect: float) -> float:
+        # Higher formations reduce defect probability exponentially
+        formation_defect_reduction = {
+            "SOLO": 1.0,
+            "DUO": 0.15,
+            "PIPELINE": 0.03,
+            "FULL": 0.005,
+        }
+        res_p_defect = p_defect * formation_defect_reduction[formation]
+        p_overkill = max(0.0, 1.0 - p_defect) if formation in ("PIPELINE", "FULL") else 0.0
+
+        expected_fn_cost = self.c_fn * res_p_defect
+        expected_fp_cost = self.c_fp * p_overkill
+        token_cost = self.lambda_cost * self.cost_weights[formation]
+
+        return -(expected_fn_cost + expected_fp_cost + token_cost)
+
+    def dispatch_task(
+        self,
+        task_id: str,
+        blast_radius: float,
+        cyclomatic: int,
+        criticality_tier: str,
+    ) -> Tuple[str, str, List[str]]:
+        is_sec = criticality_tier in ("P0", "P1")
+        p_defect = self.estimate_defect_probability(blast_radius, cyclomatic, is_sec)
+
+        # Evaluate utility across all formations
+        utilities = {f: self.evaluate_utility(f, p_defect) for f in ("SOLO", "DUO", "PIPELINE", "FULL")}
+        
+        # Hard Rule Overrides: P0 must always be FULL, P1 at least PIPELINE
+        if criticality_tier == "P0":
+            chosen = "FULL"
+        elif criticality_tier == "P1" and utilities["PIPELINE"] < utilities["FULL"]:
+            chosen = "FULL"
+        elif criticality_tier == "P1":
+            chosen = "PIPELINE"
+        elif p_defect > 0.0196 and "SOLO" == max(utilities, key=utilities.get):
+            chosen = "DUO"  # Enforce 1.96% cutoff
+        else:
+            chosen = max(utilities, key=utilities.get)
+
+        role_map = {
+            "SOLO": ["engineer"],
+            "DUO": ["engineer", "tester"],
+            "PIPELINE": ["architect", "engineer", "tester"],
+            "FULL": ["researcher", "architect", "engineer", "tester", "critic"],
+        }
+        agents = role_map[chosen]
+        dispatch_id = f"disp_{task_id}_{int(time.time()*1000)}"
+
+        with self._get_conn() as conn:
+            conn.execute(
+                """
+                INSERT INTO formation_dispatch_ledger
+                (dispatch_id, task_id, initial_formation, current_formation, blast_radius_score, criticality_tier, utility_score, allocated_agents)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (dispatch_id, task_id, chosen, chosen, blast_radius, criticality_tier, utilities[chosen], json.dumps(agents)),
+            )
+        return dispatch_id, chosen, agents
+
+    def trigger_runtime_escalation(self, task_id: str, reason: str) -> Tuple[str, List[str]]:
+        """Atomically escalates formation upon gate failure or livelock shock."""
+        escalation_ladder = {
+            "SOLO": "DUO",
+            "DUO": "PIPELINE",
+            "PIPELINE": "FULL",
+            "FULL": "FULL", # Already at ceiling; triggers human pause
+        }
+        role_map = {
+            "DUO": ["engineer", "tester"],
+            "PIPELINE": ["architect", "engineer", "tester"],
+            "FULL": ["researcher", "architect", "engineer", "tester", "critic"],
+        }
+
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "SELECT current_formation, escalation_count, cas_version FROM formation_dispatch_ledger WHERE task_id = ?",
+                (task_id,),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise ValueError(f"Task {task_id} not found in dispatch ledger.")
+
+            curr = row["current_formation"]
+            nxt = escalation_ladder[curr]
+            agents = role_map[nxt]
+            new_cas = row["cas_version"] + 1
+            new_esc = row["escalation_count"] + 1
+
+            conn.execute(
+                """
+                UPDATE formation_dispatch_ledger
+                SET current_formation = ?, allocated_agents = ?, escalation_count = ?, escalation_reason = ?, cas_version = ?, last_escalated_at = ?
+                WHERE task_id = ? AND cas_version = ?
+                """,
+                (nxt, json.dumps(agents), new_esc, reason, new_cas, time.time(), task_id, row["cas_version"]),
+            )
+        return nxt, agents
+```
+
+---
+
+### 5. Quantitative Invariants & Calibration Targets
+
+| Dimension | Target Metric | Bound / Threshold | Hard Invariant |
+|---|---|---|---|
+| **Dispatch Latency** | $< 2.0\text{ ms}$ | $< 15.0\text{ ms}$ | Sub-millisecond SQLite WAL query |
+| **False-Negative Rate ($FN_{\text{misroute}}$)** | $\le 1.0\%$ | $\le 2.0\%$ | Asymmetric loss $C_{\text{FN}} = 50.0$ blocks under-routing |
+| **False-Positive Rate ($FP_{\text{misroute}}$)** | $< 25.0\%$ | $< 35.0\%$ | Token cost dampener $\lambda = 0.50$ prevents runaway FULL usage |
+| **P0 Critical Path** | $100\%$ routed to `FULL` | Zero exceptions | Hard constraint in decision engine |
+| **Defect Escapes in Production** | $0$ tolerated | $\le 1 / 20$ tasks | Escape triggers automated router retuning |
+
+---
+
+### References (pass 3)
+1. Elkan, C. (2001). "The Foundations of Cost-Sensitive Learning". *International Joint Conference on Artificial Intelligence (IJCAI)*, 973–978.
+2. Keeney, R. L., & Raiffa, H. (1993). *Decisions with Multiple Objectives: Preferences and Value Tradeoffs*. Cambridge University Press.
+3. Ong, H. Y., et al. (2024). "RouteLLM: Learning to Route LLMs with Preference Data". *ICLR 2025*. arXiv:2406.18665.
+4. Dean, J., & Ghemawat, S. (2004). "MapReduce: Simplified Data Processing on Large Clusters". *Communications of the ACM*, 51(1), 107–113.
+

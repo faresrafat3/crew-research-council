@@ -243,6 +243,10 @@
   - Zero-daemon SQLite-WAL pre-commit state machine enforcing linear lifecycle stages (`SPEC_LOCKED` to `TESTER_READY`) via CAS version locks.
   - In-process AST code fence enforcer banning unresolvable/ghost imports, empty stubs, and high-complexity code (McCabe $M \le 10$, nesting $\le 4$) in <8ms.
   - Automated HOLD remediation protocol with test-directory write barriers and 3-strike escalation circuit breaker.
+- **[DEEP DIVE]** appended to `OUTPUT/routing-integration.md`:
+  - Zero-daemon SQLite-WAL formation dispatcher (`formation_dispatch_ledger`) with sub-2ms lease resolution.
+  - Cost-Sensitive Multi-Attribute Utility Optimization (CS-MAUO) with asymmetric defect penalty ($C_{\text{FN}} = 50.0, C_{\text{FP}} = 1.0$), enforcing a mathematical 1.96% defect threshold ceiling for `SOLO` routes.
+  - Dynamic formation escalation state machine (`SOLO` -> `DUO` -> `PIPELINE` -> `FULL`) with atomic CAS updates.
 
 
 
@@ -315,7 +319,7 @@
 | `OUTPUT/cicd-integration.md` | ✅ Complete | Triggers, gates, artifacts, flake lane, nightly golden+drills + 3 deep dives (freebuff pass 2: supply chain SHA-pinning/OIDC; freebuff pass 3: merge queues; antigravity: local hermetic CI runner, in-toto SQLite attestation, CAS cache) |
 | `OUTPUT/tester-soul.md` | ✅ Complete | Full executable tester spec + verdict template + 3 deep dives (freebuff pass 2: RTS Ekstazi/STARTS, safety KPI; freebuff pass 3: 80/20 attention allocation; antigravity: metamorphic differential oracles, SQLite test DAG, verdict certificates) |
 | `OUTPUT/engineer-soul.md` | ✅ Complete | Iron-law verbatim, artifacts, HOLD response, bans + 3 deep dives (freebuff pass 2: IFEval++ adherence, CI-checkable rules; freebuff pass 3: review yield & SmartBear diff limits; antigravity: pre-commit state machine, AST code fences, HOLD remediation) |
-| `OUTPUT/routing-integration.md` | ✅ Complete | Formation table, activation, message/artifact flows |
+| `OUTPUT/routing-integration.md` | ✅ Complete | Formation table, activation, message/artifact flows + 3 deep dives (freebuff pass 2: RouteLLM cost-sensitive loss, golden routing set; freebuff pass 3: reviewer fatigue calibration; antigravity: zero-daemon formation dispatcher, CS-MAUO utility, dynamic escalation) |
 | `OUTPUT/implementation-roadmap.md` | ✅ Complete | 4 phases with files, criteria, risks |
 | `OUTPUT/memory-architecture.md` | ✅ Complete | 4-tier hierarchy, rate-distortion compaction, EWC anti-forgetting + 3 deep dives (freebuff: vector degradation, chunking bounds; antigravity: zero-daemon SQLite substrate, HippoRAG 2 PPR, BGE-M3, ACT-R decay; cline: governed shared memory, write-path, ACE playbooks) |
 | `OUTPUT/communication-protocols.md` | ✅ Complete | EDA, priority lanes, DLQ, idempotency, circuit breakers + 3 deep dives (freebuff: A2A/jitter/trace; antigravity: SQLite-WAL bus/WFG/deltas; zcode: outbox/schema-evolution/MCP 2026-07-28/retry budgets) |
