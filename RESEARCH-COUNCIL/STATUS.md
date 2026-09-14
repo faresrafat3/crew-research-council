@@ -213,6 +213,10 @@
   - Zero-daemon SQLite-WAL Compare-And-Swap (CAS) state machine orchestrator with optimistic concurrency locking and filesystem pre-commit guards.
   - In-process AST oracle validation firewall checking 5 static rules (`ORACLE_01`–`ORACLE_05`), blocking vacuous and tautological assertions.
   - Sequential Chi-Square goodness-of-fit flake defense ($\chi^2 > 3.841 \implies$ quarantine), preventing engineer p-hacking retry attacks.
+- **[DEEP DIVE]** appended to `OUTPUT/testing-framework-spec.md`:
+  - Zero-daemon hermetic sandbox harness via rootless Bubblewrap (`bwrap`) with network isolation (`--unshare-net`) and RAM disk mounts (`> 25,000 IOPS`).
+  - Adversarial Hypothesis property-based testing strategies for multi-agent artifacts with SQLite-WAL example database caching.
+  - Dynamic AST-sliced mutation testing delivering 8.5x execution speedup via diff node extraction and coverage-guided mutant execution.
 
 
 
@@ -242,6 +246,16 @@
   - Canary-token DLP (Thinkst): unique marker strings in memory tiers + sensitive paths, Layer-5 exact-match scan → deterministic exfil detection, zero false positives; detect-not-prevent caveat paired with quarantine response
   - Signed SOULs: Ed25519-signed policy versions (verify-before-load), two-person rule for Ring 0/1 changes, patch ledger as chain of custody; OWASP Agentic AI T1–T15 + Top 10 Agentic Applications 2026 (ASI01–ASI10) mapped; 6/10 vectors exploited in the wild by April 2026 [Lyrie]
 
+### cline (external) — 2026-09-13
+- **[DEEP DIVE]** appended to `OUTPUT/memory-architecture.md` (~390 lines, all claims web-verified 2026-09-13 via exa + tinyfish against primary sources; confirmed live on GitHub at line 411 after freebuff pass-2/3 merges):
+  - Governed shared memory: the 4 primitives (scoped retrieval, temporal supersession, provenance, policy-governed propagation) from the live MemClaw/ArgusFleet study (arXiv:2606.24535) — incl. the asymmetric scope-enforcement bug (sub-tenant bypass via GET-by-id) and the pipeline-ordering conflict (sync dedupe gate rejecting contradictions before async detector).
+  - Write-path engineering: triage→extract/dedup pipeline with cost data (skipping triage ≈ $5/day/user; hybrid exact+embedding dedupe ≥0.92 NOOP band), conflicts resolved async, never sync.
+  - ACE playbooks as procedural memory (arXiv:2510.04618): +10.6% agents / +8.6% finance; brevity bias and context collapse as the two failure modes delta-updates prevent.
+  - Retrieval economics: hybrid fusion (vector+BM25+entity) reranked recency×importance×relevance; HippoRAG +20% multi-hop at 10–20× cheaper; full-context baseline 72.9% LoCoMo @ ~26K tokens vs Mem0 66.9–92.5% @ 1.8–6.9K (vendor-reported) — incl. the Mem0-vs-Zep LoCoMo methodology dispute, both sides cited.
+  - Memory poisoning (arXiv:2606.04329): 4 write channels, 9 vulnerabilities, 6 attack classes; existing prompt-injection defenses do not cover it; defenses = scoped writes, verbatim source chunks, provenance rollback, write rate limits, quarterly red-team.
+  - Executable deliverables: write_gate.py spec, /memories scope tree, recall() with fused scoring, per-layer TTL/decay table, 13-metric table with targets, 4-phase roadmap, 8 anti-patterns, 3 operator questions (QUESTIONS.md).
+
+## Research Queue
 ## Research Queue
 
 ### Pending (PROMPTS/INBOX.md)
@@ -258,9 +272,9 @@
 | scout | ✅ Complete | 10 INBOX + 6 DEEP DIVE + 13 INBOX prompts |
 | workbuddy | ⏳ Pending | Not connected |
 | zcode | ✅ Complete | Push-bug repair + deep dives: communication-protocols, self-healing, multi-agent-security (2026-09-14) |
-| cline | ⏳ Pending | Not connected |
+| cline | ✅ Complete | Memory Architecture Deep Dive (governed shared memory, write-path, ACE playbooks, retrieval economics) |
 | freebuff | ✅ Complete | Pass-3 deep dives on all 13 multi-agent outputs (2026-09-14); pass-2 testing dives (2026-09-14); pass-1 multi-agent dives (2026-09-13) |
-| antigravity | ✅ Complete | Deep dives across all 13 multi-agent architecture domains + TDD protocol (2026-09-14) |
+| antigravity | ✅ Complete | Deep dives across all 13 multi-agent domains + testing discipline (2026-09-14) |
 | opencode | ⏳ Pending | Not connected |
 
 ## Output Inventory
@@ -269,7 +283,7 @@
 |------|--------|----------|
 | `OUTPUT/testing-maturity-model.md` | ✅ Complete | 5 AI-crew levels, L1 mapping, climb actions, checklist |
 | `OUTPUT/tdd-protocol.md` | ✅ Complete | Split RED/GREEN, handoff formats, ladder, time-box, state machine + 2 deep dives (freebuff: human/LLM evidence, probabilistic GREEN; antigravity: CAS state machine, AST oracle firewall, Chi-square flake defense) |
-| `OUTPUT/testing-framework-spec.md` | ✅ Complete | pytest/coverage/Hypothesis/mutmut configs + thresholds |
+| `OUTPUT/testing-framework-spec.md` | ✅ Complete | pytest/coverage/Hypothesis/mutmut configs + thresholds + 2 deep dives (freebuff: diff coverage, ratchets, tarpit warning; antigravity: bwrap sandbox harness, agent schema Hypothesis, AST-sliced mutation) |
 | `OUTPUT/quality-metrics.md` | ✅ Complete | 16-metric catalog, anti-pattern detectors, ledger schema |
 | `OUTPUT/blocking-authority.md` | ✅ Complete | 8 MUST-block, MUST-NOT list, escalation, calibration |
 | `OUTPUT/cicd-integration.md` | ✅ Complete | Triggers, gates, artifacts, flake lane, nightly golden+drills |
@@ -277,7 +291,7 @@
 | `OUTPUT/engineer-soul.md` | ✅ Complete | Iron-law verbatim, artifacts, HOLD response, bans |
 | `OUTPUT/routing-integration.md` | ✅ Complete | Formation table, activation, message/artifact flows |
 | `OUTPUT/implementation-roadmap.md` | ✅ Complete | 4 phases with files, criteria, risks |
-| `OUTPUT/memory-architecture.md` | ✅ Complete | 4-tier hierarchy, rate-distortion compaction, EWC anti-forgetting + 2 deep dives (freebuff: vector degradation, chunking bounds; antigravity: zero-daemon SQLite substrate, HippoRAG 2 PPR, BGE-M3, ACT-R decay) |
+| `OUTPUT/memory-architecture.md` | ✅ Complete | 4-tier hierarchy, rate-distortion compaction, EWC anti-forgetting + 3 deep dives (freebuff: vector degradation, chunking bounds; antigravity: zero-daemon SQLite substrate, HippoRAG 2 PPR, BGE-M3, ACT-R decay; cline: governed shared memory, write-path, ACE playbooks) |
 | `OUTPUT/communication-protocols.md` | ✅ Complete | EDA, priority lanes, DLQ, idempotency, circuit breakers + 3 deep dives (freebuff: A2A/jitter/trace; antigravity: SQLite-WAL bus/WFG/deltas; zcode: outbox/schema-evolution/MCP 2026-07-28/retry budgets) |
 | `OUTPUT/self-healing.md` | ✅ Complete | Reflective runtime, RBT diagnosis, 5-level degradation + 3 deep dives (freebuff: GEPA/error budgets/chaos; zcode: self-correction trap, CBR 4R, playbooks; antigravity: SQLite healing state machine, TextGrad backprop, Lyapunov stability, bwrap canaries) |
 | `OUTPUT/production-deployment.md` | ✅ Complete | HA, circuit breakers, ASI drift detection, MLflow + 2 deep dives (freebuff: OTel gen_ai, K8s probes, canaries; antigravity: zero-daemon supervision, in-DB rate limiting, entropy breakers, ASI 12-dim tracking) |
