@@ -122,3 +122,25 @@ RouteLLM's headline numbers (85% savings) hold only while routing decisions are 
 2. [LMSYS, 2024] "RouteLLM: An Open-Source Framework for Cost-Effective LLM Routing," 2024-07-01. https://www.lmsys.org/blog/2024-07-01-routellm/ [verified: 2026-09-14]
 3. [lm-sys/routellm] Framework README — "reduce costs by up to 85% while maintaining 95% GPT-4 performance." https://github.com/lm-sys/routellm [verified: 2026-09-14, snippet]
 4. Cross-refs: Council Context (classification axes); routing-integration pass 1 (activation rules, precision/recall metrics); blocking-authority pass 1 §2 (calibration); testing-maturity pass 2 (adversarial drills); tdd-protocol pass 1 (state machine).
+
+## [DEEP DIVE (freebuff, pass 3, 2026-09-14)]: Reviewer-Fatigue Calibration and the Escalation Threshold — When Should a Verdict Wake a Human?
+
+Pass 2 gave the router asymmetric error economics (missed-block ≫ false-block). This pass attacks the remaining tuning constant with evidence: **when the router's own confidence drops, who gets the work — the tester crew again, or a human?** The answer depends on two measured quantities: how quickly human reviewers degrade under load, and how well models report their own uncertainty.
+
+**Evidence.**
+- Reviewer fatigue is real and fast: the SmartBear/Cisco detection ceiling (≤400 LOC, <300 LOC/hr) is *per sitting*; the Microsoft review literature (Bacchelli & Bird 2013; Greiler et al. 2016 on review tool needs) documents comment-quality decay and queuing delays as review load grows [snippet-verified 2026-09-14].
+- Models are systematically **overconfident in plain verbalizations**, but calibration is improvable: Tian et al. (EMNLP 2023) found verbalized confidence beats conditional probability for RLHF models and often cuts ECE by a **relative ~50%** [primary abstract read 2026-09-14]; Chhikara et al. (2502.11028) document residual overconfidence (e.g., 93% confidence on a wrong answer) and show distractor-structured prompting cuts ECE by up to **~90%** relative [primary read 2026-09-14].
+- Design consequence: a router *can* be made honest enough to gate escalation, but only with structured elicitation (distractor/consider-the-opposite prompting or logprob-based confidence), not bare self-report.
+
+**Protocol deltas for routing integration.**
+1. **Confidence is elicited structurally, never asked bare**: the router reports P(escape) via distractor-prompted verbalization or token-logprob aggregation; bare "are you sure?" self-report is banned as a routing signal (evidence: residual overconfidence even in improved elicitations).
+2. **Escalation threshold is set by the human attention budget, not by confidence alone**: human review enters the routing table as the highest-cost, highest-recall arm — invoked only when (a) router confidence falls below the calibrated threshold, AND (b) the PR's escape cost is hotspot-grade (roadmap pass 3). Low-cost PRs with low confidence route to a second crew pass, not to humans. FIFO wakeups are banned (engineer-soul pass 3).
+3. **Calibration is audited like any gate**: quarterly, the router's reported P(escape) is binned against observed escapes (reliability curve / ECE on the crew's own ledger). A router whose 90%-confidence bin escapes >15% of the time loses its auto-routing authority until recalibrated — the same ratify-or-revert discipline as maturity levels (maturity pass 3).
+4. **Human arms carry the fatigue correction**: the routing table's human-arm cost includes the measured review-throughput ceiling (<300 LOC/hr), so a "cheap" human review is priced honestly as attention.
+
+**Cross-links:** pass-2 error economics (FN≫FP), engineer-soul pass 3 (attention budget), roadmap pass 3 (hotspot gating), quality-metrics ledger (calibration audit as a first-class row).
+
+**Sources.**
+1. [Tian et al., 2023] "Just Ask for Calibration," EMNLP 2023, arXiv:2305.14975 [primary abstract verified: 2026-09-14].
+2. [Chhikara et al., 2025] "Mind the Confidence Gap," arXiv:2502.11028 [primary verified: 2026-09-14].
+3. [Greiler et al., 2016] "Understanding Challenges, Best Practices and Tool Needs for Code Review," MSR-TR-2016-27 [snippet-verified: 2026-09-14].
