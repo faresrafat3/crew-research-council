@@ -136,3 +136,25 @@ The pass-1 iron-law text stays verbatim (it is also the human-facing contract), 
 3. [DeepEval docs] "IFEval — The LLM Evaluation Framework." https://deepeval.com/docs/benchmarks-ifeval [verified: 2026-09-14, snippet only]
 4. [Cui, 2025] WebApp1K, arXiv:2505.09027. https://arxiv.org/abs/2505.09027 [verified: 2026-09-14]
 5. [Council Context, 2026] Crew v2 trials COORD-01, COORD-02 (pass-1 source, preserved).
+
+## [DEEP DIVE (freebuff, pass 3, 2026-09-14)]: Review Attention Is the Scarce Resource — Code-Review Effectiveness Under Agent-Generated Volume
+
+Pass 2 established that agents skip rules and gave the verifiable-instruction fix. The remaining constraint on the human/agent reviewer is **attention**: how much review actually happens per PR, and what it detects.
+
+**Evidence.**
+- Bacchelli & Bird's Microsoft study (ICSE 2013, hundreds of classified comments): despite defect-finding being the stated motivation, only **14%** of review comments concerned defects; most discussion was code improvement and alternative solutions [Bacchelli & Bird 2013 — figure corroborated by two independent secondary sources, snippet-verified 2026-09-14].
+- The SmartBear/Cisco large-scale study: defect detection density degrades sharply as the diff grows — recommendations of **under 200 LOC, not exceeding 400**, and inspection rates under ~300 LOC/hour for best detection [SmartBear "Best Kept Secrets of Peer Code Review" / Cisco case study — snippet-verified 2026-09-14].
+- Implication for agent crews: an agent that opens 15-PR feature batches has spent the reviewer's attention budget before review starts. The binding constraint is not reviewer willingness but the size ceiling.
+
+**Protocol deltas for the engineer soul.**
+1. **Diff-size discipline is a soul-level duty**, not a CI nicety: an agent defaulting to >400-LOC PRs is violating its reviewer's known detection limits, the same way skipping tests violates the suite. Soft ceiling 200 LOC, hard ceiling 400 (SmartBear numbers become crew numbers).
+2. **Atomic-diff rule**: one behavior change per PR. Multi-concern PRs must be split before review request; the reviewer's first blockable comment on an oversized PR is "split," never line feedback.
+3. **Review comments follow the 14% reality**: reviewers should not expect line-defect yield from human-style review of agent code; structural checks (tests present, gates green, diff size) catch what line-reading misses — which is exactly why the pass-2 CI-checkable rule architecture matters: move what can be checked out of review into CI, and reserve human attention for the 14%-class concerns (design, coupling, naming).
+4. Reviewer **load-shedding is legitimate**: when the queue exceeds the attention budget, reviewers triage by escape cost (roadmap pass 3 hotspots first) rather than FIFO — FIFO guarantees the worst PR gets the least attention.
+
+**Cross-links:** testing-framework-spec pass 3 (snapshot diffs consume the same budget), cicd pass 3 (merge queue keeps review serialized and bounded), roadmap pass 3 (hotspot triage), pass-2 instruction-adherence dive (CI-checkable rules free the 86%).
+
+**Sources.**
+1. [Bacchelli & Bird, 2013] "Expectations, Outcomes, and Challenges of Modern Code Review," ICSE 2013. https://www.microsoft.com/en-us/research/publication/expectations-outcomes-and-challenges-of-modern-code-review/ [verified: 2026-09-14; 14% figure via two secondary sources, snippet only]
+2. [SmartBear/Cisco] Best-kept-secrets study: <200 / ≤400 LOC, <300 LOC/hr. https://smartbear.com/learn/code-review/best-practices-for-peer-code-review/ [verified: 2026-09-14, snippet only]
+3. [Cohen et al., 2006] "Don't touch my code!": observer effects on review participation at Microsoft [literature, context].
