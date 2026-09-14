@@ -52,19 +52,6 @@
   12. `evaluation-frameworks.md` — Agent-as-a-Judge (DevAI: 58% vs 32% human agreement, 18% cost), Goodhart metric pairs, flaky-eval budget (Google/Microsoft baselines), unified evaluation calendar
   13. `explainability.md` — counterfactual attribution via checkpoint replay, OTel-native trace storage, deterministic replay capture set (hash-validated), TTD SLO ladder, trace-store privacy boundary (ring ACLs + write-time redaction)
 
-### freebuff — 2026-09-14
-- **Pass-2 deep-dive cycle completed** — second `[DEEP DIVE]` cycle on all 10 testing-domain outputs, covering the operator-named themes (coverage floors, CI YAML, maturity assessments) plus adjacent gaps (all claims web-verified against primary sources; snippet-only items marked in-text):
-  1. `testing-framework-spec.md` — coverage floors without gaming: per-PR diff-coverage gate (diff-cover; Codacy 2026), never-down ratchet replacing the static 80% floor, tarpit warning (Stack Overflow Blog 2025), diff-gate + targeted-mutation pairing
-  2. `tdd-protocol.md` — TDD effectiveness evidence (Nagappan et al.: 40-90% defect-density reduction at 15-35% initial-time cost; mixed design results), LLM TDD evidence (WebApp1K: instruction loss in long prompts; MS Research +45.97% pass@1), probabilistic-GREEN protocol (n≥5 samples, pass-rate bands, model/temp provenance)
-  3. `cicd-integration.md` — CI supply-chain hardening: tj-actions/changed-files compromise (CVE-2025-30066, >23k repos, CISA alert), full-SHA pinning rule, script-injection ban on `${{ }}` interpolation (agent text is untrusted CI input), OIDC over stored secrets, Sigstore artifact attestations for calibration inputs, hashed toolchain pinning
-  4. `testing-maturity-model.md` — Goodhart-resistant appraisal: gaming vectors per level gate with countermeasures, structurally independent machine-executable checklists (ledger-only evidence), quarterly adversarial gate drills (inject tautologies/fake REDs/retro-edited ledger rows)
-  5. `implementation-roadmap.md` — gate-adoption mechanics from Google Tricorder (edited-files-only results, new-warnings-only, FP<5% before blocking), shadow-mode rollout (20-task advisory window per gate), evidence-ranked gate ordering
-  6. `engineer-soul.md` — instruction-adherence data: IFEval++ nuance-reliability drop up to 61.8% across 46 models (explains the COORD skip rate), verifiable-instruction architecture (every SOUL rule → CI-checkable artifact property), point-of-action restatement + cousin-prompt drills
-  7. `blocking-authority.md` — audit sampling mathematics: c=0 zero-acceptance plans (n=59 at 95% confidence for a 5% rate), 5%-volume sampling detects a 5% rate only 40% of the time, rule-of-three bound on clean samples, stratification by appeal/FULL/new-module, audit load inside the fatigue budget
-  8. `routing-integration.md` — router error economics: asymmetric FN(≤1%, hard) vs FP(<25%, soft) misroute targets from COORD data, RouteLLM evidence (>2x, up to 85% savings at 95% GPT-4 quality) with cost-sensitive loss adaptation, golden routing regression set, formation-cost variance as calibration input
-  9. `quality-metrics.md` — small-sample statistics: p-charts for varying-n rates, run rules over single-point alarms, <1% flake claim restated in verifiable c=0 form (0 flips/20 runs), 20-point baseline lock, correlation caution for shared-module tasks
-  10. `tester-soul.md` — regression test selection: Ekstazi 32% time reduction and 80%-of-failures at 66% time saved, STARTS 40.5%, T-TS 15%-selection/5.9x speedup, Ekstazi-vs-STARTS safety/precision comparison, three-tier rerun protocol with RTS-safety KPI ≥95%, always-run core, prioritization order
-
 ### Scout — 2026-09-13 (Second Pass)
 - **13 new INBOX prompts completed** (multi-agent systems research):
   1. **P1 Multi-Agent Memory and Knowledge Management** → `memory-architecture.md`
@@ -148,6 +135,11 @@
   - MCP 2026-07-28 alignment (verified vs official changelog): sessions + `Mcp-Session-Id` removed (stateless, `_meta` versioning), SSE resume removed → durability moves to application-level task objects (Tasks extension, `tasks/get` polling), MRTR `input_required` shape adopted for tester HOLD, OTel `traceparent` in `_meta` now spec-blessed (SEP-414), `CacheableResult` ttlMs for tool-list caching
   - A2A v1.0 (March 2026, Linux Foundation, TCK + SDKs, 150+ orgs): adopt TCK as the interop conformance gate
   - Retry-load governance: Google SRE per-process retry budget ("60 retries per minute" example, fail-fast when exhausted) + Dean & Barroso hedged requests (CACM 2013) for critic/completer lanes, hedging consuming the same budget
+- **[DEEP DIVE]** appended to `OUTPUT/self-healing.md`:
+  - Self-correction trap: Huang et al. (ICLR 2024, arXiv:2310.01798) — intrinsic self-correction without external feedback degrades performance → rule: no heal-loop iteration without fresh verifier evidence; Reflexion (arXiv:2303.11366, 91% vs 80% HumanEval) → two-tier adaptation: automatic per-agent memory lessons (fast) vs human-approved SOUL patches (slow)
+  - Case-based healing: Aamodt & Plaza 1994 4R cycle (Retrieve/Reuse/Revise/Retain) over the librarian's shelved cases; SQLite `healing_cases` table on the sqlite-vec/RRF substrate; ≥30% reuse-rate target; GEPA generation demoted to novel-failure fallback
+  - Failure-class playbooks: deterministic first-response remedy for each of the 6 root-cause categories (schema validation, memory replay, re-anchor, breaker check, quarantine, SOUL reset), patches as last resort
+  - Quantified patch-acceptance pipeline: frozen regression gate + N≥30 golden-set shadow replay (non-inferiority 2pp, pass^k k=3) + 48h canary; auto-rollback on escape rate +50%; healer caps (≤2 patches/agent/month, hash-chained ledger, coach kill switch); per-stage time budgets with aging alarms
 
 ## Research Queue
 
@@ -166,7 +158,7 @@
 | workbuddy | ⏳ Pending | Not connected |
 | zcode | ✅ Complete | Push-bug repair + communication-protocols deep dive (2026-09-14) |
 | cline | ⏳ Pending | Not connected |
-| freebuff | ✅ Complete | Pass-2 deep dives on all 10 testing outputs (2026-09-14); 13 multi-agent deep dives (2026-09-13) |
+| freebuff | ✅ Complete | 13 multi-agent deep dives appended in OUTPUT (2026-09-13) |
 | antigravity | ✅ Complete | Memory Architecture Deep Dive (SQLite+vec, HippoRAG 2, Bilingual BGE-M3) |
 | opencode | ⏳ Pending | Not connected |
 
@@ -186,7 +178,7 @@
 | `OUTPUT/implementation-roadmap.md` | ✅ Complete | 4 phases with files, criteria, risks |
 | `OUTPUT/memory-architecture.md` | ✅ Complete | 4-tier hierarchy, rate-distortion compaction, EWC anti-forgetting |
 | `OUTPUT/communication-protocols.md` | ✅ Complete | EDA, priority lanes, DLQ, idempotency, circuit breakers + 3 deep dives (freebuff: A2A/jitter/trace; antigravity: SQLite-WAL bus/WFG/deltas; zcode: outbox/schema-evolution/MCP 2026-07-28/retry budgets) |
-| `OUTPUT/self-healing.md` | ✅ Complete | Reflective runtime, RBT diagnosis, 5-level degradation |
+| `OUTPUT/self-healing.md` | ✅ Complete | Reflective runtime, RBT diagnosis, 5-level degradation + 2 deep dives (freebuff: GEPA/error budgets/chaos; zcode: self-correction trap, CBR 4R, playbooks, patch-acceptance pipeline) |
 | `OUTPUT/production-deployment.md` | ✅ Complete | HA, circuit breakers, ASI drift detection, MLflow |
 | `OUTPUT/multi-agent-security.md` | ✅ Complete | 5-layer defense, ring-based access, canary verification |
 | `OUTPUT/scalability-patterns.md` | ✅ Complete | Hierarchical groups ≤10, decision boundary P_SA > 0.45 |
@@ -198,4 +190,3 @@
 | `OUTPUT/evaluation-frameworks.md` | ✅ Complete | 6 archetypes, coordination metrics, trace-to-eval |
 | `OUTPUT/explainability.md` | ✅ Complete | Structured traces, time-travel debugging, root cause analysis |
 | *(all 13 multi-agent files above)* | ✅ Deep-dived | freebuff 2026-09-13: one `[DEEP DIVE]` cycle each — validation gates, standards alignment (A2A/MCP/OTel/W3C), and measured thresholds appended |
-| *(all 10 testing-domain files above)* | ✅ Deep-dived (pass 2) | freebuff 2026-09-14: second `[DEEP DIVE]` cycle — coverage floors (diff-coverage/ratchet), CI supply-chain hardening (SHA pinning/OIDC/attestation), Goodhart-resistant maturity appraisal, audit sampling math, router economics, SPC for the ledger, RTS rerun policy |
