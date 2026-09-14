@@ -52,6 +52,19 @@
   12. `evaluation-frameworks.md` — Agent-as-a-Judge (DevAI: 58% vs 32% human agreement, 18% cost), Goodhart metric pairs, flaky-eval budget (Google/Microsoft baselines), unified evaluation calendar
   13. `explainability.md` — counterfactual attribution via checkpoint replay, OTel-native trace storage, deterministic replay capture set (hash-validated), TTD SLO ladder, trace-store privacy boundary (ring ACLs + write-time redaction)
 
+### freebuff — 2026-09-14
+- **Pass-2 deep-dive cycle completed** — second `[DEEP DIVE]` cycle on all 10 testing-domain outputs, covering the operator-named themes (coverage floors, CI YAML, maturity assessments) plus adjacent gaps (all claims web-verified against primary sources; snippet-only items marked in-text):
+  1. `testing-framework-spec.md` — coverage floors without gaming: per-PR diff-coverage gate (diff-cover; Codacy 2026), never-down ratchet replacing the static 80% floor, tarpit warning (Stack Overflow Blog 2025), diff-gate + targeted-mutation pairing
+  2. `tdd-protocol.md` — TDD effectiveness evidence (Nagappan et al.: 40-90% defect-density reduction at 15-35% initial-time cost; mixed design results), LLM TDD evidence (WebApp1K: instruction loss in long prompts; MS Research +45.97% pass@1), probabilistic-GREEN protocol (n≥5 samples, pass-rate bands, model/temp provenance)
+  3. `cicd-integration.md` — CI supply-chain hardening: tj-actions/changed-files compromise (CVE-2025-30066, >23k repos, CISA alert), full-SHA pinning rule, script-injection ban on `${{ }}` interpolation (agent text is untrusted CI input), OIDC over stored secrets, Sigstore artifact attestations for calibration inputs, hashed toolchain pinning
+  4. `testing-maturity-model.md` — Goodhart-resistant appraisal: gaming vectors per level gate with countermeasures, structurally independent machine-executable checklists (ledger-only evidence), quarterly adversarial gate drills (inject tautologies/fake REDs/retro-edited ledger rows)
+  5. `implementation-roadmap.md` — gate-adoption mechanics from Google Tricorder (edited-files-only results, new-warnings-only, FP<5% before blocking), shadow-mode rollout (20-task advisory window per gate), evidence-ranked gate ordering
+  6. `engineer-soul.md` — instruction-adherence data: IFEval++ nuance-reliability drop up to 61.8% across 46 models (explains the COORD skip rate), verifiable-instruction architecture (every SOUL rule → CI-checkable artifact property), point-of-action restatement + cousin-prompt drills
+  7. `blocking-authority.md` — audit sampling mathematics: c=0 zero-acceptance plans (n=59 at 95% confidence for a 5% rate), 5%-volume sampling detects a 5% rate only 40% of the time, rule-of-three bound on clean samples, stratification by appeal/FULL/new-module, audit load inside the fatigue budget
+  8. `routing-integration.md` — router error economics: asymmetric FN(≤1%, hard) vs FP(<25%, soft) misroute targets from COORD data, RouteLLM evidence (>2x, up to 85% savings at 95% GPT-4 quality) with cost-sensitive loss adaptation, golden routing regression set, formation-cost variance as calibration input
+  9. `quality-metrics.md` — small-sample statistics: p-charts for varying-n rates, run rules over single-point alarms, <1% flake claim restated in verifiable c=0 form (0 flips/20 runs), 20-point baseline lock, correlation caution for shared-module tasks
+  10. `tester-soul.md` — regression test selection: Ekstazi 32% time reduction and 80%-of-failures at 66% time saved, STARTS 40.5%, T-TS 15%-selection/5.9x speedup, Ekstazi-vs-STARTS safety/precision comparison, three-tier rerun protocol with RTS-safety KPI ≥95%, always-run core, prioritization order
+
 ### Scout — 2026-09-13 (Second Pass)
 - **13 new INBOX prompts completed** (multi-agent systems research):
   1. **P1 Multi-Agent Memory and Knowledge Management** → `memory-architecture.md`
@@ -169,7 +182,7 @@
 | workbuddy | ⏳ Pending | Not connected |
 | zcode | ✅ Complete | Push-bug repair + deep dives: communication-protocols, self-healing, multi-agent-security (2026-09-14) |
 | cline | ⏳ Pending | Not connected |
-| freebuff | ✅ Complete | 13 multi-agent deep dives appended in OUTPUT (2026-09-13) |
+| freebuff | ✅ Complete | Pass-2 deep dives on all 10 testing outputs (2026-09-14); 13 multi-agent deep dives (2026-09-13) |
 | antigravity | ✅ Complete | Memory Architecture Deep Dive (SQLite+vec, HippoRAG 2, Bilingual BGE-M3) |
 | opencode | ⏳ Pending | Not connected |
 
@@ -201,3 +214,4 @@
 | `OUTPUT/evaluation-frameworks.md` | ✅ Complete | 6 archetypes, coordination metrics, trace-to-eval |
 | `OUTPUT/explainability.md` | ✅ Complete | Structured traces, time-travel debugging, root cause analysis |
 | *(all 13 multi-agent files above)* | ✅ Deep-dived | freebuff 2026-09-13: one `[DEEP DIVE]` cycle each — validation gates, standards alignment (A2A/MCP/OTel/W3C), and measured thresholds appended |
+| *(all 10 testing-domain files above)* | ✅ Deep-dived (pass 2) | freebuff 2026-09-14: second `[DEEP DIVE]` cycle — coverage floors (diff-coverage/ratchet), CI supply-chain hardening (SHA pinning/OIDC/attestation), Goodhart-resistant maturity appraisal, audit sampling math, router economics, SPC for the ledger, RTS rerun policy |
