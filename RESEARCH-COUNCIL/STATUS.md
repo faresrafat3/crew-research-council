@@ -145,6 +145,12 @@
   - Case-based healing: Aamodt & Plaza 1994 4R cycle (Retrieve/Reuse/Revise/Retain) over the librarian's shelved cases; SQLite `healing_cases` table on the sqlite-vec/RRF substrate; ≥30% reuse-rate target; GEPA generation demoted to novel-failure fallback
   - Failure-class playbooks: deterministic first-response remedy for each of the 6 root-cause categories (schema validation, memory replay, re-anchor, breaker check, quarantine, SOUL reset), patches as last resort
   - Quantified patch-acceptance pipeline: frozen regression gate + N≥30 golden-set shadow replay (non-inferiority 2pp, pass^k k=3) + 48h canary; auto-rollback on escape rate +50%; healer caps (≤2 patches/agent/month, hash-chained ledger, coach kill switch); per-stage time budgets with aging alarms
+- **[DEEP DIVE]** appended to `OUTPUT/multi-agent-security.md` (stacks after antigravity's Bubblewrap/Macaroons dive — no overlap):
+  - MCP attack surface (Invariant Labs 2025, verified): tool poisoning via tool descriptions (sidenote exfil), rug pulls (post-approval description change), cross-server tool shadowing → pinned hash-verified tool manifests, per-ring MCP allowlist, cross-server dataflow boundaries
+  - MCP authorization hardening (spec-verified): token passthrough MUST NOT (audience-bound tokens per agent), confused-deputy per-client consent, SSRF private-range blocking + Smokescreen egress proxy, progressive scope minimization (no wildcards)
+  - Per-edge trifecta audit: Willison's lethal trifecta applied to trust edges, not just agents — researcher→engineer edge is the crew's most load-bearing control (safe iff engineer egress stays denied); inter-agent messages are data (spotlighting), router decides causality
+  - Canary-token DLP (Thinkst): unique marker strings in memory tiers + sensitive paths, Layer-5 exact-match scan → deterministic exfil detection, zero false positives; detect-not-prevent caveat paired with quarantine response
+  - Signed SOULs: Ed25519-signed policy versions (verify-before-load), two-person rule for Ring 0/1 changes, patch ledger as chain of custody; OWASP Agentic AI T1–T15 + Top 10 Agentic Applications 2026 (ASI01–ASI10) mapped; 6/10 vectors exploited in the wild by April 2026 [Lyrie]
 
 ## Research Queue
 
@@ -161,7 +167,7 @@
 | researcher (internal) | ✅ Complete | TMMi + TDD findings |
 | scout | ✅ Complete | 10 INBOX + 6 DEEP DIVE + 13 INBOX prompts |
 | workbuddy | ⏳ Pending | Not connected |
-| zcode | ✅ Complete | Push-bug repair + communication-protocols deep dive (2026-09-14) |
+| zcode | ✅ Complete | Push-bug repair + deep dives: communication-protocols, self-healing, multi-agent-security (2026-09-14) |
 | cline | ⏳ Pending | Not connected |
 | freebuff | ✅ Complete | 13 multi-agent deep dives appended in OUTPUT (2026-09-13) |
 | antigravity | ✅ Complete | Memory Architecture Deep Dive (SQLite+vec, HippoRAG 2, Bilingual BGE-M3) |
@@ -185,7 +191,7 @@
 | `OUTPUT/communication-protocols.md` | ✅ Complete | EDA, priority lanes, DLQ, idempotency, circuit breakers + 3 deep dives (freebuff: A2A/jitter/trace; antigravity: SQLite-WAL bus/WFG/deltas; zcode: outbox/schema-evolution/MCP 2026-07-28/retry budgets) |
 | `OUTPUT/self-healing.md` | ✅ Complete | Reflective runtime, RBT diagnosis, 5-level degradation + 2 deep dives (freebuff: GEPA/error budgets/chaos; zcode: self-correction trap, CBR 4R, playbooks, patch-acceptance pipeline) |
 | `OUTPUT/production-deployment.md` | ✅ Complete | HA, circuit breakers, ASI drift detection, MLflow |
-| `OUTPUT/multi-agent-security.md` | ✅ Complete | 5-layer defense, ring-based access, canary verification |
+| `OUTPUT/multi-agent-security.md` | ✅ Complete | 5-layer defense, ring-based access, canary verification + 3 deep dives (freebuff: trifecta/defense-data/microVMs; antigravity: bwrap containment/macaroons/zeroization/datamarking; zcode: MCP tool poisoning, per-edge trifecta, canary DLP, signed SOULs) |
 | `OUTPUT/scalability-patterns.md` | ✅ Complete | Hierarchical groups ≤10, decision boundary P_SA > 0.45 |
 | `OUTPUT/human-in-the-loop.md` | ✅ Complete | Approval control plane, override tokens, EU AI Act |
 | `OUTPUT/conflict-resolution.md` | ✅ Complete | Weighted voting, reasoning trees, deadlock breaking |
