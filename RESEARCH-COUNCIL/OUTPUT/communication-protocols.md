@@ -540,3 +540,35 @@ Full/decorrelated jitter (deep dive, 2026-09-13) prevents *synchronized* retries
 - [Google SRE, 2016] Addressing Cascading Failures. Site Reliability Engineering, ch. 22 (server-wide retry budget, "60 retries per minute" example). sre.google/sre-book/addressing-cascading-failures.
 - [Dean & Barroso, 2013] The Tail at Scale. Communications of the ACM 56(2) (hedged requests; 10 ms delay example). cacm.acm.org/research/the-tail-at-scale.
 - [gRPC, 2026] Request Hedging. grpc.io/docs/guides/request-hedging.
+
+## [DEEP DIVE (freebuff, pass 3, 2026-09-14)]: Sagas for Multi-Step Agent Actions, Hybrid Logical Clocks for Causal Ordering
+
+Pass-1 fixed delivery semantics, ordering keys, and jitter; pass-3 covers the two structures those still lack: **compensation for partially-completed multi-step actions**, and a clock that gives the ordering keys real causal meaning.
+
+### 1. Sagas: multi-step agent actions need compensations defined up front
+- A saga decomposes a distributed transaction into a sequence of local transactions, each publishing an event that triggers the next; failure is handled by **compensating transactions** that semantically undo prior steps [microservices.io; Azure Architecture Center, Saga]. The Compensating Transaction pattern is the explicit pair: every forward step registers its undo, and each compensating transaction is triggered only when its forward step is confirmed committed with success — otherwise partial state stays live [Azure, Compensating Transaction].
+- Crew mapping — the formation pipelines (researcher→architect→engineer→tester→critic) write to real surfaces (files, ledger rows, messages, memory). Today a mid-pipeline failure leaves partial artifacts with no undo contract. The rule to adopt: **every forward action in a PIPELINE/FULL task must register its compensation at dispatch time** — file edits carry the pre-image (diff-revert), ledger rows are append-only with a voiding entry, sent messages carry a retraction event, memory writes follow the MV-Register revision rule (memory pass 3). Two orchestration styles are supported by the pattern: choreography (event-driven, each agent triggers the next) or orchestration (a central coordinator drives steps) — the crew's dispatcher is already the orchestrator; the ledger is already the saga log.
+- The TDD-protocol state machine (pass 1) is effectively a saga state machine for the code path; this extends it to every other artifact surface with the same discipline: no step without a registered undo, and ROLLBACK = run compensations in reverse order.
+
+### 2. Hybrid Logical Clocks: make the ordering keys causal
+- Pass-1's per-task ordering keys sequence messages within a task, but wall-clock timestamps across agents are subject to skew and are **not causally ordered** — a message can carry a timestamp earlier than a message it causally depends on. Lamport clocks give causality but lose physical-time meaning (bad for logs, timeouts, and humans reading the ledger); HLC combines both: a timestamp is (physical, logical, node-id), preserves causality like a logical clock, stays close to physical time (bounded by network NTP drift), and enables consistent snapshots [Kulkarni et al., 2014; Buffalo TR 2014-04].
+- HLC is production-proven in exactly the role the crew needs: MongoDB's hybrid timestamps for causally-ordered operations across nodes [sookocheff, 2022], CockroachDB's hybrid clock for transaction ordering.
+- Crew mapping: replace wall-clock-only timestamps in message envelopes and ledger rows with HLC tuples (the ledger already stores actor+timestamp; the logical counter is a one-column addition). Effects: (a) causal ordering is verifiable — "did the tester see the engineer's GREEN before issuing the verdict?" becomes a checkable fact, which strengthens the verdict-gate audit trail (blocking-authority evidence links); (b) concurrent (incomparable) writes to memory are *detected* rather than hidden — feeding the MV-Register rule in memory pass 3; (c) the LWW tie-breaker of last resort becomes causally sound.
+
+### Numbers for calibration (pass 3)
+
+| Quantity | Value | Source |
+|---|---|---|
+| Saga styles | choreography vs orchestration | [microservices.io; Azure] |
+| Compensation rule | undo registered at dispatch, run in reverse on failure | [Azure, Compensating Transaction] |
+| HLC timestamp | (physical, logical, node-id); causality + bounded drift | [Kulkarni et al., 2014] |
+| HLC production uses | MongoDB hybrid timestamps; CockroachDB ordering | [sookocheff, 2022] |
+| Crew surfaces needing registered undo | files, ledger, messages, memory | this dive |
+
+### References (pass 3)
+1. [Microsoft Azure Architecture Center] "Saga design pattern." https://learn.microsoft.com/en-us/azure/architecture/patterns/saga [verified: 2026-09-14]
+2. [Microsoft Azure Architecture Center, 2026] "Compensating Transaction pattern." https://learn.microsoft.com/en-us/azure/architecture/patterns/compensating-transaction [verified: 2026-09-14]
+3. [Richardson] "Pattern: Saga," microservices.io. https://microservices.io/patterns/data/saga.html [verified: 2026-09-14]
+4. [Kulkarni et al., 2014] "Logical Physical Clocks and Consistent Snapshots in Globally Distributed Databases." http://www.cse.buffalo.edu/tech-reports/2014-04.pdf [verified: 2026-09-14]
+5. [Kulkarni et al., 2022] "Achieving Causality with Physical Clocks," Distributed Computing (HLC follow-up). https://dl.acm.org/doi/fullHtml/10.1145/3491003.3491009 [verified: 2026-09-14, snippet]
+6. [Sookocheff, 2022] "Hybrid Logical Clocks" (MongoDB/CockroachDB usage). https://sookocheff.com/post/time/hybrid-logical-clocks/ [verified: 2026-09-14, snippet]
