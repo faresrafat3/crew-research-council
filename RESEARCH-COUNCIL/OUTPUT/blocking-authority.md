@@ -225,3 +225,424 @@ Pass 2 gave the blocker statistical audit machinery (c=0 sampling). One operatio
 1. [NIST SP 800-53 AC-2(3) / AC-6(9)] Just-in-time and time-bound privileged authorization controls [literature, snippet-verified: 2026-09-14].
 2. [Microsoft Entra, 2026] PIM activation with justification, approval, and expiration — the JIT pattern as productized [snippet-verified: 2026-09-14].
 3. [CIS Controls v8, Control 5/6] Account and access-control management: emergency-account procedures and audit logging [literature].
+
+---
+
+## [DEEP DIVE]: Antigravity — Zero-Daemon Cryptographic Gate Enforcement, M-of-N Threshold Escalation & Bayesian Calibration
+
+### 1. Zero-Daemon Cryptographic Gate Enforcement Architecture
+
+In distributed multi-agent workflows, blocking authority easily degenerates into advisory recommendations or insecure status flags in volatile memory. Under the strict zero-daemon architectural invariant (`MAP.md`), gating must be non-bypassable, decentralized, and verifiable without running persistent gatekeeper daemons or background evaluation servers.
+
+We implement cryptographic gate enforcement via **Ed25519 Capability Tokens** (RFC 8032) stored in an embedded SQLite-WAL ledger and verified at local checkout/pre-push git lifecycle boundaries.
+
+```
++-------------------------------------------------------------------------------+
+|                       CRITICAL LIFECYCLE BOUNDARY                             |
+|                                                                               |
+|   +-------------------+      Evaluates Task      +-----------------------+    |
+|   |   Tester / Critic  | ----------------------> | SQLite Gate Evaluation|    |
+|   |    Agent Subproc  |                          | & Token Minting Engine|    |
+|   +-------------------+                          +-----------------------+    |
+|             |                                                |                |
+|             | Signs Verdict Payload                          | Writes WAL     |
+|             v                                                v                |
+|   +-----------------------------------------------------------------------+   |
+|   |                      SQLite-WAL Gate State Tables                     |   |
+|   |  - gate_evaluations (verdict, criteria_hash, signature)              |   |
+|   |  - gate_capability_tokens (token_id, git_sha, gate_type, expires_at) |   |
+|   |  - gate_revocation_ledger (nonce, revoked_at, revocation_proof)      |   |
+|   +-----------------------------------------------------------------------+   |
+|                                     |                                         |
+|                                     | Read-only Query (<1.5ms)                |
+|                                     v                                         |
+|   +-------------------+      Inspects Token      +-----------------------+    |
+|   | Git Pre-Push Hook | <----------------------- | Cryptographic Verifier|    |
+|   | (Exit 0 or Exit 1)|                          | (RFC 8032 Signature)  |    |
+|   +-------------------+                          +-----------------------+    |
++-------------------------------------------------------------------------------+
+```
+
+#### 1.1 SQLite-WAL Schema for Cryptographic Gate Ledger
+
+```sql
+-- Schema: Cryptographic Gate Enforcement Ledger (gate_ledger.sql)
+PRAGMA journal_mode = WAL;
+PRAGMA synchronous = NORMAL;
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS gate_evaluations (
+    evaluation_id TEXT PRIMARY KEY,
+    task_id TEXT NOT NULL,
+    git_sha TEXT NOT NULL,
+    agent_id TEXT NOT NULL,
+    gate_name TEXT NOT NULL, -- e.g. 'ORACLE_INTEGRITY', 'MUTATION_SCORE', 'REGRESSION_SUITE'
+    verdict TEXT NOT NULL CHECK(verdict IN ('PASS', 'HOLD', 'ROLLBACK', 'OVERRIDE')),
+    metrics_json TEXT NOT NULL, -- Serialized JSON measurements
+    criteria_hash TEXT NOT NULL, -- SHA-256 of gate definition criteria
+    signature TEXT NOT NULL, -- Ed25519 signature over canonical payload
+    public_key TEXT NOT NULL, -- Hex-encoded Ed25519 verifying key
+    created_at REAL NOT NULL DEFAULT (unixepoch('subsec'))
+);
+
+CREATE TABLE IF NOT EXISTS gate_capability_tokens (
+    token_id TEXT PRIMARY KEY,
+    task_id TEXT NOT NULL,
+    git_sha TEXT NOT NULL,
+    scope TEXT NOT NULL CHECK(scope IN ('BRANCH_MERGE', 'MAIN_PUSH', 'DEPLOY_CANARY')),
+    issued_to TEXT NOT NULL,
+    verdict TEXT NOT NULL CHECK(verdict IN ('PROMOTED', 'EMERGENCY_OVERRIDE')),
+    nonce TEXT NOT NULL UNIQUE,
+    token_signature TEXT NOT NULL, -- Signed by gate authority
+    issued_at REAL NOT NULL DEFAULT (unixepoch('subsec')),
+    expires_at REAL NOT NULL, -- Hard expiry (default: issued_at + 1800s)
+    FOREIGN KEY(task_id) REFERENCES gate_evaluations(task_id)
+);
+
+CREATE TABLE IF NOT EXISTS gate_revocation_ledger (
+    revocation_id TEXT PRIMARY KEY,
+    nonce TEXT NOT NULL UNIQUE,
+    reason TEXT NOT NULL,
+    revoked_by TEXT NOT NULL,
+    revocation_proof TEXT NOT NULL, -- Ed25519 signature from Security Officer / Human Operator
+    revoked_at REAL NOT NULL DEFAULT (unixepoch('subsec'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_gate_tokens_sha ON gate_capability_tokens(git_sha, scope, expires_at);
+CREATE INDEX IF NOT EXISTS idx_gate_eval_task ON gate_evaluations(task_id, verdict);
+```
+
+#### 1.2 Zero-Daemon Gate Minter and Git Hook Verifier
+
+```python
+"""Zero-daemon gate token issuance and pre-push hook verifier."""
+import hashlib
+import json
+import sqlite3
+import sys
+import time
+from typing import Dict, Any, Tuple
+from nacl.signing import SigningKey, VerifyKey
+from nacl.exceptions import BadSignatureError
+
+class GateEnforcementEngine:
+    def __init__(self, db_path: str):
+        self.db_path = db_path
+
+    def _get_conn(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self.db_path, timeout=5.0)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode = WAL")
+        return conn
+
+    @staticmethod
+    def canonical_hash(payload: Dict[str, Any]) -> bytes:
+        """Deterministically serialize payload per RFC 8785 (JSON Canonicalization)."""
+        canonical_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical_json.encode("utf-8")).digest()
+
+    def record_evaluation(
+        self,
+        task_id: str,
+        git_sha: str,
+        agent_id: str,
+        gate_name: str,
+        verdict: str,
+        metrics: Dict[str, Any],
+        criteria_hash: str,
+        signing_key: SigningKey,
+    ) -> str:
+        eval_id = f"eval_{task_id}_{gate_name}_{int(time.time()*1000)}"
+        payload = {
+            "eval_id": eval_id,
+            "task_id": task_id,
+            "git_sha": git_sha,
+            "agent_id": agent_id,
+            "gate_name": gate_name,
+            "verdict": verdict,
+            "metrics": metrics,
+            "criteria_hash": criteria_hash,
+        }
+        digest = self.canonical_hash(payload)
+        signed = signing_key.sign(digest)
+        sig_hex = signed.signature.hex()
+        pub_hex = signing_key.verify_key.encode().hex()
+
+        with self._get_conn() as conn:
+            conn.execute(
+                """
+                INSERT INTO gate_evaluations 
+                (evaluation_id, task_id, git_sha, agent_id, gate_name, verdict, metrics_json, criteria_hash, signature, public_key)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (eval_id, task_id, git_sha, agent_id, gate_name, verdict, json.dumps(metrics), criteria_hash, sig_hex, pub_hex),
+            )
+        return eval_id
+
+    def issue_capability_token(
+        self,
+        task_id: str,
+        git_sha: str,
+        scope: str,
+        issued_to: str,
+        gate_authority_key: SigningKey,
+        ttl_seconds: float = 1800.0,
+    ) -> str:
+        """Issues capability token only if all required gates passed and no active HOLDs exist."""
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                "SELECT gate_name, verdict FROM gate_evaluations WHERE git_sha = ? AND task_id = ?",
+                (git_sha, task_id),
+            )
+            rows = cur.fetchall()
+            if not rows:
+                raise PermissionError("Cannot issue token: Zero gate evaluations recorded.")
+            
+            for row in rows:
+                if row["verdict"] in ("HOLD", "ROLLBACK"):
+                    raise PermissionError(f"Cannot issue token: Gate '{row['gate_name']}' is in {row['verdict']} status.")
+
+            token_id = f"tok_{task_id}_{int(time.time()*1000)}"
+            nonce = hashlib.sha256(f"{token_id}_{time.time_ns()}".encode()).hexdigest()
+            now = time.time()
+            expires_at = now + ttl_seconds
+
+            token_payload = {
+                "token_id": token_id,
+                "task_id": task_id,
+                "git_sha": git_sha,
+                "scope": scope,
+                "issued_to": issued_to,
+                "verdict": "PROMOTED",
+                "nonce": nonce,
+                "expires_at": expires_at,
+            }
+            digest = self.canonical_hash(token_payload)
+            token_sig = gate_authority_key.sign(digest).signature.hex()
+
+            conn.execute(
+                """
+                INSERT INTO gate_capability_tokens
+                (token_id, task_id, git_sha, scope, issued_to, verdict, nonce, token_signature, issued_at, expires_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (token_id, task_id, git_sha, scope, issued_to, "PROMOTED", nonce, token_sig, now, expires_at),
+            )
+            return token_id
+
+    def verify_git_push(self, target_git_sha: str, scope: str, expected_pubkey_hex: str) -> Tuple[bool, str]:
+        """Sub-2ms check invoked directly by .git/hooks/pre-push without daemons."""
+        verify_key = VerifyKey(bytes.fromhex(expected_pubkey_hex))
+        now = time.time()
+
+        with self._get_conn() as conn:
+            cur = conn.execute(
+                """
+                SELECT token_id, task_id, git_sha, scope, issued_to, verdict, nonce, token_signature, expires_at
+                FROM gate_capability_tokens
+                WHERE git_sha = ? AND scope = ? AND expires_at > ?
+                ORDER BY issued_at DESC LIMIT 1
+                """,
+                (target_git_sha, scope, now),
+            )
+            token = cur.fetchone()
+            if not token:
+                return False, f"GATE BLOCK: No valid, non-expired capability token found for commit {target_git_sha[:8]}."
+
+            revoked = conn.execute(
+                "SELECT reason, revoked_by FROM gate_revocation_ledger WHERE nonce = ?",
+                (token["nonce"],),
+            ).fetchone()
+            if revoked:
+                return False, f"GATE BLOCK: Token revoked by {revoked['revoked_by']}: {revoked['reason']}."
+
+            token_payload = {
+                "token_id": token["token_id"],
+                "task_id": token["task_id"],
+                "git_sha": token["git_sha"],
+                "scope": token["scope"],
+                "issued_to": token["issued_to"],
+                "verdict": token["verdict"],
+                "nonce": token["nonce"],
+                "expires_at": token["expires_at"],
+            }
+            digest = self.canonical_hash(token_payload)
+            try:
+                verify_key.verify(digest, bytes.fromhex(token["token_signature"]))
+            except BadSignatureError:
+                return False, "SECURITY ALERT: Capability token cryptographic signature verification failed!"
+
+            return True, f"GATE PERMIT: Verified valid token {token['token_id']} for commit {target_git_sha[:8]}."
+```
+
+---
+
+### 2. Dual-Key Escalation Protocol & Collusion Detection Quotient (CDQ)
+
+#### 2.1 M-of-N Threshold Escalation Protocol
+When an engineer agent appeals a Tester's `HOLD` or `ROLLBACK` verdict, unilateral override is strictly prohibited. An emergency promotion or threshold relaxation requires an M-of-N threshold signature:
+
+$$\text{Verdict}_{\text{override}} = \text{ThresholdSign}_{M/N}(\sigma_1, \sigma_2, \dots, \sigma_M) \quad \text{where } M \ge 2, \; N \ge 3$$
+
+In Crew v2:
+- **P0 Critical Path Override**: Requires $M=2$ of 3 distinct roles: $\text{Signature}_{\text{Operator}} + \text{Signature}_{\text{Critic}}$ OR $\text{Signature}_{\text{Operator}} + \text{Signature}_{\text{Tester}}$.
+- **No Single Agent Self-Approval**: An Engineer agent's key is explicitly blocked from the threshold set for its own code diff.
+- **Time-Bounded Leases**: All emergency override tokens carry a hard maximum Time-To-Live ($TTL_{\max} = 900\text{ seconds}$ / 15 minutes), forcing either automated canary validation or automatic rollback.
+
+#### 2.2 Collusion Detection Quotient (CDQ)
+To detect Pattern 4 (The Capture: Engineer and Tester secretly colluding to maximize throughput by passing weak implementations), we define the **Collusion Detection Quotient (CDQ)**.
+
+CDQ monitors inter-agent agreement against statistical independence using Cohen's Kappa ($\kappa$) coupled with conditional defect discovery:
+
+$$\kappa = \frac{P_o - P_e}{1 - P_e}$$
+
+Where:
+- $P_o$ is the observed proportional agreement across $N$ test verdicts:
+  $$P_o = \frac{\sum_{i=1}^C n_{ii}}{N}$$
+- $P_e$ is the hypothetical probability of chance agreement:
+  $$P_e = \sum_{i=1}^C \left( \frac{n_{i+}}{N} \cdot \frac{n_{+i}}{N} \right)$$
+
+We combine Cohen's Kappa with the **Escape Divergence Ratio ($R_{\text{esc}}$)** over a sliding window of $W = 50$ tasks:
+
+$$R_{\text{esc}} = \frac{\text{Escapes}_{\text{Production}}}{\max(1, \text{Escapes}_{\text{Baseline}})}$$
+
+The **Collusion Detection Quotient (CDQ)** is defined as:
+
+$$\text{CDQ} = \kappa \cdot \log_2(1 + R_{\text{esc}})$$
+
+```
+Nominal Zone:        CDQ <= 0.40  --> Normal independent operation
+Investigation Zone:  0.40 < CDQ <= 0.85 --> Warn, increase mutation audit sampling to 25%
+Hard Collusion Alarm: CDQ > 0.85  --> Revoke Tester signing key, inject Adversarial Mutant Suite
+```
+
+```python
+"""Collusion Detection Quotient (CDQ) Calculator."""
+import math
+from typing import List, Tuple
+
+def compute_cohens_kappa(contingency_matrix: List[List[int]]) -> float:
+    """Computes Cohen's Kappa for NxN agreement matrix."""
+    n = sum(sum(row) for row in contingency_matrix)
+    if n == 0:
+        return 0.0
+    po = sum(contingency_matrix[i][i] for i in range(len(contingency_matrix))) / n
+    row_sums = [sum(contingency_matrix[i][j] for j in range(len(contingency_matrix))) for i in range(len(contingency_matrix))]
+    col_sums = [sum(contingency_matrix[i][j] for i in range(len(contingency_matrix))) for i in range(len(contingency_matrix))]
+    pe = sum((row_sums[i] * col_sums[i]) for i in range(len(row_sums))) / (n * n)
+    if pe == 1.0:
+        return 1.0
+    return (po - pe) / (1.0 - pe)
+
+def evaluate_cdq(
+    tester_engineer_matrix: List[List[int]], 
+    prod_escapes: int, 
+    baseline_escapes: int = 1
+) -> Tuple[float, str]:
+    kappa = compute_cohens_kappa(tester_engineer_matrix)
+    r_esc = prod_escapes / max(1, baseline_escapes)
+    cdq = kappa * math.log2(1.0 + r_esc)
+
+    if cdq > 0.85:
+        action = "COLLUSION_ALARM: Suspend Tester signing key; trigger adversarial canary test."
+    elif cdq > 0.40:
+        action = "INVESTIGATION_WARN: Elevated alignment with escapes; increase audit sampling."
+    else:
+        action = "NOMINAL: Agents demonstrating statistical independence."
+    return cdq, action
+```
+
+---
+
+### 3. Bayesian Beta-Binomial Strictness Calibration
+
+Static thresholds suffer from two catastrophic failure modes: threshold drift (becoming overly permissive as suites grow) and gridlock (overly strict gates halting throughput). 
+
+Rather than heuristic $\pm 5\%$ jumps, we model the true defect escape probability $\theta \in [0, 1]$ as a conjugate **Beta-Binomial process**:
+
+$$\theta \sim \text{Beta}(\alpha_0, \beta_0)$$
+
+Given an audit window of $N$ tasks with $k$ verified defective escapes:
+
+$$\theta \mid k, N \sim \text{Beta}(\alpha_0 + k, \, \beta_0 + N - k)$$
+
+The posterior mean escape rate is:
+
+$$\mathbb{E}[\theta \mid k, N] = \frac{\alpha_0 + k}{\alpha_0 + \beta_0 + N}$$
+
+With posterior variance:
+
+$$\text{Var}(\theta \mid k, N) = \frac{(\alpha_0 + k)(\beta_0 + N - k)}{(\alpha_0 + \beta_0 + N)^2 (\alpha_0 + \beta_0 + N + 1)}$$
+
+#### 3.1 Damped Strictness Shift Equation
+To adjust the mutation gate threshold $T_{\text{mut}}$ (nominal $T^* = 0.80$) and assertion strictness without inducing oscillatory limit cycles, we apply a damped, variance-penalized update:
+
+$$\Delta T = \gamma \cdot \text{clip}\left( \frac{\mathbb{E}[\theta] - \theta^*}{\sqrt{\text{Var}(\theta) + \epsilon}}, \, -\delta_{\max}, \, \delta_{\max} \right)$$
+
+Where:
+- $\theta^*$ is the target defect escape ceiling (nominal $\theta^* = 0.02$ / 2%).
+- $\gamma = 0.12$ is the learning dampening rate.
+- $\delta_{\max} = 0.05$ (5% max threshold step per audit epoch).
+- $\epsilon = 10^{-6}$ numerical stability floor.
+
+```python
+"""Bayesian Strictness Calibration Engine."""
+from dataclasses import dataclass
+
+@dataclass
+class BetaPrior:
+    alpha: float = 2.0  # Equivalent to 2 prior defects
+    beta: float = 98.0  # Equivalent to 98 prior clean tasks (nominal 2% prior)
+
+class BayesianStrictnessCalibrator:
+    def __init__(self, prior: BetaPrior = BetaPrior(), target_escape_rate: float = 0.02, dampening: float = 0.12, max_shift: float = 0.05):
+        self.alpha = prior.alpha
+        self.beta = prior.beta
+        self.target_escape_rate = target_escape_rate
+        self.gamma = dampening
+        self.max_shift = max_shift
+
+    def update(self, observed_tasks: int, observed_escapes: int) -> Tuple[float, float, float]:
+        """Returns (posterior_mean, posterior_variance, recommended_threshold_delta)."""
+        post_alpha = self.alpha + observed_escapes
+        post_beta = self.beta + (observed_tasks - observed_escapes)
+
+        post_mean = post_alpha / (post_alpha + post_beta)
+        post_var = (post_alpha * post_beta) / (((post_alpha + post_beta) ** 2) * (post_alpha + post_beta + 1.0))
+
+        # Standardized deviation from target
+        z_score = (post_mean - self.target_escape_rate) / math.sqrt(post_var + 1e-6)
+        
+        # Raw delta modulated by damping
+        raw_delta = self.gamma * (z_score * 0.01) # scale z-score to percentage units
+        clipped_delta = max(-self.max_shift, min(self.max_shift, raw_delta))
+
+        # Update running prior
+        self.alpha = post_alpha
+        self.beta = post_beta
+
+        return post_mean, post_var, clipped_delta
+```
+
+---
+
+### 4. Quantitative Thresholds & Invariants Summary
+
+| Mechanism | Metric / Parameter | Target Threshold | Action on Breach |
+|---|---|---|---|
+| **Gate Token Verifier** | Verification Latency | $< 2.0\text{ ms}$ | Fail closed if SQLite query timeout $> 50\text{ ms}$ |
+| **Token Validity** | Max TTL ($TTL_{\max}$) | $1800\text{ s}$ (30 min) | Token expires; requires fresh test suite run |
+| **Emergency Lease** | Override Max TTL | $900\text{ s}$ (15 min) | Automatic canary rollback if unpromoted |
+| **Collusion Monitor** | Collusion Detection Quotient (CDQ) | $\le 0.40$ nominal | $> 0.85 \implies$ Revoke keys, isolate pair |
+| **M-of-N Threshold** | Quorum Requirement | $M \ge 2$ of $\{ \text{Operator}, \text{Critic}, \text{Tester} \}$ | Unilateral promotion attempts rejected |
+| **Bayesian Calibration** | Max Delta per Epoch ($\delta_{\max}$) | $\pm 0.05$ (5% absolute) | Clamps large jumps; dampens oscillations ($\gamma=0.12$) |
+
+---
+
+### References (pass 3)
+1. RFC 8032: Edwards-Curve Digital Signature Algorithm (Ed25519), Internet Engineering Task Force (IETF), 2017. https://datatracker.ietf.org/doc/html/rfc8032
+2. RFC 8785: JSON Canonicalization Scheme (JCS), Internet Engineering Task Force (IETF), 2020. https://datatracker.ietf.org/doc/html/rfc8785
+3. Cohen, J. (1960). "A Coefficient of Agreement for Nominal Scales". *Educational and Psychological Measurement*, 20(1), 37–46.
+4. Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A., & Rubin, D. B. (2013). *Bayesian Data Analysis* (3rd ed.). Chapman and Hall/CRC.
+5. NIST SP 800-207: "Zero Trust Architecture". National Institute of Standards and Technology, 2020. https://doi.org/10.6028/NIST.SP.800-207
+

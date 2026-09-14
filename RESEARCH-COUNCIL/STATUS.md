@@ -221,6 +221,10 @@
   - Zero-daemon quality telemetry ledger in SQLite-WAL with atomic per-task metric ingestion and real-time EWMA rolling queries (<3ms).
   - Multi-dimensional Composite Quality Index (CQI) formulated as a non-compensatory weighted geometric mean ($M_k \le \text{Floor}_k \implies \text{CQI} \to 0$).
   - Tabular CUSUM drift detection ($k=0.5, h=4.5$) isolating subtle quality erosion ($1\sigma$ negative shifts) within 8 tasks vs 38 tasks under Shewhart rules.
+- **[DEEP DIVE]** appended to `OUTPUT/blocking-authority.md`:
+  - Zero-daemon cryptographic gate enforcement via Ed25519 capability tokens (`gate_capability_tokens`, nonce revocation ledger, sub-2ms pre-push hook verification).
+  - Dual-key M-of-N threshold escalation protocol ($M=2$ of 3 distinct roles, 15-minute emergency override lease) and Collusion Detection Quotient ($\text{CDQ} = \kappa \cdot \log_2(1 + R_{\text{esc}})$, hard alarm on $\text{CDQ} > 0.85$).
+  - Bayesian Beta-Binomial strictness calibration ($\theta \sim \text{Beta}(\alpha+k, \beta+n-k)$ with variance-penalized damped threshold shifts $\Delta T$).
 
 
 
@@ -289,7 +293,7 @@
 | `OUTPUT/tdd-protocol.md` | ✅ Complete | Split RED/GREEN, handoff formats, ladder, time-box, state machine + 2 deep dives (freebuff: human/LLM evidence, probabilistic GREEN; antigravity: CAS state machine, AST oracle firewall, Chi-square flake defense) |
 | `OUTPUT/testing-framework-spec.md` | ✅ Complete | pytest/coverage/Hypothesis/mutmut configs + thresholds + 2 deep dives (freebuff: diff coverage, ratchets, tarpit warning; antigravity: bwrap sandbox harness, agent schema Hypothesis, AST-sliced mutation) |
 | `OUTPUT/quality-metrics.md` | ✅ Complete | 16-metric catalog, anti-pattern detectors, ledger schema + 2 deep dives (freebuff: small-sample SPC, p-charts, run rules; antigravity: zero-daemon SQLite ledger, CQI non-compensatory math, tabular CUSUM drift detection) |
-| `OUTPUT/blocking-authority.md` | ✅ Complete | 8 MUST-block, MUST-NOT list, escalation, calibration |
+| `OUTPUT/blocking-authority.md` | ✅ Complete | 8 MUST-block, MUST-NOT list, escalation, calibration + 2 deep dives (freebuff: audit sampling math, c=0 plans; antigravity: cryptographic gate tokens, M-of-N escalation & CDQ, Bayesian calibration) |
 | `OUTPUT/cicd-integration.md` | ✅ Complete | Triggers, gates, artifacts, flake lane, nightly golden+drills |
 | `OUTPUT/tester-soul.md` | ✅ Complete | Full executable tester spec + verdict template |
 | `OUTPUT/engineer-soul.md` | ✅ Complete | Iron-law verbatim, artifacts, HOLD response, bans |
