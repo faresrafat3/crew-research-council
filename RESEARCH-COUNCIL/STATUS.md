@@ -147,6 +147,12 @@
   - Dual-ended lock-free work-stealing deque with dynamic aging anti-starvation formula ($W_{\text{effective}}(t) = \text{Priority} - 0.05 \cdot \Delta t_{\text{queued}}$).
   - Subagent tree recursion limits (BAMAS pattern): hard depth limit $D_{\max} \le 3$, branching factor bound $B_{\max} \le 4$, concurrency ceiling $N_{\text{concurrent}} \le 10$, and 15% parent budget reservation ($T_{\text{child}} = \min(T_{\text{default}}, \frac{T_A}{m+1} \times 0.85)$).
   - Measurable metrics catalog for ephemeral worker utilization, JIT hydration latency, steal success rate, and fan-out limits.
+- **[DEEP DIVE]** appended to `OUTPUT/tool-differentiation.md`:
+  - Dynamic toolset tiering via 3-step meta-tool protocol (`search_tools` -> `describe_tools` -> `execute_tool`, Speakeasy v2 architecture), reducing input tokens by 91%–96.7% and achieving O(1) context scaling up to 400 tools.
+  - Deterministic observation masking over JetBrains / TUM *Complexity Trap* findings (arXiv:2508.21433), replacing error-prone LLM summarization with head/tail bracket retention and local SQLite `tool_spillover` table (halving context costs).
+  - Zero-daemon SQLite-WAL tool result cache (`tool_cache`) with environmental fingerprinting (`sha256(git_head_sha || file_mtime)`) to guarantee zero stale-hit escapes.
+  - BFCL v4 irrelevance detection compliance with tool precondition assertion gates to eliminate hallucinatory tool calls.
+
 
 
 ### zcode — 2026-09-14
@@ -189,7 +195,7 @@
 | zcode | ✅ Complete | Push-bug repair + deep dives: communication-protocols, self-healing, multi-agent-security (2026-09-14) |
 | cline | ⏳ Pending | Not connected |
 | freebuff | ✅ Complete | Pass-2 deep dives on all 10 testing outputs (2026-09-14); 13 multi-agent deep dives (2026-09-13) |
-| antigravity | ✅ Complete | Deep dives: memory-architecture, communication-protocols, multi-agent-security, scalability-patterns |
+| antigravity | ✅ Complete | Deep dives: memory-architecture, comms, security, scalability, tool-differentiation |
 | opencode | ⏳ Pending | Not connected |
 
 ## Output Inventory
@@ -215,7 +221,7 @@
 | `OUTPUT/human-in-the-loop.md` | ✅ Complete | Approval control plane, override tokens, EU AI Act |
 | `OUTPUT/conflict-resolution.md` | ✅ Complete | Weighted voting, reasoning trees, deadlock breaking |
 | `OUTPUT/agent-embodiment.md` | ✅ Complete | 5-dimension personality, voice drift detection |
-| `OUTPUT/tool-differentiation.md` | ✅ Complete | Capability-based assignment, result sharing |
+| `OUTPUT/tool-differentiation.md` | ✅ Complete | Capability-based assignment, result sharing + 2 deep dives (freebuff: tool count failure curves; antigravity: dynamic toolsets v2, JetBrains observation masking, SQLite-WAL cache) |
 | `OUTPUT/cost-optimization.md` | ✅ Complete | 3-tier routing, caching, APC, budget enforcement |
 | `OUTPUT/evaluation-frameworks.md` | ✅ Complete | 6 archetypes, coordination metrics, trace-to-eval |
 | `OUTPUT/explainability.md` | ✅ Complete | Structured traces, time-travel debugging, root cause analysis |

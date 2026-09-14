@@ -234,7 +234,7 @@ The spec's Tool Differentiation Index (1 - shared/total) measures *assigned* dif
 2. Report Δ(success rate) per role. If Δ ≤ 0 for a role, its specialization is cargo: either reassign the unique tools or admit the role is generic and shrink its ring.
 3. This produces the evidence the tool-outcome correlation metric gestures at, with causal direction (bundle → outcome) instead of raw correlation.
 
-### References for deep dive
+### References for deep dive (freebuff, 2026-09-13)
 
 - [Schick et al., 2023] Toolformer: Language Models Can Teach Themselves to Use Tools. arXiv:2302.04761 (NeurIPS 2023; perplexity-reduction helpfulness filter).
 - [arXiv:2605.24660, 2026] How Many Tools Should an LLM Agent See? (selection accuracy vs catalog size/similarity).
@@ -242,3 +242,111 @@ The spec's Tool Differentiation Index (1 - shared/total) measures *assigned* dif
 - [MLQ.ai, 2026] AI Agent Tool Selection: Why Accuracy Degrades with Tool Count.
 - [Galileo] Tool Selection Quality metric (tool + arguments correctness). docs.galileo.ai.
 - [arXiv:2512.08296] Towards a Science of Scaling Agent Systems (tool-coordination trade-off, 16+ tool tasks).
+
+## [DEEP DIVE]: Dynamic Toolset Tiering, Lazy Schema Loading, JetBrains Observation Masking, and Zero-Daemon SQLite-WAL Result Caching (Antigravity, 2026-09-14)
+
+### 1. Dynamic Toolset Tiering & Lazy Schema Loading (Speakeasy v2 Architecture)
+
+In static multi-agent architectures, injecting full JSON schemas for 30–50 tools into every reasoning turn consumes 10–15 KB (~2,500–4,000 tokens) per turn, representing 60%–80% of total input prompt token expenditure [Scalekit, 2026; Speakeasy, 2025]. Beyond token cost, large schema contexts degrade tool selection accuracy down to ~13% on dense catalogs [tianpan.co, 2026; MLQ.ai, 2026].
+
+Crew v2 implements **Dynamic Toolset Tiering** via a three-step meta-tool protocol:
+- **Core Invariant Toolset:** Each agent role is loaded with only 4 invariant base tools: `search_tools`, `describe_tools`, `execute_tool`, and `complete_turn`, plus 1–2 primary role-specific tools (e.g. `read_file` for researcher; `write_patch` for engineer).
+- **The Three-Step Protocol:**
+  1. `search_tools(query: str, tags: list[str]) -> list[{name, synopsis}]`: Semantic & keyword retrieval against the local SQLite tool registry (`tools` table), returning concise one-sentence descriptions (<25 tokens total).
+  2. `describe_tools(tool_names: list[str]) -> list[JSONSchema]`: Lazily hydrates full JSON schemas only for the specific tools selected for execution in the current turn.
+  3. `execute_tool(name: str, arguments: dict) -> ToolResult`: Invokes the validated tool within its sandboxed execution wrapper.
+- **Empirical Token Savings:** Speakeasy benchmarks demonstrate that Dynamic Toolsets reduce input token usage by **96.7%** on simple tasks and **91.2%** on complex multi-tool workflows, yielding total token reductions of **90.7%–96.4%** while maintaining a 100% execution success rate across catalogs up to 400 tools [Speakeasy, 2025].
+- **Phase-Gated Tool Masking:** Tool access is dynamically masked by workflow lifecycle phase:
+  - *Planning Phase:* Mutation tools (`write_patch`, `terminal_exec`) are masked; only read and discovery tools are accessible.
+  - *Execution Phase:* Role-specific write and execute tools are active.
+  - *Verification Phase:* Code mutation tools are locked; testing, diffing, and audit tools are exposed.
+
+### 2. JetBrains Observation Masking: Halving Context Overhead Without Hallucination Drift
+
+A major architectural anti-pattern is using LLMs to periodically summarize past tool execution traces. Research from JetBrains and TUM (*The Complexity Trap*, arXiv:2508.21433 / NeurIPS 2025) proves that LLM-based context summarization introduces hallucination drift, loses critical stack traces, and increases latency. In contrast, **Deterministic Observation Masking** matches or exceeds raw agent solve rates while halving (~50%) total context token costs.
+
+**Mechanisms:**
+- When tool output exceeds a defined budget ($C_{\max} = 600\text{ tokens}$ or 40 lines), the execution harness:
+  1. Persists the complete raw output in the local SQLite table `tool_spillover`:
+     ```sql
+     CREATE TABLE IF NOT EXISTS tool_spillover (
+         spillover_id TEXT PRIMARY KEY,
+         tool_name TEXT NOT NULL,
+         raw_output BLOB NOT NULL,
+         line_count INTEGER NOT NULL,
+         byte_size INTEGER NOT NULL,
+         created_at INTEGER NOT NULL
+     );
+     ```
+  2. Emits an abbreviated bracketed representation preserving the head (first 10 lines) and tail (last 15 lines, where errors/summaries reside):
+     ```markdown
+     [TOOL_OUTPUT: pytest (exit: 0) - 380 lines omitted (18.4 KB). 
+      Head: test_auth.py::test_login PASSED ...
+      Tail: 142 passed, 2 warnings in 4.12s
+      Full artifact: artifact://tool_spillover/spill_8f91a2]
+     ```
+  3. The agent retains full causal awareness without paying context-window penalties. If granular lines are required, the agent calls `read_artifact(uri, offset, lines)`.
+
+### 3. Deterministic SQLite-WAL Tool Result Cache with Environmental Fingerprinting
+
+To uphold the DSH zero-daemon invariant (`MAP.md`: no Redis or background services), the crew uses an embedded SQLite-WAL result cache with strict environmental fingerprinting:
+
+```sql
+CREATE TABLE IF NOT EXISTS tool_cache (
+    cache_key TEXT PRIMARY KEY,
+    tool_name TEXT NOT NULL,
+    agent_id TEXT NOT NULL,
+    scope TEXT NOT NULL CHECK(scope IN ('task', 'session', 'crew', 'global')),
+    canonical_args_hash TEXT NOT NULL,
+    env_fingerprint TEXT NOT NULL,
+    result_payload TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    hit_count INTEGER DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_tool_cache_lookup ON tool_cache(tool_name, canonical_args_hash, env_fingerprint);
+```
+
+**Environmental Fingerprinting (Eliminating Stale-Hit Escapes):**
+- **Filesystem Tools (`read_file`, `search_files`, `git_diff`):**
+  $$\text{env\_fingerprint} = \text{sha256}(\text{git\_head\_sha} \parallel \text{file\_mtime})$$
+  Any file modification or commit instantly changes the fingerprint, rendering cached reads obsolete by construction without requiring expensive active cache invalidation sweeps.
+- **Network / Web Tools (`web_search`, `web_extract`):**
+  - *Static Tier (TTL = 7 days):* Language specifications, standard library docs, RFCs.
+  - *Semi-Static Tier (TTL = 24 hours):* Architecture guides, design patterns, established library best practices.
+  - *Volatile Tier (TTL = 15 minutes or no-cache):* Dependency vulnerability advisories, git remote tags, issue tracker statuses.
+
+### 4. Irrelevance Detection & Tool Call Preconditions (BFCL v4 Compliance)
+
+The Berkeley Function Calling Leaderboard (BFCL v4) identifies **hallucinatory / premature tool invocation** (calling external tools when the answer is already present in prompt context or when no tool call is justified) as a primary driver of agent failure [Patil et al., 2024; BFCL v4, 2026].
+
+**Tool Precondition Assertion Gate:**
+Prior to generating any tool call payload, the model must satisfy a lightweight precondition check in its reasoning trace:
+```markdown
+<precondition_check>
+Tool Needed: git_log
+Information Missing: Recent commit authors for src/auth/
+Context Sufficiency: NOT in local conversation history
+Action: INVOCATION_REQUIRED
+</precondition_check>
+```
+If `Context Sufficiency == PRESENT`, the runtime intercepts the turn and instructs the model to answer directly from context, eliminating unnecessary tool roundtrips.
+
+### 5. Measurable Tool Differentiation Metrics Catalog
+
+| Metric | Definition | How to Measure | Target | Warning Threshold |
+|---|---|---|---|---|
+| **Tool Schema Overhead Ratio** | Schema tokens / total prompt tokens | Turn token accounting | **≤ 12%** | > 25% (Trigger lazy schema tiering) |
+| **Lazy Hydration Latency** | Time to search and hydrate tool schema | SQLite query timer | **< 25ms** | > 60ms (Rebuild SQLite tool indices) |
+| **Observation Masking Compression** | Raw bytes vs context bytes injected | `tool_spillover` byte diff | **> 65%** | < 30% (Spillover threshold too high) |
+| **Cache Stale Escape Rate** | Stale cache hits causing downstream retries | Failure ledger | **0 incidents** | > 0 (Tighten environmental fingerprint) |
+| **BFCL Irrelevance Precision** | Correct tool refusals / total unneeded prompts | Verification eval suite | **> 95%** | < 85% (Enforce precondition assertion) |
+
+### References for deep dive (Antigravity, 2026-09-14)
+
+- [Speakeasy, 2025] Reducing MCP Token Usage by 100x — Dynamic Toolsets v2 (96.7% input token reduction, three-step search/describe/execute protocol, constant context scaling). speakeasy.com/blog/how-we-reduced-token-usage-by-100x-dynamic-toolsets-v2.
+- [arXiv:2508.21433 / NeurIPS 2025] The Complexity Trap: Simple Observation Masking Is as Efficient as LLM Summarization for Agent Context Management. JetBrains Research & Technical University of Munich. arxiv.org/abs/2508.21433.
+- [Scalekit, 2026] Token-Efficient Tool Calling: Auth Overhead in Agent Context (10–15 KB schema overhead per turn on 40-tool servers). scalekit.com/blog/token-efficient-tool-calling.
+- [BFCL v4, 2026] Berkeley Function Calling Leaderboard V4: Multi-Turn, Multi-Step & Irrelevance Detection Evaluation. gorilla.cs.berkeley.edu; openreview.net/forum?id=TheBFCL.
+- [Patil et al., 2024] The Berkeley Function Calling Leaderboard (BFCL). ICML / NeurIPS 2024.
+
