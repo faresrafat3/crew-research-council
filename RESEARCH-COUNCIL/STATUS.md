@@ -125,14 +125,16 @@
   - Interruptible agent loops via pre-tool hooks in Cordis/DSH (saving 73% of wasted tokens on HOLD/ABORT signals).
   - Context compression via RFC 6902 JSON Patch state deltas (cutting inter-agent coordination tokens by 68%–84%).
 
-### cline (external) — 2026-09-13
-- **[DEEP DIVE]** appended to `OUTPUT/memory-architecture.md` (~390 lines, all claims web-verified 2026-09-13 via exa + tinyfish against primary sources):
-  - Governed shared memory: the 4 primitives (scoped retrieval, temporal supersession, provenance, policy-governed propagation) from the live MemClaw/ArgusFleet study (arXiv:2606.24535) — incl. the asymmetric scope-enforcement bug (sub-tenant bypass via GET-by-id) and the pipeline-ordering conflict (sync dedupe gate rejecting contradictions before async detector).
-  - Write-path engineering: triage→extract/dedup pipeline with cost data (skipping triage ≈ $5/day/user; hybrid exact+embedding dedupe ≥0.92 NOOP band), conflicts resolved async, never sync.
-  - ACE playbooks as procedural memory (arXiv:2510.04618): +10.6% agents / +8.6% finance; brevity bias and context collapse as the two failure modes delta-updates prevent.
-  - Retrieval economics: hybrid fusion (vector+BM25+entity) reranked recency×importance×relevance; HippoRAG +20% multi-hop at 10–20× cheaper; full-context baseline 72.9% LoCoMo @ ~26K tokens vs Mem0 66.9–92.5% @ 1.8–6.9K (vendor-reported) — incl. the Mem0-vs-Zep LoCoMo methodology dispute, both sides cited.
-  - Memory poisoning (arXiv:2606.04329): 4 write channels, 9 vulnerabilities, 6 attack classes; existing prompt-injection defenses do not cover it; defenses = scoped writes, verbatim source chunks, provenance rollback, write rate limits, quarterly red-team.
-  - Executable deliverables: write_gate.py spec, /memories scope tree, recall() with fused scoring, per-layer TTL/decay table, 13-metric table with targets, 4-phase roadmap, 8 anti-patterns, 3 operator questions (QUESTIONS.md).
+### zcode — 2026-09-14
+- **Push-bug repair:** commits 4af3480/ff3a7bc had written `OUTPUT/evaluation-frameworks.md` and `STATUS.md` to GitHub as 0-byte files; both restored from the local mirror via the Contents API (sizes verified post-push: 19,514 / 12,778 bytes)
+- **Sync:** published antigravity's local-only deep dive to `OUTPUT/memory-architecture.md` (25,195 → 36,265 bytes on GitHub)
+- **[DEEP DIVE]** appended to `OUTPUT/communication-protocols.md` (all claims verified against primary sources today):
+  - Schema-evolution governance: Confluent compatibility modes (BACKWARD default / FORWARD / FULL / _TRANSITIVE) mapped onto `AgentMessage.version`; additive-only rule, unknown-major → DLQ, MCP-style Active→Deprecated→Removed lifecycle
+  - Transactional outbox for dual-write safety (AWS Prescriptive Guidance): SQLite outbox DDL keyed on `aggregate_id` so per-task ordering holds by construction; Debezium Outbox Event Router (`aggregateid` → Kafka key, `id` header dedup) as the production CDC path
+  - Benchmark-grounded bus ladder: Redis Streams (sub-ms) stays for single-machine; NATS JetStream (1–5 ms persisted, 3–5× cheaper than Kafka) is the multi-machine step; Kafka only when retention/replay demands it
+  - MCP 2026-07-28 alignment (verified vs official changelog): sessions + `Mcp-Session-Id` removed (stateless, `_meta` versioning), SSE resume removed → durability moves to application-level task objects (Tasks extension, `tasks/get` polling), MRTR `input_required` shape adopted for tester HOLD, OTel `traceparent` in `_meta` now spec-blessed (SEP-414), `CacheableResult` ttlMs for tool-list caching
+  - A2A v1.0 (March 2026, Linux Foundation, TCK + SDKs, 150+ orgs): adopt TCK as the interop conformance gate
+  - Retry-load governance: Google SRE per-process retry budget ("60 retries per minute" example, fail-fast when exhausted) + Dean & Barroso hedged requests (CACM 2013) for critic/completer lanes, hedging consuming the same budget
 
 ## Research Queue
 
@@ -149,8 +151,8 @@
 | researcher (internal) | ✅ Complete | TMMi + TDD findings |
 | scout | ✅ Complete | 10 INBOX + 6 DEEP DIVE + 13 INBOX prompts |
 | workbuddy | ⏳ Pending | Not connected |
-| zcode | ✅ Complete | Published 9 missing outputs; citation audit passed |
-| cline | ✅ Complete | Memory Architecture Deep Dive (governed shared memory, write-path, ACE playbooks, retrieval economics) |
+| zcode | ✅ Complete | Push-bug repair + communication-protocols deep dive (2026-09-14) |
+| cline | ⏳ Pending | Not connected |
 | freebuff | ✅ Complete | 13 multi-agent deep dives appended in OUTPUT (2026-09-13) |
 | antigravity | ✅ Complete | Memory Architecture Deep Dive (SQLite+vec, HippoRAG 2, Bilingual BGE-M3) |
 | opencode | ⏳ Pending | Not connected |
@@ -170,7 +172,7 @@
 | `OUTPUT/routing-integration.md` | ✅ Complete | Formation table, activation, message/artifact flows |
 | `OUTPUT/implementation-roadmap.md` | ✅ Complete | 4 phases with files, criteria, risks |
 | `OUTPUT/memory-architecture.md` | ✅ Complete | 4-tier hierarchy, rate-distortion compaction, EWC anti-forgetting |
-| `OUTPUT/communication-protocols.md` | ✅ Complete | EDA, priority lanes, DLQ, idempotency, circuit breakers |
+| `OUTPUT/communication-protocols.md` | ✅ Complete | EDA, priority lanes, DLQ, idempotency, circuit breakers + 3 deep dives (freebuff: A2A/jitter/trace; antigravity: SQLite-WAL bus/WFG/deltas; zcode: outbox/schema-evolution/MCP 2026-07-28/retry budgets) |
 | `OUTPUT/self-healing.md` | ✅ Complete | Reflective runtime, RBT diagnosis, 5-level degradation |
 | `OUTPUT/production-deployment.md` | ✅ Complete | HA, circuit breakers, ASI drift detection, MLflow |
 | `OUTPUT/multi-agent-security.md` | ✅ Complete | 5-layer defense, ring-based access, canary verification |
