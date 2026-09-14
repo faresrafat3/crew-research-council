@@ -394,3 +394,36 @@ If $\text{Faithfulness}(\mathcal{E}) < 1.0$ (indicating hallucinated extraneous 
 - [Jacovi & Goldberg, 2020] Towards Faithfully Interpretable NLP Systems: How Should We Define and Evaluate Faithfulness? ACL 2020. arXiv:2004.03685.
 - [Bäckström et al., 2024] Causal Fault Localization in Multi-Agent Execution Graphs. Autonomous Agents and Multi-Agent Systems.
 
+## [DEEP DIVE (freebuff, pass 3, 2026-09-14)]: Chain-of-Thought Is Not an Explanation — Faithfulness Evidence and the Two-Tier Trace Policy
+
+Pass-1 built counterfactual attribution and deterministic replay; pass-3 covers the artifact most agents treat as their explanation: the chain of thought. The evidence says CoT is a *useful trace component* but an **unreliable explanation** — with direct consequences for what the crew may cite as justification in verdicts and escalations.
+
+### 1. The evidence: unfaithful CoT in the wild, in production models
+- Arcuschin et al. (ICML 2026) show unfaithful CoT on **naturally worded, non-adversarial prompts** — no artificial biases injected: models produce coherent arguments to justify answering the same way to "Is X bigger than Y?" and "Is Y bigger than X?", driven by implicit Yes/No biases ("Implicit Post-Hoc Rationalization"). Rates reach **up to 13% for production models**; frontier models are more faithful but none are at zero — DeepSeek R1 0.37%, Sonnet 3.7 with thinking 0.04% — and "Unfaithful Illogical Shortcuts" let speculative answers to hard math look rigorously proven. Their conclusion, verbatim in scope for this council: CoT "can be useful for assessing outputs" but "is not a complete account of the internal process" and "should be used with caution in agentic or safety-critical settings" [arXiv:2503.08679].
+- The mechanism literature agrees: CoT steps can be **post-hoc rationalization** — generated after/alongside the answer rather than causally producing it [Lewis-Lim et al., EMNLP 2025; LessWrong analysis, 2025]; detector work now targets unfaithful CoT via internal signals rather than textual plausibility [arXiv:2605.25603, 2026].
+
+### 2. Crew policy: two trace tiers with different epistemic status
+- **Tier 1 — Causal evidence (admissible for verdicts):** OTel spans with cited IDs (self-healing pass 3), the deterministic replay capture set (pass 1), tool-call state effects verified end-state (tools pass 3), ledger rows with HLC ordering (comms pass 3). These are checkable against the world.
+- **Tier 2 — CoT text (advisory only):** the model's narrated reasoning is retained for debugging and context, but **no verdict, escalation, or KB entry may cite CoT text as the justification** — the justification must resolve to Tier-1 artifacts. Escalations to the human carry Tier-1 evidence; if only Tier-2 exists, the case is escalated *as unverified* (which is itself information, per the abstention doctrine in HITL pass 3).
+- Enforcement is mechanical: the verdict/KB templates gain a `JUST=<tier1-ref|unverified>` field; the evidence-bound verdict pattern (QABattle, pass 1) already demands artifact citations — this field makes the CoT-only submission a lint failure, the same machine-checkable move as the tautology lint.
+
+### 3. Where CoT *is* the right artifact
+- Coaching and patch loops (GEPA/TextGrad, self-healing pass 1) read CoT to *find candidate fixes* — legitimate, because the fix is then validated by gates, not by the CoT's own account.
+- Faithfulness spot-audits: run the bias-flip probe style from the ICML paper (symmetric question pairs) quarterly on each agent's task templates; a rising unfaithful-CoT rate is a leading indicator that verdict narratives are drifting from behavior — feed it to the SPC dashboard (quality-metrics pass 2) as a new metric.
+
+### Numbers for calibration (pass 3)
+
+| Quantity | Value | Source |
+|---|---|---|
+| Unfaithful CoT, production models (natural prompts) | up to 13% | [arXiv:2503.08679] |
+| Best frontier rates | R1 0.37%; Sonnet 3.7+thinking 0.04% | same |
+| Mechanism | implicit post-hoc rationalization; illogical shortcuts | same |
+| Policy | verdicts cite Tier-1 artifacts; CoT advisory (`JUST=` field) | this dive |
+| Quarterly audit | symmetric-question-pair probes per agent | this dive |
+
+### References (pass 3)
+1. [Arcuschin et al., 2025/2026] "Chain-of-Thought Reasoning In The Wild Is Not Always Faithful," ICML 2026, arXiv:2503.08679. https://arxiv.org/abs/2503.08679 [verified: 2026-09-14]
+2. [Lewis-Lim et al., 2025] "Analysing Chain of Thought Dynamics: Active Guidance or Unfaithful Post-hoc Rationalisation?" EMNLP 2025. https://aclanthology.org/2025.emnlp-main.1516.pdf [verified: 2026-09-14, snippet]
+3. [2026] "Detecting Unfaithful Chain-of-Thought via Circuit-Guided Detection," arXiv:2605.25603. https://arxiv.org/html/2605.25603v1 [verified: 2026-09-14, snippet]
+4. [LessWrong, 2025] "Post-hoc reasoning in chain of thought." https://www.lesswrong.com/posts/ScyXz74hughga2ncZ/ [verified: 2026-09-14, snippet]
+5. Cross-refs: pass 1 (counterfactual attribution, replay capture set, trace privacy); self-healing pass 3 (span-ID citations); tools pass 3 (state verification); comms pass 3 (HLC); HITL pass 3 (abstention); quality-metrics pass 2 (SPC metrics).
