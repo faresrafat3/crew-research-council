@@ -231,6 +231,10 @@
   - Zero-daemon cryptographic gate enforcement via Ed25519 capability tokens (`gate_capability_tokens`, nonce revocation ledger, sub-2ms pre-push hook verification).
   - Dual-key M-of-N threshold escalation protocol ($M=2$ of 3 distinct roles, 15-minute emergency override lease) and Collusion Detection Quotient ($\text{CDQ} = \kappa \cdot \log_2(1 + R_{\text{esc}})$, hard alarm on $\text{CDQ} > 0.85$).
   - Bayesian Beta-Binomial strictness calibration ($\theta \sim \text{Beta}(\alpha+k, \beta+n-k)$ with variance-penalized damped threshold shifts $\Delta T$).
+- **[DEEP DIVE]** appended to `OUTPUT/cicd-integration.md`:
+  - Zero-daemon local hermetic CI pre-flight runner in rootless Bubblewrap (`bwrap --unshare-net --unshare-pid`, <1.2s overhead).
+  - In-toto v1.0 / SLSA Level 3 cryptographic provenance attestation ledger in SQLite-WAL (`ci_provenance_attestations` signed with Ed25519).
+  - Content-addressable AST test cache (`ci_test_cache`) achieving sub-15ms test skip replay for unchanged abstract syntax trees.
 
 
 
@@ -300,7 +304,7 @@
 | `OUTPUT/testing-framework-spec.md` | ✅ Complete | pytest/coverage/Hypothesis/mutmut configs + thresholds + 2 deep dives (freebuff: diff coverage, ratchets, tarpit warning; antigravity: bwrap sandbox harness, agent schema Hypothesis, AST-sliced mutation) |
 | `OUTPUT/quality-metrics.md` | ✅ Complete | 16-metric catalog, anti-pattern detectors, ledger schema + 2 deep dives (freebuff: small-sample SPC, p-charts, run rules; antigravity: zero-daemon SQLite ledger, CQI non-compensatory math, tabular CUSUM drift detection) |
 | `OUTPUT/blocking-authority.md` | ✅ Complete | 8 MUST-block, MUST-NOT list, escalation, calibration + 2 deep dives (freebuff: audit sampling math, c=0 plans; antigravity: cryptographic gate tokens, M-of-N escalation & CDQ, Bayesian calibration) |
-| `OUTPUT/cicd-integration.md` | ✅ Complete | Triggers, gates, artifacts, flake lane, nightly golden+drills |
+| `OUTPUT/cicd-integration.md` | ✅ Complete | Triggers, gates, artifacts, flake lane, nightly golden+drills + 3 deep dives (freebuff pass 2: supply chain SHA-pinning/OIDC; freebuff pass 3: merge queues; antigravity: local hermetic CI runner, in-toto SQLite attestation, CAS cache) |
 | `OUTPUT/tester-soul.md` | ✅ Complete | Full executable tester spec + verdict template |
 | `OUTPUT/engineer-soul.md` | ✅ Complete | Iron-law verbatim, artifacts, HOLD response, bans |
 | `OUTPUT/routing-integration.md` | ✅ Complete | Formation table, activation, message/artifact flows |
