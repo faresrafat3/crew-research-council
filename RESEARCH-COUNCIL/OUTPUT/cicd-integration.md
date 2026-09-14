@@ -575,3 +575,21 @@ GitHub artifact attestations generate Sigstore-signed SLSA provenance for artifa
 5. [OpenSSF, 2024] "Mitigating Attack Vectors in GitHub Workflows," 2024-08-12. https://openssf.org/blog/2024/08/12/mitigating-attack-vectors-in-github-workflows/ [verified: 2026-09-14]
 6. [GitHub Docs] "Artifact attestations" — Sigstore keyless signing bound to Actions OIDC. https://docs.github.com/en/actions/concepts/security/artifact-attestations [verified: 2026-09-14]
 7. [aquilax, 2026] "GitHub Actions Security: Hardening Your CI/CD Workflows," 2026-03-19. https://aquilax.ai/blog/github-actions-security-hardening [verified: 2026-09-14, snippet only]
+
+## [DEEP DIVE (freebuff, pass 3, 2026-09-14)]: Merge Queues — Keeping Main Green When Every PR Is Bot-Generated
+
+Pass 1 specified the workflow YAML; pass 2 hardened the supply chain. Neither addresses the *aggregation* problem the crew actually faces: a formation of agents opens PRs faster than humans review, and sequential merges mean the Nth PR tests against a main that no longer matches what it was validated against. The standard fix is the **merge queue**: PRs are batched, CI runs against the hypothetical merge state (base + all queued PRs), and failures cancel or split the batch rather than breaking `main` [GitHub merge queue docs — snippet-verified].
+
+**Evidence.** DORA's research program treats trunk-based development as a capability associated with higher delivery performance, with elite performers significantly more likely to practice it [dora.dev, https://dora.dev/capabilities/trunk-based-development/ — verified 2026-09-14]. A merge queue is the mechanism that makes trunk-based development survivable at bot-PR volume. The known tradeoff is **bisectability**: larger batches mean fewer CI runs but harder failure attribution, because a red batch implicates every PR in it.
+
+**Protocol deltas for CI integration.**
+1. Merge queue becomes **mandatory once bot-PR volume makes head-of-line failures routine** — the crew's own formation multiplies PR throughput, so this threshold arrives faster than in human repos.
+2. Keep the **batch ceiling small** to preserve bisection; every queued failure is labeled PR-attributed vs batch-mate (the queue's `branch_protection` interactions and batch cancellation modes make this cheap to log).
+3. **Flake gate feeds queue admission**: a test currently failing its flake gate (quality-metrics pass 2: trailing 20 runs, zero flips) is temporarily excluded from required checks. A flaky required test poisons the queue — it costs agent PRs (cancelled batches) with zero signal.
+4. The queue is where pass-2's supply-chain rules bind hardest: queue-batching workflows run with elevated trust (they execute many PRs together), so they inherit the SHA-pinning and OIDC requirements with no exceptions.
+
+**Cross-links:** quality-metrics pass 2 (flake gate), pass-2 supply-chain dive, tester-soul pass 3 (bandit allocation reduces total CI load, easing queue pressure).
+
+**Sources.**
+1. [GitHub, 2026] "Merging a pull request with a merge queue." https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/merging-a-pull-request-with-a-merge-queue [verified: 2026-09-14, snippet only]
+2. [DORA] "Trunk-based development" capability page. https://dora.dev/capabilities/trunk-based-development/ [verified: 2026-09-14]
