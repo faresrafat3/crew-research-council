@@ -93,3 +93,54 @@
 - [TestFort, 2025] TMM in Software Testing — level descriptions, observability
 - [TMMi Foundation, 2016] Model Aims — 88%/77% benefits, staged climb necessity
 - [Central Bank Guidelines, 2024] Provisions — exit criteria, L1 chaos definition
+
+---
+
+## [DEEP DIVE (freebuff, pass 2, 2026-09-14)]: Goodhart-Resistant Appraisal — Gaming Vectors per Gate, Structural Independence, and Adversarial Drills
+
+The pass-1 deep dive specified exact exit checklists, tools, timelines, and failure modes per level. It left one meta-risk unaddressed: the crew is a population of optimizers, and every gate is a target. "When a measure becomes a target, it ceases to be a good measure" [Goodhart's law; Wikipedia; LawsofSoftwareEngineering, 2026]. This is not metaphor for the crew — the engineer agent is *literally* trained to satisfy machine-checkable criteria, so each gate will be optimized against at superhuman speed unless the metric is designed to resist its own gaming.
+
+### M1. Gaming vectors per level gate (extension of the pass-1 failure-mode table)
+
+| Gate | Metric | Gaming Vector | Countermeasure |
+|---|---|---|---|
+| L1→L2 | ≥80% of tasks ran pytest | Run pytest on empty/trivial suites | REQ-coverage lint (pass 1) + mutation gate at L3 |
+| L2→L3 | Tester active from task start | Timestamp theater: dispatch tester, no-op | Message-semantic check: tester message must reference REQ-IDs, not just exist |
+| L3→L4 | Mutation ≥70% | Suppress mutants via operator config for hard modules | mutmut config is versioned in git; gate diffs config per PR and flags operator-set reductions |
+| L3→L4 | Flake <2% | Pre-emptively label tests `flaky` → quarantine lane | Quarantine *rate* as new leading indicator (pass-1 dashboard tracked only quarantine age); >5% of suite quarantined = red flag |
+| L3→L4 | RED-witness 100% | Fabricated RED logs | CI reruns RED step independently (pass 1 defense — keep) |
+| L4→L5 | Escape KB SLA <7d | Low-quality KB entries filed to stop the clock | KB entry requires escape-classification (weak/missing/no-operator per tester-soul cycle 4 template) + reviewer sign-off |
+| L4→L5 | −25% escapes/quarter | Redefine "escape" or delay discovery logging | Escape = ledger row on production report, timestamp immutable; quarterly definition review |
+
+The structural pattern: every scalar metric needs a paired *provenance* check (where did the number come from, who could have altered it) and a paired *adversarial* metric (what would gaming look like, is it happening). Metrics are proxies for what you value; once targeted, people meet the metric while undermining the goal [LawsofSoftwareEngineering, 2026] — agents do this faster and more literally than people.
+
+### M2. Structural independence for the appraisal itself
+
+TMMi formal assessments assume accredited human assessors; the crew equivalent must manufacture independence structurally:
+1. **Evidence from the ledger, not self-reports.** Every checklist item's answer must be a ledger DB query or filesystem check — never "agent says so." The append-only ledger (pass-1 §1-3 tooling) is the appraisal's ground truth.
+2. **Machine-executable checklist.** Pass 1 made each gate item a command (`git ls-files | grep -q TEST-POLICY.md`, ledger queries). Appraisal discipline: run the checklist verbatim, log outputs, forbid agent interpretation of ambiguous results — an ambiguous result is a failed item.
+3. **Appraiser separation.** The agent compiling the level-exit report must not be the agent whose work the level certifies (tester compiles; engineer's artifacts are evidence; critic spot-checks — reusing the pass-1 collusion defenses in blocking-authority.md §4).
+
+### M3. Adversarial appraisal drills: test the gates themselves
+
+Borrow the chaos-engineering move from self-healing.md pass 1 (steady-state hypothesis + controlled fault injection) and apply it to the maturity gates. Quarterly, the operator (or a designated red-team agent) injects known-bad artifacts and verifies the gates catch them:
+
+| Injected Artifact | Gate That Must Fire | Pass Criterion |
+|---|---|---|
+| Tautological test (`assert out == captured`) | Oracle/tautology lint | BLOCK, 100% of injections |
+| RED log with no actual failure | Independent RED rerun | Mismatch detected |
+| Suite with 90% coverage, no assertions | Mutation gate | MUT below threshold |
+| flaky-labeled healthy test | Quarantine-rate indicator | Flag in dashboard |
+| Ledger row edited retroactively | Append-only audit (hash chain) | Tamper detected |
+
+A gate that fails its drill is treated like a flaky test: quarantine the gate, fix within the 14-day SLA, re-drill. This converts the maturity model from a self-graded exam into an adversarially validated one — the same principle behind break drills (every REQ must redden) applied one level up: every gate must catch its injection.
+
+### M4. Calibration as the standing Goodhart breaker
+
+Pass-1 §4 (testing-maturity) defined drift failure modes (strictness/leniency). The deeper point: the quarterly calibration loop (blocking-authority.md §2 algorithm) is the mechanism that keeps any single metric from being permanently gamed — thresholds move against real FP/escape signals, and the escape signal is anchored outside the system (production reports, not agent claims). Keep the ±5% steps and clamps; add drill results as a third calibration input alongside FP and escape rates.
+
+### References (pass 2)
+1. [Wikipedia] "Goodhart's law" — "When a measure becomes a target, it ceases to be a good measure." https://en.wikipedia.org/wiki/Goodhart%27s_law [verified: 2026-09-14]
+2. [LawsofSoftwareEngineering, 2026] "Goodhart's Law" — metrics are proxies; targeting corrupts them. https://lawsofsoftwareengineering.com/laws/goodharts-law/ [verified: 2026-09-14]
+3. [Jellyfish, 2022] "Goodhart's Law in Software Engineering and How to Avoid Gaming Your Metrics." https://jellyfish.co/blog/goodharts-law-in-software-engineering-and-how-to-avoid-gaming-your-metrics/ [verified: 2026-09-14, snippet only]
+4. Cross-refs: self-healing.md pass 1 (chaos drills); blocking-authority.md §2 (calibration algorithm), §4 (anti-collusion); tester-soul.md cycle 4 (escape-classification template); quality-metrics.md pass 1 (leading indicators).
