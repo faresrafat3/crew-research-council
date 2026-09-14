@@ -403,3 +403,36 @@ $$\text{ASI}(t) = 1.0 - \frac{1}{12} \sum_{k=1}^{12} \text{Drift}_k(t)$$
 - [LatentEval, 2026] Circuit Breakers for Autonomous Agent Loops: Semantic Entropy and Loop Detection. latenteval.ai/circuit-breakers.
 - [SQLite, 2024] Write-Ahead Logging Concurrency and Transaction Locking Patterns. sqlite.org/wal.html.
 
+## [DEEP DIVE (freebuff, pass 3, 2026-09-14)]: LLM-Serving Capacity Math — Continuous Batching, KV-Cache, and the TTFT/TPOT SLO Pair
+
+Pass-1 covered OTel instrumentation and progressive rollout; Antigravity's pass-2 covered supervision and rate limiting. Pass-3 covers the capacity model underneath: what a serving backend actually does with an agent's requests, and how to reason about latency/throughput SLOs that the probes and golden signals measure.
+
+### 1. Continuous batching: the throughput regime change
+- Classic request-at-a-time serving wastes the GPU: decode is memory-bandwidth-bound, so batching amortizes weight reads. **Orca** introduced iteration-level (continuous) scheduling — the batch is re-formed at every decode step, finished sequences leave immediately, new ones join without waiting for the longest sequence to finish [Yu et al., OSDI 2022]. vLLM's **PagedAttention** completes the picture by paging the KV cache (no fragmentation from pre-reserved contiguous buffers) [vLLM, 2023]. Measured effect: up to **23× throughput improvement** over static batching in the reference implementation writeup [Anyscale, 2023]; teaching material cites **up to 6× higher capacity under SLO** when latency is co-optimized [UW CSE599K, 2024].
+- Crew mapping: the crew's agent token spend (cost pass 1/3) rides on these systems whether self-hosted or API-served. The operational consequence: **throughput per dollar is batch-size-dependent**, so the crew's p95 latency is a function of *co-tenant load*, not just its own requests — the autoscaler signal must be queue-depth-plus-SLO-violation-rate (Antigravity's rate limiting + these SLOs), never CPU-style utilization.
+
+### 2. The SLO pair: TTFT and TPOT are different contracts
+- LLM serving decomposes user-visible latency into **TTFT** (time to first token — dominated by prefill/prompt processing and queueing) and **TPOT** (time per output token — dominated by decode). They trade off against each other under batching: bigger batches raise throughput and TPOT but queue prefill, raising TTFT; modern schedulers explicitly manage the pair (e.g., FairBatching reduces TTFT tail up to 2.29× while maintaining TPOT SLOs) [arXiv:2510.14392, 2025].
+- Crew mapping — every agent interaction has its own natural pair: tester RED witnessing and critic reviews are **interactive** (TTFT-dominated; a slow first token stalls the whole state machine), while bulk report generation is **throughput** work (TPOT irrelevant, total time matters). The deployment SLOs should be per-agent-class: interactive agents get TTFT SLOs with prefill priority; background agents get throughput SLOs and are the batch filler. This refines pass-1's golden signals with the two primitives the serving layer actually schedules against.
+
+### 3. KV-cache economics are capacity economics
+- KV cache grows with (prompt + generated) tokens × layers × batch, and prefill of long shared prompts is re-paid per request unless prefix caching is on. The serving guidance: prefix/prompt caching (vLLM built-in) turns repeated SOUL+context preambles into near-free prefill, at the cost of cache-pressure management [vLLM anatomy blog, 2025]. Crew mapping: the SOUL text and per-task standard preamble are the highest-reuse prefixes in the system — ordering them first in every prompt is a capacity intervention, not just a cost one (cost pass 1's APC discipline, restated as TTFT reduction).
+
+### Numbers for calibration (pass 3)
+
+| Quantity | Value | Source |
+|---|---|---|
+| Continuous batching scheduling granularity | iteration-level (per decode step) | [Yu et al., OSDI 2022] |
+| Throughput gain (static → continuous batching) | up to 23× | [Anyscale, 2023] |
+| Capacity under SLO (co-optimized) | up to 6× | [UW CSE599K, 2024] |
+| SLO primitives | TTFT (prefill/queue) + TPOT (decode) | [arXiv:2510.14392] |
+| TTFT-tail improvement example | up to 2.29× with TPOT SLOs held | same |
+| KV-cache lever | prefix caching for shared SOUL/preamble | [vLLM, 2025] |
+
+### References (pass 3)
+1. [Yu et al., 2022] "Orca: A Distributed Serving System for Transformer-Based Generative Models," OSDI 2022 (iteration-level scheduling). [verified: 2026-09-14, via secondary sources]
+2. [Kwon et al., 2023] "Efficient Memory Management for Large Language Model Serving with PagedAttention," SOSP 2023 / vLLM. [verified: 2026-09-14, via secondary sources]
+3. [Anyscale, 2023] "Continuous batching: 23x LLM inference throughput reduction in p50 latency." https://www.anyscale.com/blog/continuous-batching-llm-inference [verified: 2026-09-14]
+4. [UW CSE599K, 2024] "LLM Inference Serving Systems" (6× capacity under SLO). https://courses.cs.washington.edu/courses/cse599k/24au/content/05-Serving-Systems.pdf [verified: 2026-09-14, course notes]
+5. [vLLM, 2025] "Anatomy of a High-Throughput LLM Inference System." https://vllm.ai/blog/2025-09-05-anatomy-of-vllm [verified: 2026-09-14]
+6. [arXiv:2510.14392, 2025] "Fairness-Aware Batch Formation for LLM Inference" (TTFT tail 2.29×, TPOT SLOs). https://arxiv.org/html/2510.14392v1 [verified: 2026-09-14]
