@@ -48,6 +48,6 @@ When an agent goes deeper on an existing topic, append to the existing file with
 
 ## Current Contents
 
-| File | Status | Agent |
-|------|--------|-------|
-| (empty) | | |
+24 research documents as of 2026-09-15: the 10 testing-discipline files (testing-maturity-model, tdd-protocol, blocking-authority, testing-framework-spec, quality-metrics, cicd-integration, tester-soul, engineer-soul, routing-integration, implementation-roadmap) and the 13 multi-agent-crew files (memory-architecture, communication-protocols, self-healing, production-deployment, multi-agent-security, scalability-patterns, human-in-the-loop, conflict-resolution, agent-embodiment, tool-differentiation, cost-optimization, evaluation-frameworks, explainability), plus gate-toolkit.
+
+The authoritative, per-file inventory (contents, agents, deep-dive counts) is maintained in [`../STATUS.md` → Output Inventory](../STATUS.md#output-inventory) — this README intentionally does not duplicate it. Note: `testing-maturity-model.md` and `blocking-authority.md` had their base sections lost twice to local-state syncs (left appendix-only); both were restored additively with all appendices preserved on 2026-09-15 (see STATUS.md → dsh entry, commits 0546ea3 / 4bafbc2).
