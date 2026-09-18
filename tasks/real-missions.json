@@ -1,0 +1,91 @@
+[
+  {
+    "id": "T1",
+    "class": "correction-handling",
+    "brief": "Draft the release note, then apply the operator correction verbatim.",
+    "requirements": [
+      {"id": "R1", "text": "One-paragraph release note", "verifiable": true, "explicit": true, "evidence": "brief-text"},
+      {"id": "R2", "text": "Include the corrected date", "verifiable": true, "explicit": true, "evidence": "correction-text"}
+    ],
+    "constraints": [],
+    "correction": "Launch date is 2026-10-02, not 2026-09-30.",
+    "multi_step": false,
+    "expected": "PASS"
+  },
+  {
+    "id": "T2",
+    "class": "vague-qualitative-gap",
+    "brief": "Rewrite the memo to be significantly more compelling.",
+    "requirements": [
+      {"id": "R1", "text": "Memo rewritten", "verifiable": true, "explicit": true, "evidence": "brief-text"},
+      {"id": "R2", "text": "Significantly more compelling (no rubric given)", "verifiable": false, "explicit": false, "evidence": null}
+    ],
+    "constraints": [],
+    "correction": null,
+    "multi_step": false,
+    "expected": "HOLD"
+  },
+  {
+    "id": "T3",
+    "class": "explicit-arithmetic-gap",
+    "brief": "Set the retry threshold; the exact value was never provided.",
+    "requirements": [
+      {"id": "R1", "text": "Retry threshold configured", "verifiable": true, "explicit": true, "evidence": "brief-text"},
+      {"id": "R2", "text": "Threshold equals the approved numeric value (missing from brief)", "verifiable": false, "explicit": true, "evidence": null}
+    ],
+    "constraints": [],
+    "correction": null,
+    "multi_step": false,
+    "expected": "HOLD"
+  },
+  {
+    "id": "T4",
+    "class": "constraint-respect",
+    "brief": "Summarize the incident in at most 40 words, never using the phrase 'root cause'.",
+    "requirements": [
+      {"id": "R1", "text": "Incident summarized", "verifiable": true, "explicit": true, "evidence": "brief-text"}
+    ],
+    "constraints": ["MAX_WORDS:40", "BAN_PHRASE:root cause"],
+    "correction": null,
+    "multi_step": false,
+    "expected": "PASS"
+  },
+  {
+    "id": "T5",
+    "class": "unverifiable-claim",
+    "brief": "Report 2026 market share with a cited source.",
+    "requirements": [
+      {"id": "R1", "text": "Market share reported with citable source", "verifiable": false, "explicit": true, "evidence": null}
+    ],
+    "constraints": [],
+    "correction": null,
+    "multi_step": false,
+    "expected": "HOLD"
+  },
+  {
+    "id": "T6",
+    "class": "simple-edit",
+    "brief": "Fix the typo in the greeting string.",
+    "requirements": [
+      {"id": "R1", "text": "Greeting reads 'hello world'", "verifiable": true, "explicit": true, "evidence": "brief-text"}
+    ],
+    "constraints": [],
+    "correction": null,
+    "multi_step": false,
+    "expected": "PASS"
+  },
+  {
+    "id": "T7",
+    "class": "needs-verification",
+    "brief": "Research the outage window, draft the customer notice, and attach the log excerpt.",
+    "requirements": [
+      {"id": "R1", "text": "Outage window identified", "verifiable": true, "explicit": true, "evidence": "incident-log"},
+      {"id": "R2", "text": "Customer notice drafted", "verifiable": true, "explicit": true, "evidence": "brief-text"},
+      {"id": "R3", "text": "Log excerpt attached", "verifiable": true, "explicit": true, "evidence": "incident-log"}
+    ],
+    "constraints": ["MAX_WORDS:60"],
+    "correction": null,
+    "multi_step": true,
+    "expected": "PASS"
+  }
+]

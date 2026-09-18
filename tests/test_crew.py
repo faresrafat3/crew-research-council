@@ -1,0 +1,82 @@
+"""Router + role unit tests (stdlib unittest; pytest migration is a Phase-1 target)."""
+
+import inspect
+import json
+import unittest
+
+from crew.router import propose_formation
+from crew.roles import run_executor, run_reviewer
+
+
+def load_tasks():
+    with open("tasks/real-missions.json") as f:
+        return {t["id"]: t for t in json.load(f)}
+
+
+class TestRouter(unittest.TestCase):
+    def test_simple_task_proposes_solo(self):
+        tasks = load_tasks()
+        formation, _, _ = propose_formation(tasks["T6"])
+        self.assertEqual(formation, "SOLO")
+
+    def test_multistep_task_proposes_pipeline(self):
+        tasks = load_tasks()
+        formation, _, score = propose_formation(tasks["T7"])
+        self.assertEqual(formation, "PIPELINE")
+        self.assertGreaterEqual(score, 5)
+
+
+class TestBaselineExecutor(unittest.TestCase):
+    def test_explicit_gap_holds(self):
+        tasks = load_tasks()
+        out = run_executor(tasks["T3"])
+        self.assertEqual(out["verdict"], "HOLD")
+        self.assertTrue(any("R2" in g for g in out["gaps"]))
+
+    def test_vague_gap_delivered_around_baseline(self):
+        # Documents the known baseline weakness (P4 nuance): vague gaps do
+        # not trigger HOLD without the hold-rule. The Round-1 child must flip this.
+        tasks = load_tasks()
+        out = run_executor(tasks["T2"])
+        self.assertEqual(out["verdict"], "DELIVER")
+
+    def test_hold_rule_flips_vague_gap(self):
+        tasks = load_tasks()
+        out = run_executor(tasks["T2"], hold_on_vague=True)
+        self.assertEqual(out["verdict"], "HOLD")
+
+    def test_correction_applied(self):
+        tasks = load_tasks()
+        out = run_executor(tasks["T1"])
+        self.assertTrue(out["correction_applied"])
+        self.assertIn("2026-10-02", out["text"])
+
+    def test_constraint_respected(self):
+        tasks = load_tasks()
+        out = run_executor(tasks["T4"])
+        self.assertTrue(out["constraints_ok"])
+        self.assertLessEqual(len(out["text"].split()), 40)
+
+
+class TestReviewer(unittest.TestCase):
+    def test_reviewer_is_blind_by_construction(self):
+        # The grader must not accept a formation label: grading on output only.
+        sig = inspect.signature(run_reviewer)
+        self.assertNotIn("formation", sig.parameters)
+
+    def test_vague_gap_miss_is_grave(self):
+        tasks = load_tasks()
+        out = run_executor(tasks["T2"])
+        grade = run_reviewer(tasks["T2"], out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "FAIL")
+        self.assertTrue(grade["grave_error"])
+
+    def test_correct_hold_passes(self):
+        tasks = load_tasks()
+        out = run_executor(tasks["T3"])
+        grade = run_reviewer(tasks["T3"], out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "PASS")
+
+
+if __name__ == "__main__":
+    unittest.main()

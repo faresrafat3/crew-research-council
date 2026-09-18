@@ -1,0 +1,8 @@
+[project]
+name = "anatomy-lab"
+version = "0.1.0"
+description = "Anatomy-lab crew v2: dynamic formation with expertise tracking (baseline)"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
