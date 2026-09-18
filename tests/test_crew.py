@@ -78,5 +78,29 @@ class TestReviewer(unittest.TestCase):
         self.assertEqual(grade["grade"], "PASS")
 
 
+class TestContradiction(unittest.TestCase):
+    def test_contradictory_brief_holds_with_named_gap(self):
+        tasks = load_tasks()
+        out = run_executor(tasks["T8"])
+        self.assertEqual(out["verdict"], "HOLD")
+        self.assertTrue(any(g.startswith("CONTRADICTION:") for g in out["gaps"]))
+
+    def test_hold_withholds_draft_no_breach(self):
+        # The T8 draft still contains the banned phrase, but HOLD delivers
+        # nothing — the reviewer must not flag a breach on withheld text.
+        tasks = load_tasks()
+        out = run_executor(tasks["T8"])
+        grade = run_reviewer(tasks["T8"], out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "PASS")
+        self.assertFalse(grade["grave_error"])
+
+    def test_breach_on_deliver_still_flagged(self):
+        tasks = load_tasks()
+        grade = run_reviewer(tasks["T8"], "root cause unknown happened",
+                             [])
+        self.assertIn("CONSTRAINT-BREACH:ban='root cause':PRESENT",
+                      grade["findings"])
+
+
 if __name__ == "__main__":
     unittest.main()

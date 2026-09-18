@@ -77,8 +77,20 @@ def run_executor(task, hold_on_vague=False):
             constraints_ok, _ = _check_constraint(c, text), None
             constraints_ok = _check_constraint(c, text)[0]
 
+    # Self-check (R2-A): a draft that still breaches hard constraints after
+    # repair is undeliverable — HOLD with the contradiction named, never a
+    # knowing breach delivered.
+    residual = []
+    for c in task.get("constraints", []):
+        ok, detail = _check_constraint(c, text)
+        if not ok:
+            residual.append(detail)
+
     if gaps:
         verdict = "HOLD"
+    elif residual:
+        verdict = "HOLD"
+        gaps.append("CONTRADICTION:" + ";".join(residual))
     else:
         verdict = "DELIVER"
     return {
@@ -106,10 +118,13 @@ def run_reviewer(task, output_text, output_gaps):
                 findings.append(f"GAP-MISS:{req['id']}")
     if task.get("correction") and ("Applied correction" not in output_text):
         findings.append("CORRECTION-DROPPED")
-    for c in task.get("constraints", []):
-        ok, detail = _check_constraint(c, output_text)
-        if not ok:
-            findings.append(f"CONSTRAINT-BREACH:{detail}")
+    # HOLD withholds the draft: nothing delivered, nothing breached. Constraint
+    # findings apply to DELIVERed text only (R2 shared fixture).
+    if not output_gaps:
+        for c in task.get("constraints", []):
+            ok, detail = _check_constraint(c, output_text)
+            if not ok:
+                findings.append(f"CONSTRAINT-BREACH:{detail}")
 
     expected = task.get("expected")
     delivered_hold = len(output_gaps) > 0
