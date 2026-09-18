@@ -24,6 +24,9 @@ def main():
                     choices=["solo", "solo-checklist", "duo"])
     ap.add_argument("--hold-on-vague", action="store_true",
                     help="Hold on vague gaps too (hold-rule variant).")
+    ap.add_argument("--checklist", action="store_true",
+                    help="Attention checklist audit pass (+1 cost/task, "
+                         "no behavior change by design).")
     ap.add_argument("--max-tool-calls", type=int, default=100)
     args = ap.parse_args()
 
@@ -33,8 +36,8 @@ def main():
     used = {"solo": "SOLO", "solo-checklist": "SOLO",
             "duo": "DUO"}[args.formation]
     print(f"CONFIG formation_used={used} variant={args.formation} "
-          f"hold_on_vague={args.hold_on_vague} tasks={len(tasks)} "
-          f"budget_calls={args.max_tool_calls}")
+          f"hold_on_vague={args.hold_on_vague} checklist={args.checklist} "
+          f"tasks={len(tasks)} budget_calls={args.max_tool_calls}")
 
     ledger = RunLedger()
     budget = Budget(max_tool_calls=args.max_tool_calls)
@@ -48,6 +51,9 @@ def main():
             if used == "DUO":
                 cost += 2  # independent verifier pass (different checks)
                 budget.spend(2)
+            if args.checklist:
+                cost += 1  # audit pass only: perfect trail, same decision
+                budget.spend(1)
             grade = run_reviewer(task, out["text"], out["gaps"])
             status = "ok"
         except RuntimeError as e:
