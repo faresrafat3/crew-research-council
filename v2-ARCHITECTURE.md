@@ -97,3 +97,11 @@ The critic/verifier must have **different tools** than the executor:
 - **Complex tasks**: v2 FULL > v1 PIPELINE (real expertise leveraging)
 - **Constraint violation**: 0% (razor respects constraints)
 - **Routing accuracy**: >80% correct formation selection after 20 tasks
+
+## Measured (2026-09-18, 20 proxy tasks, rule-based stand-in crew — NOT LLM agents)
+
+- **Compliance**: SOLO reaches 20/20 zero-grave via actor decision rules alone (hold-on-unverified, contradiction self-check, tool-humility); DUO/verifier re-passes added cost (+14/+16) with zero quality gain on compliance classes.
+- **Resolution value**: TEAM (routed researcher fetch) resolved 9/20 vs SOLO 4/20 at cost 87 vs 68 — value-per-cost 0.103 vs 0.059. Formation wins come from missing tools, never from re-checking.
+- **Routing**: per-task router proposal matched forced-SOLO on 19/20 (only T7 wants PIPELINE); routing alone fixed nothing (R2 routed: 7/8).
+- **Red-team**: poisoned/partial/malicious sources repelled with zero rule changes; one metric-invisible hole found and repaired (truncation severing grounding → CITATION-CUT hold).
+- **Limits**: rule-based stand-ins, 20 hand-built proxies, cost = simulated tool calls. The same protocol (blind grading, resolution metric, red-team, break-fix) must be re-run against real LLM agents before any claim transfers.

@@ -29,3 +29,14 @@ any one of these is not an entity, it is a prompt) and SECONDARY components
 - Bias declared or bias banned. Hidden bias is a defect, not modesty.
 - Overlap is resolved by ownership first: every responsibility has exactly one owner; overlap is allowed for review and continuity, never as a second unpriced role. Split or kill only when two owners claim one decision.
 - Compliance beats completion (DECISIVE-01 probes, binding on EVERY entity in EVERY formation): any requirement you cannot verify against your answer → HOLD + the exact gap, never deliver around it. Attention-checklists do not substitute for this decision rule. A HOLD with a named gap outranks a non-compliant delivery.
+
+## Earned laws (ledger-backed, 2026-09-18 v2-evidence rounds — stand-in crew, see limits in v2-ARCHITECTURE)
+
+- Undeliverable briefs HOLD with the contradiction named (R2; run 499819ea): a draft that still breaches hard constraints after repair is not delivered knowingly.
+- Checks belong in the actor (R2; runs 499819ea vs 9fecb40d): the same check costs 29 in the actor, 45 in a second pass, identical quality.
+- Withheld drafts carry no breach (R2 fixture): HOLD delivers nothing, so constraint findings apply to DELIVERed text only.
+- Tool-humility (R3; run 2d15c309): no fetch tool, no citation — HOLD with TOOL-GAP, never invent a source. Citations must be verbatim and grounded (UNGROUNDED flag).
+- Genuine conflict never resolves by formation (R3–R6; runs 1a90e962, c33b2b98, fed8bc8e, f8f878ea): contested evidence HOLDs on every arm; fetching must not launder conflict.
+- Truncation must not sever grounding (R7–R8; runs ad1d3a45 → 76a26738): repair that drops citations converts delivery to CITATION-CUT hold.
+- Gap coverage matches IDs by whole segment (R7 audit): substring matching let "R1" hide inside "R10".
+- Teams earn cost via routed resolution (R3–R6): one missing tool, routed to exactly the tasks needing it; re-checking what solo handles is pure tax.
