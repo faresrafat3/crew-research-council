@@ -17,6 +17,20 @@ from crew.roles import run_executor, run_reviewer
 from harness.state import Budget, RunLedger
 
 
+def apply_verifier_override(task, out, grade):
+    """Independent verifier with override authority (R2-B): a DELIVER that
+    breaches hard constraints is flipped to HOLD with the breach named, then
+    re-graded (withheld text carries no breach). Adjudication is folded into
+    the verifier pass cost. Returns (out, grade); no-op when nothing to flip."""
+    if (out["verdict"] == "DELIVER"
+            and any(f.startswith("CONSTRAINT-BREACH") for f in grade["findings"])):
+        out = dict(out)
+        out["verdict"] = "HOLD"
+        out["gaps"] = list(out["gaps"]) + ["OVERRIDE:" + ";".join(grade["findings"])]
+        grade = run_reviewer(task, out["text"], out["gaps"])
+    return out, grade
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tasks", required=True)
@@ -27,6 +41,8 @@ def main():
     ap.add_argument("--checklist", action="store_true",
                     help="Attention checklist audit pass (+1 cost/task, "
                          "no behavior change by design).")
+    ap.add_argument("--verifier-override", action="store_true",
+                    help="Verifier may flip a breaching DELIVER to HOLD (R2-B).")
     ap.add_argument("--max-tool-calls", type=int, default=100)
     args = ap.parse_args()
 
@@ -37,6 +53,7 @@ def main():
             "duo": "DUO"}[args.formation]
     print(f"CONFIG formation_used={used} variant={args.formation} "
           f"hold_on_vague={args.hold_on_vague} checklist={args.checklist} "
+          f"override={args.verifier_override} "
           f"tasks={len(tasks)} budget_calls={args.max_tool_calls}")
 
     ledger = RunLedger()
@@ -55,6 +72,8 @@ def main():
                 cost += 1  # audit pass only: perfect trail, same decision
                 budget.spend(1)
             grade = run_reviewer(task, out["text"], out["gaps"])
+            if args.verifier_override:
+                out, grade = apply_verifier_override(task, out, grade)
             status = "ok"
         except RuntimeError as e:
             out = {"verdict": "HOLD", "text": "", "gaps": ["budget:" + str(e)],

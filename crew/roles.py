@@ -106,10 +106,13 @@ def run_reviewer(task, output_text, output_gaps):
                 findings.append(f"GAP-MISS:{req['id']}")
     if task.get("correction") and ("Applied correction" not in output_text):
         findings.append("CORRECTION-DROPPED")
-    for c in task.get("constraints", []):
-        ok, detail = _check_constraint(c, output_text)
-        if not ok:
-            findings.append(f"CONSTRAINT-BREACH:{detail}")
+    # HOLD withholds the draft: nothing delivered, nothing breached. Constraint
+    # findings apply to DELIVERed text only (R2 shared fixture).
+    if not output_gaps:
+        for c in task.get("constraints", []):
+            ok, detail = _check_constraint(c, output_text)
+            if not ok:
+                findings.append(f"CONSTRAINT-BREACH:{detail}")
 
     expected = task.get("expected")
     delivered_hold = len(output_gaps) > 0

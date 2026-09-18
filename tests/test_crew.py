@@ -77,6 +77,45 @@ class TestReviewer(unittest.TestCase):
         grade = run_reviewer(tasks["T3"], out["text"], out["gaps"])
         self.assertEqual(grade["grade"], "PASS")
 
+    def test_hold_withholds_draft_no_breach(self):
+        # HOLD delivers nothing — no breach findings on withheld text.
+        tasks = load_tasks()
+        out = run_executor(tasks["T3"])
+        grade = run_reviewer(tasks["T3"], out["text"], out["gaps"])
+        self.assertNotIn("CONSTRAINT-BREACH", str(grade["findings"]))
+
+
+class TestVerifierOverride(unittest.TestCase):
+    def test_executor_alone_breaches_t8(self):
+        # Documents the gap the override must close: executor DELIVERs T8
+        # with a hard-constraint breach (grave error without the verifier).
+        tasks = load_tasks()
+        out = run_executor(tasks["T8"])
+        self.assertEqual(out["verdict"], "DELIVER")
+        grade = run_reviewer(tasks["T8"], out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "FAIL")
+        self.assertTrue(grade["grave_error"])
+
+    def test_override_flips_breach_to_hold(self):
+        from crew.eval import apply_verifier_override
+        tasks = load_tasks()
+        out = run_executor(tasks["T8"])
+        grade = run_reviewer(tasks["T8"], out["text"], out["gaps"])
+        out2, grade2 = apply_verifier_override(tasks["T8"], out, grade)
+        self.assertEqual(out2["verdict"], "HOLD")
+        self.assertTrue(any(g.startswith("OVERRIDE:") for g in out2["gaps"]))
+        self.assertEqual(grade2["grade"], "PASS")
+        self.assertFalse(grade2["grave_error"])
+
+    def test_override_noop_on_clean_output(self):
+        from crew.eval import apply_verifier_override
+        tasks = load_tasks()
+        out = run_executor(tasks["T6"])
+        grade = run_reviewer(tasks["T6"], out["text"], out["gaps"])
+        out2, grade2 = apply_verifier_override(tasks["T6"], out, grade)
+        self.assertEqual(out2["verdict"], "DELIVER")
+        self.assertEqual(grade2["grade"], "PASS")
+
 
 if __name__ == "__main__":
     unittest.main()
