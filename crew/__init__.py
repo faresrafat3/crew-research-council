@@ -5,6 +5,7 @@ constitution (crew/) split from harness (harness/).
 """
 
 from .router import propose_formation, FORMATIONS
-from .roles import run_executor, run_reviewer
+from .roles import run_executor, run_reviewer, run_researcher
 
-__all__ = ["propose_formation", "FORMATIONS", "run_executor", "run_reviewer"]
+__all__ = ["propose_formation", "FORMATIONS", "run_executor", "run_reviewer",
+           "run_researcher"]

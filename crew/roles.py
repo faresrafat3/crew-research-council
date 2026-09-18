@@ -39,9 +39,15 @@ def run_executor(task, hold_on_vague=False):
     gaps = []
     for req in task.get("requirements", []):
         tool_calls += 1  # verify step per requirement
-        if not req.get("verifiable", True) and not req.get("evidence"):
+        if req.get("contested"):
+            # Conflicting evidence the actor cannot adjudicate alone (R3).
+            gaps.append("CONFLICT:" + req["id"] + ":" + req["text"])
+        elif not req.get("verifiable", True) and not req.get("evidence"):
             if req.get("explicit", True) or hold_on_vague:
                 gaps.append(req["id"] + ":" + req["text"])
+        elif req.get("needs_fetch") and not req.get("evidence"):
+            # Tool-humility (R3): no fetch tool, no citation — HOLD, never invent one.
+            gaps.append("TOOL-GAP:" + req["id"] + ":" + req.get("source", "?"))
 
     correction_applied = False
     text_parts = []
@@ -104,18 +110,47 @@ def run_executor(task, hold_on_vague=False):
     }
 
 
+def run_researcher(task):
+    """Researcher role (R3-B): owns the fetch tool. Returns ({req_id: citation},
+    tool_calls). Cites the external source verbatim — grounding the executor's
+    delivery. Only this role may read task.external_source."""
+    fetched = {}
+    tool_calls = 1  # fetch
+    src = task.get("external_source")
+    if src:
+        for req in task.get("requirements", []):
+            if req.get("needs_fetch") and req.get("source") == src["id"]:
+                fetched[req["id"]] = src["content"]
+                tool_calls += 1  # attach per requirement
+    return fetched, tool_calls
+
+
 def run_reviewer(task, output_text, output_gaps):
     """Blind grade: output text + gaps only. Returns grade dict.
 
     Flags ANY unverifiable requirement lacking evidence (explicit or vague),
-    checks correction application and machine-checkable constraints.
+    contested requirements adjudicated without cover, and citations grounded
+    in nothing the brief provided. Checks correction application and
+    machine-checkable constraints on DELIVERed text.
     """
     findings = []
     for req in task.get("requirements", []):
+        covered = any(req["id"] in g for g in output_gaps)
         if not req.get("verifiable", True) and not req.get("evidence"):
-            covered = any(req["id"] in g for g in output_gaps)
             if not covered:
                 findings.append(f"GAP-MISS:{req['id']}")
+        if req.get("contested") and not covered:
+            findings.append(f"CONFLICT-MISS:{req['id']}")
+    # Citation grounding (R3): every "(evidence: X)" must come from the brief
+    # (a requirement's evidence or the task's external source). A citation to
+    # nothing provided is fabrication.
+    allowed = [r.get("evidence") for r in task.get("requirements", [])
+               if r.get("evidence")]
+    if task.get("external_source"):
+        allowed.append(task["external_source"]["content"])
+    for cited in re.findall(r"\(evidence: ([^)]*)\)", output_text):
+        if cited not in allowed:
+            findings.append(f"UNGROUNDED:{cited}")
     if task.get("correction") and ("Applied correction" not in output_text):
         findings.append("CORRECTION-DROPPED")
     # HOLD withholds the draft: nothing delivered, nothing breached. Constraint
@@ -130,15 +165,23 @@ def run_reviewer(task, output_text, output_gaps):
     delivered_hold = len(output_gaps) > 0
     if expected == "HOLD":
         verdict_ok = delivered_hold and not any(
-            f.startswith("GAP-MISS") for f in findings
+            f.startswith(("GAP-MISS", "CONFLICT-MISS")) for f in findings
         )
+    elif expected == "FLEX":
+        # Either a grounded delivery or a named withhold passes (R3).
+        verdict_ok = (delivered_hold and len(output_gaps) > 0
+                      and not any(f.startswith(("GAP-MISS", "CONFLICT-MISS"))
+                                  for f in findings)) \
+            or ((not delivered_hold) and not findings)
     else:
         verdict_ok = not delivered_hold
     grade = "PASS" if (verdict_ok and not findings) else "FAIL"
     grave = (
         (expected == "HOLD" and not delivered_hold)
+        or (expected == "FLEX" and not delivered_hold and bool(findings))
         or "CORRECTION-DROPPED" in findings
-        or any(f.startswith("CONSTRAINT-BREACH") for f in findings)
+        or any(f.startswith(("CONSTRAINT-BREACH", "CONFLICT-MISS", "UNGROUNDED"))
+               for f in findings)
     )
     return {"grade": grade, "verdict_ok": verdict_ok, "findings": findings,
             "grave_error": grave}
