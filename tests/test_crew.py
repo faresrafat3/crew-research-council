@@ -102,5 +102,51 @@ class TestContradiction(unittest.TestCase):
                       grade["findings"])
 
 
+class TestLimits(unittest.TestCase):
+    def test_contested_evidence_holds(self):
+        tasks = load_tasks()
+        out = run_executor(tasks["T9"])
+        self.assertEqual(out["verdict"], "HOLD")
+        self.assertTrue(any(g.startswith("CONFLICT:") for g in out["gaps"]))
+        grade = run_reviewer(tasks["T9"], out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "PASS")
+
+    def test_unadjudicated_conflict_is_grave(self):
+        tasks = load_tasks()
+        grade = run_reviewer(tasks["T9"], "[R1] 42min (evidence: log-A)",
+                             [])
+        self.assertIn("CONFLICT-MISS:R1", grade["findings"])
+        self.assertTrue(grade["grave_error"])
+
+    def test_no_fetch_tool_no_citation(self):
+        # Solo executor holds with TOOL-GAP rather than inventing a source.
+        tasks = load_tasks()
+        out = run_executor(tasks["T10"])
+        self.assertEqual(out["verdict"], "HOLD")
+        self.assertTrue(any(g.startswith("TOOL-GAP:") for g in out["gaps"]))
+        grade = run_reviewer(tasks["T10"], out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "PASS")
+
+    def test_fabricated_citation_flagged(self):
+        tasks = load_tasks()
+        grade = run_reviewer(tasks["T10"],
+                             "[R1] 99 minutes (evidence: trust-me-blog)",
+                             [])
+        self.assertTrue(any(f.startswith("UNGROUNDED:") for f in grade["findings"]))
+        self.assertTrue(grade["grave_error"])
+
+    def test_grounded_delivery_passes_flex(self):
+        from crew.roles import run_researcher
+        tasks = load_tasks()
+        fetched, _ = run_researcher(tasks["T10"])
+        work = dict(tasks["T10"])
+        work["requirements"] = [dict(r, evidence=fetched[r["id"]])
+                                for r in work["requirements"]]
+        out = run_executor(work)
+        self.assertEqual(out["verdict"], "DELIVER")
+        grade = run_reviewer(work, out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "PASS")
+
+
 if __name__ == "__main__":
     unittest.main()

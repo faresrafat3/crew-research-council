@@ -13,7 +13,7 @@ import json
 import time
 
 from crew.router import propose_formation
-from crew.roles import run_executor, run_reviewer
+from crew.roles import run_executor, run_reviewer, run_researcher
 from harness.state import Budget, RunLedger
 
 
@@ -21,7 +21,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tasks", required=True)
     ap.add_argument("--formation", default="solo",
-                    choices=["solo", "solo-checklist", "duo"])
+                    choices=["solo", "solo-checklist", "duo", "team"])
     ap.add_argument("--hold-on-vague", action="store_true",
                     help="Hold on vague gaps too (hold-rule variant).")
     ap.add_argument("--checklist", action="store_true",
@@ -42,19 +42,39 @@ def main():
     ledger = RunLedger()
     budget = Budget(max_tool_calls=args.max_tool_calls)
     t0 = time.time()
+    resolved = 0  # DELIVER-PASS: compliant AND useful (R3 value metric)
     for task in tasks:
         proposed, criteria, score = propose_formation(task)
+        used = {"solo": "SOLO", "solo-checklist": "SOLO",
+                "duo": "DUO", "team": "SOLO"}[args.formation]
         try:
-            out = run_executor(task, hold_on_vague=args.hold_on_vague)
+            work = task
+            if args.formation == "team" and task.get("external_source"):
+                # Researcher stage (fetch tool) grounds the brief first.
+                fetched, rcalls = run_researcher(task)
+                budget.spend(rcalls)
+                cost = rcalls
+                work = dict(task)
+                work["requirements"] = [
+                    dict(r, evidence=fetched[r["id"]])
+                    if r["id"] in fetched else r
+                    for r in task["requirements"]
+                ]
+                used = "TEAM"
+            else:
+                cost = 0
+            out = run_executor(work, hold_on_vague=args.hold_on_vague)
             budget.spend(out["tool_calls"])
-            cost = out["tool_calls"]
+            cost = cost + out["tool_calls"]
             if used == "DUO":
                 cost += 2  # independent verifier pass (different checks)
                 budget.spend(2)
             if args.checklist:
                 cost += 1  # audit pass only: perfect trail, same decision
                 budget.spend(1)
-            grade = run_reviewer(task, out["text"], out["gaps"])
+            grade = run_reviewer(work, out["text"], out["gaps"])
+            if grade["grade"] == "PASS" and out["verdict"] == "DELIVER":
+                resolved += 1
             status = "ok"
         except RuntimeError as e:
             out = {"verdict": "HOLD", "text": "", "gaps": ["budget:" + str(e)],
@@ -77,6 +97,7 @@ def main():
     rate = s["passed"] / s["n"] if s["n"] else 0.0
     print(f"SUMMARY n={s['n']} passed={s['passed']} rate={rate:.3f} "
           f"grave_errors={s['grave_errors']} total_cost={s['total_cost']} "
+          f"resolved={resolved} "
           f"routing_match={s['routing_match']}/{s['n']} wall_s={dt:.2f} "
           f"formation={used}")
 

@@ -99,5 +99,30 @@
     "correction": null,
     "multi_step": false,
     "expected": "HOLD"
+  },
+  {
+    "id": "T9",
+    "class": "conflicting-evidence",
+    "brief": "Report the outage duration; the two logs disagree with each other.",
+    "requirements": [
+      {"id": "R1", "text": "Outage duration reported", "verifiable": true, "explicit": true, "evidence": "log-A: 42min; log-B: 17min", "contested": true}
+    ],
+    "constraints": [],
+    "correction": null,
+    "multi_step": false,
+    "expected": "HOLD"
+  },
+  {
+    "id": "T10",
+    "class": "external-source",
+    "brief": "Report the outage duration with a citable source; fetch the status page first.",
+    "requirements": [
+      {"id": "R1", "text": "Outage duration reported with citable source", "verifiable": true, "explicit": true, "evidence": null, "needs_fetch": true, "source": "SRC-7"}
+    ],
+    "external_source": {"id": "SRC-7", "content": "Status page 2026-09-30: outage duration 17 minutes."},
+    "constraints": [],
+    "correction": null,
+    "multi_step": false,
+    "expected": "FLEX"
   }
 ]
