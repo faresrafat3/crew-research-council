@@ -10,6 +10,7 @@ Exit code is always 0: this measures, it does not gate (pytest gates).
 
 import argparse
 import json
+import random
 import time
 
 from crew.router import propose_formation
@@ -28,10 +29,18 @@ def main():
                     help="Attention checklist audit pass (+1 cost/task, "
                          "no behavior change by design).")
     ap.add_argument("--max-tool-calls", type=int, default=100)
+    ap.add_argument("--shuffle-seed", type=int, default=None,
+                    help="Deterministically shuffle task order (R4 replication).")
     args = ap.parse_args()
 
     with open(args.tasks) as f:
         tasks = json.load(f)
+    if args.shuffle_seed is not None:
+        order = list(range(len(tasks)))
+        random.Random(args.shuffle_seed).shuffle(order)
+        tasks = [tasks[i] for i in order]
+        print(f"SHUFFLE seed={args.shuffle_seed} "
+              f"order={[t['id'] for t in tasks]}")
 
     used = {"solo": "SOLO", "solo-checklist": "SOLO",
             "duo": "DUO"}[args.formation]
