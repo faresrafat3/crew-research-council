@@ -110,14 +110,21 @@ def run_executor(task, hold_on_vague=False):
     }
 
 
+def _task_sources(task):
+    """Normalize external_source (dict or list) to a list (R5 fixture)."""
+    src = task.get("external_source")
+    if not src:
+        return []
+    return src if isinstance(src, list) else [src]
+
+
 def run_researcher(task):
     """Researcher role (R3-B): owns the fetch tool. Returns ({req_id: citation},
     tool_calls). Cites the external source verbatim — grounding the executor's
     delivery. Only this role may read task.external_source."""
     fetched = {}
     tool_calls = 1  # fetch
-    src = task.get("external_source")
-    if src:
+    for src in _task_sources(task):
         for req in task.get("requirements", []):
             if req.get("needs_fetch") and req.get("source") == src["id"]:
                 fetched[req["id"]] = src["content"]
@@ -146,8 +153,7 @@ def run_reviewer(task, output_text, output_gaps):
     # nothing provided is fabrication.
     allowed = [r.get("evidence") for r in task.get("requirements", [])
                if r.get("evidence")]
-    if task.get("external_source"):
-        allowed.append(task["external_source"]["content"])
+    allowed += [s["content"] for s in _task_sources(task)]
     for cited in re.findall(r"\(evidence: ([^)]*)\)", output_text):
         if cited not in allowed:
             findings.append(f"UNGROUNDED:{cited}")

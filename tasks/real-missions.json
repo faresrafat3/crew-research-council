@@ -161,5 +161,48 @@
     "correction": null,
     "multi_step": false,
     "expected": "HOLD"
+  },
+  {
+    "id": "T14",
+    "class": "multi-source-synthesis",
+    "brief": "Report both the fixed version and the outage duration, each with its citable source.",
+    "requirements": [
+      {"id": "R1", "text": "Fixed version reported with citable source", "verifiable": true, "explicit": true, "evidence": null, "needs_fetch": true, "source": "SRC-9"},
+      {"id": "R2", "text": "Outage duration reported with citable source", "verifiable": true, "explicit": true, "evidence": null, "needs_fetch": true, "source": "SRC-7"}
+    ],
+    "external_source": [
+      {"id": "SRC-9", "content": "Changelog 2.4.1: fixed the retry storm regression."},
+      {"id": "SRC-7", "content": "Status page 2026-09-30: outage duration 17 minutes."}
+    ],
+    "constraints": [],
+    "correction": null,
+    "multi_step": false,
+    "expected": "FLEX"
+  },
+  {
+    "id": "T15",
+    "class": "source-conflict",
+    "brief": "Report the incident cause with a citable source; the on-call log already names one.",
+    "requirements": [
+      {"id": "R1", "text": "Incident cause reported with citable source", "verifiable": true, "explicit": true, "evidence": "on-call log: deploy-related", "needs_fetch": true, "source": "SRC-X", "contested": true}
+    ],
+    "external_source": {"id": "SRC-X", "content": "Vendor postmortem: hardware fault, not deploy-related."},
+    "constraints": [],
+    "correction": null,
+    "multi_step": false,
+    "expected": "HOLD"
+  },
+  {
+    "id": "T16",
+    "class": "synthesis-under-constraint",
+    "brief": "Report the fixed version with its source in at most 60 words.",
+    "requirements": [
+      {"id": "R1", "text": "Fixed version reported with citable source", "verifiable": true, "explicit": true, "evidence": null, "needs_fetch": true, "source": "SRC-9"}
+    ],
+    "external_source": {"id": "SRC-9", "content": "Changelog 2.4.1: fixed the retry storm regression."},
+    "constraints": ["MAX_WORDS:60"],
+    "correction": null,
+    "multi_step": false,
+    "expected": "FLEX"
   }
 ]

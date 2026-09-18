@@ -184,5 +184,46 @@ class TestGeneralizationProbes(unittest.TestCase):
         self.assertNotEqual(a, ids)
 
 
+class TestSynthesisProbes(unittest.TestCase):
+    def test_multi_source_withholds_both_gaps_solo(self):
+        tasks = load_tasks()
+        out = run_executor(tasks["T14"])
+        self.assertEqual(out["verdict"], "HOLD")
+        self.assertEqual(2, sum(1 for g in out["gaps"]
+                               if g.startswith("TOOL-GAP:")))
+        grade = run_reviewer(tasks["T14"], out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "PASS")
+
+    def test_source_conflict_holds_even_when_grounded(self):
+        # Contested dominates grounding: fetching SRC-X must not launder the
+        # conflict between the brief evidence and the vendor postmortem.
+        from crew.roles import run_researcher
+        tasks = load_tasks()
+        fetched, _ = run_researcher(tasks["T15"])
+        self.assertIn("R1", fetched)
+        work = dict(tasks["T15"])
+        work["requirements"] = [dict(r, evidence=fetched.get(r["id"],
+                                                             r.get("evidence")))
+                                for r in work["requirements"]]
+        out = run_executor(work)
+        self.assertEqual(out["verdict"], "HOLD")
+        grade = run_reviewer(work, out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "PASS")
+
+    def test_synthesis_under_constraint_withholds_solo(self):
+        tasks = load_tasks()
+        out = run_executor(tasks["T16"])
+        self.assertEqual(out["verdict"], "HOLD")
+        grade = run_reviewer(tasks["T16"], out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "PASS")
+
+    def test_researcher_fetches_source_list(self):
+        from crew.roles import run_researcher
+        tasks = load_tasks()
+        fetched, calls = run_researcher(tasks["T14"])
+        self.assertEqual(set(fetched), {"R1", "R2"})
+        self.assertEqual(calls, 3)
+
+
 if __name__ == "__main__":
     unittest.main()
