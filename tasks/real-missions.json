@@ -246,5 +246,19 @@
     "correction": null,
     "multi_step": false,
     "expected": "FLEX"
+  },
+  {
+    "id": "T20",
+    "class": "truncation-severs-citation",
+    "brief": "State the rollback outcome and the current status, each cited, in at most 14 words.",
+    "requirements": [
+      {"id": "R1", "text": "Rollback outcome stated with citable source", "verifiable": true, "explicit": true, "evidence": "deploy-log: rollback completed at 04:12 UTC after the canary failed in eu-west"},
+      {"id": "R2", "text": "Current status stated with citable source", "verifiable": true, "explicit": true, "evidence": null, "needs_fetch": true, "source": "SRC-W"}
+    ],
+    "external_source": {"id": "SRC-W", "content": "Status page: all systems operational, error budget restored."},
+    "constraints": ["MAX_WORDS:14"],
+    "correction": null,
+    "multi_step": false,
+    "expected": "FLEX"
   }
 ]

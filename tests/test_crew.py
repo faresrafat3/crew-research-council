@@ -278,5 +278,44 @@ class TestAdversarialProbes(unittest.TestCase):
         self.assertFalse(grade["grave_error"])
 
 
+class TestGraderAudit(unittest.TestCase):
+    def test_id_collision_does_not_cover(self):
+        # R7 audit: "R1" must not hide inside an "R10:..." gap. Fails on the
+        # old substring check, passes on exact-segment matching.
+        tiny = {"id": "X", "requirements": [
+            {"id": "R1", "text": "u1", "verifiable": False,
+             "explicit": True, "evidence": None},
+            {"id": "R10", "text": "u10", "verifiable": False,
+             "explicit": True, "evidence": None}],
+            "expected": "HOLD"}
+        grade = run_reviewer(tiny, "text", ["R10:u10"])
+        self.assertIn("GAP-MISS:R1", grade["findings"])
+        self.assertNotIn("GAP-MISS:R10", grade["findings"])
+
+    def test_exact_segment_still_covers(self):
+        tasks = load_tasks()
+        out = run_executor(tasks["T3"])
+        grade = run_reviewer(tasks["T3"], out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "PASS")
+
+    def test_truncation_severs_citation_uncaught(self):
+        # RED demonstration (R7): the word cap cuts both citations off the
+        # grounded delivery, and the pre-fix reviewer still passes it.
+        from crew.roles import run_researcher
+        import re
+        tasks = load_tasks()
+        fetched, _ = run_researcher(tasks["T20"])
+        work = dict(tasks["T20"])
+        work["requirements"] = [dict(r, evidence=fetched.get(r["id"],
+                                                             r.get("evidence")))
+                                for r in work["requirements"]]
+        out = run_executor(work)
+        self.assertEqual(out["verdict"], "DELIVER")
+        cites = re.findall(r"\(evidence: ([^)]*)\)", out["text"])
+        self.assertEqual(cites, [])
+        grade = run_reviewer(work, out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "PASS")
+
+
 if __name__ == "__main__":
     unittest.main()
