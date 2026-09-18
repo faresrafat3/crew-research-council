@@ -124,5 +124,42 @@
     "correction": null,
     "multi_step": false,
     "expected": "FLEX"
+  },
+  {
+    "id": "T11",
+    "class": "conflicting-evidence",
+    "brief": "Report the deploy time; the two witnesses disagree with each other.",
+    "requirements": [
+      {"id": "R1", "text": "Deploy time reported", "verifiable": true, "explicit": true, "evidence": "ops: 02:14 UTC; dev: 03:05 UTC", "contested": true}
+    ],
+    "constraints": [],
+    "correction": null,
+    "multi_step": false,
+    "expected": "HOLD"
+  },
+  {
+    "id": "T12",
+    "class": "external-source",
+    "brief": "Report the fixed version with a citable source; fetch the changelog first.",
+    "requirements": [
+      {"id": "R1", "text": "Fixed version reported with citable source", "verifiable": true, "explicit": true, "evidence": null, "needs_fetch": true, "source": "SRC-9"}
+    ],
+    "external_source": {"id": "SRC-9", "content": "Changelog 2.4.1: fixed the retry storm regression."},
+    "constraints": [],
+    "correction": null,
+    "multi_step": false,
+    "expected": "FLEX"
+  },
+  {
+    "id": "T13",
+    "class": "contradictory-brief",
+    "brief": "File the ticket quoting the customer wording verbatim, under ticket hygiene rules.",
+    "requirements": [
+      {"id": "R1", "text": "Ticket quotes the customer wording 'total outage disgrace' verbatim", "verifiable": true, "explicit": true, "evidence": "support-thread"}
+    ],
+    "constraints": ["BAN_PHRASE:disgrace"],
+    "correction": null,
+    "multi_step": false,
+    "expected": "HOLD"
   }
 ]

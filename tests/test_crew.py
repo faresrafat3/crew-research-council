@@ -155,5 +155,41 @@ class TestLimits(unittest.TestCase):
         self.assertTrue(v["hold_on_vague"])
 
 
+class TestGeneralizationProbes(unittest.TestCase):
+    def test_unseen_conflict_probe_holds(self):
+        # T11 is a fresh domain for the same rule: no new code was written
+        # for it. Generalization, not fitting.
+        tasks = load_tasks()
+        out = run_executor(tasks["T11"])
+        self.assertEqual(out["verdict"], "HOLD")
+        grade = run_reviewer(tasks["T11"], out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "PASS")
+
+    def test_unseen_external_probe_withholds_solo(self):
+        tasks = load_tasks()
+        out = run_executor(tasks["T12"])
+        self.assertEqual(out["verdict"], "HOLD")
+        grade = run_reviewer(tasks["T12"], out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "PASS")
+
+    def test_unseen_contradiction_probe_holds(self):
+        tasks = load_tasks()
+        out = run_executor(tasks["T13"])
+        self.assertEqual(out["verdict"], "HOLD")
+        grade = run_reviewer(tasks["T13"], out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "PASS")
+
+    def test_shuffle_seed_is_deterministic(self):
+        import random
+        tasks = load_tasks()
+        ids = sorted(tasks)
+        a = ids[:]
+        random.Random(7).shuffle(a)
+        b = ids[:]
+        random.Random(7).shuffle(b)
+        self.assertEqual(a, b)
+        self.assertNotEqual(a, ids)
+
+
 if __name__ == "__main__":
     unittest.main()

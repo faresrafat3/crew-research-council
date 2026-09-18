@@ -15,5 +15,7 @@ except FileNotFoundError:
 parts = ['--formation', v.get('formation', 'solo')]
 if v.get('hold_on_vague'): parts.append('--hold-on-vague')
 if v.get('checklist'): parts.append('--checklist')
+if v.get('verifier_override'): parts.append('--verifier-override')
+if 'shuffle_seed' in v: parts += ['--shuffle-seed', str(v['shuffle_seed'])]
 print(' '.join(parts))
 ")
