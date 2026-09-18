@@ -87,5 +87,17 @@
     "correction": null,
     "multi_step": true,
     "expected": "PASS"
+  },
+  {
+    "id": "T8",
+    "class": "contradictory-brief",
+    "brief": "Summarize the outage quoting the error string verbatim, under client messaging rules.",
+    "requirements": [
+      {"id": "R1", "text": "Summary quotes the error string 'root cause unknown' verbatim", "verifiable": true, "explicit": true, "evidence": "incident-log"}
+    ],
+    "constraints": ["BAN_PHRASE:root cause"],
+    "correction": null,
+    "multi_step": false,
+    "expected": "HOLD"
   }
 ]

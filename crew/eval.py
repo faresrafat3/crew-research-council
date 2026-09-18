@@ -21,7 +21,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tasks", required=True)
     ap.add_argument("--formation", default="solo",
-                    choices=["solo", "solo-checklist", "duo"])
+                    choices=["solo", "solo-checklist", "duo", "routed"])
     ap.add_argument("--hold-on-vague", action="store_true",
                     help="Hold on vague gaps too (hold-rule variant).")
     ap.add_argument("--checklist", action="store_true",
@@ -33,9 +33,10 @@ def main():
     with open(args.tasks) as f:
         tasks = json.load(f)
 
-    used = {"solo": "SOLO", "solo-checklist": "SOLO",
-            "duo": "DUO"}[args.formation]
-    print(f"CONFIG formation_used={used} variant={args.formation} "
+    routed = args.formation == "routed"
+    overhead = {"SOLO": 0, "DUO": 2, "PIPELINE": 4, "FULL": 6}
+    print(f"CONFIG formation_used={'ROUTED' if routed else args.formation} "
+          f"variant={args.formation} "
           f"hold_on_vague={args.hold_on_vague} checklist={args.checklist} "
           f"tasks={len(tasks)} budget_calls={args.max_tool_calls}")
 
@@ -44,10 +45,18 @@ def main():
     t0 = time.time()
     for task in tasks:
         proposed, criteria, score = propose_formation(task)
+        if routed:
+            used = proposed
+        else:
+            used = {"solo": "SOLO", "solo-checklist": "SOLO",
+                    "duo": "DUO"}[args.formation]
         try:
             out = run_executor(task, hold_on_vague=args.hold_on_vague)
             budget.spend(out["tool_calls"])
             cost = out["tool_calls"]
+            if routed:
+                cost += overhead[used]  # larger formations cost more passes
+                budget.spend(overhead[used])
             if used == "DUO":
                 cost += 2  # independent verifier pass (different checks)
                 budget.spend(2)
@@ -78,7 +87,7 @@ def main():
     print(f"SUMMARY n={s['n']} passed={s['passed']} rate={rate:.3f} "
           f"grave_errors={s['grave_errors']} total_cost={s['total_cost']} "
           f"routing_match={s['routing_match']}/{s['n']} wall_s={dt:.2f} "
-          f"formation={used}")
+          f"formation={args.formation}")
 
 
 if __name__ == "__main__":

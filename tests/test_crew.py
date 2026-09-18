@@ -78,5 +78,21 @@ class TestReviewer(unittest.TestCase):
         self.assertEqual(grade["grade"], "PASS")
 
 
+class TestRouted(unittest.TestCase):
+    def test_t7_proposal_is_pipeline(self):
+        tasks = load_tasks()
+        formation, _, _ = propose_formation(tasks["T7"])
+        self.assertEqual(formation, "PIPELINE")
+
+    def test_routing_alone_does_not_fix_t8(self):
+        # Documents the Round-2 discriminant: T8 needs a compliance fix
+        # (self-check or override), not a bigger formation.
+        tasks = load_tasks()
+        out = run_executor(tasks["T8"])
+        grade = run_reviewer(tasks["T8"], out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "FAIL")
+        self.assertTrue(grade["grave_error"])
+
+
 if __name__ == "__main__":
     unittest.main()
