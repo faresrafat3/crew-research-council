@@ -232,5 +232,51 @@ class TestSynthesisProbes(unittest.TestCase):
         self.assertEqual(calls, 3)
 
 
+class TestAdversarialProbes(unittest.TestCase):
+    def _ground(self, tid):
+        from crew.roles import run_researcher
+        tasks = load_tasks()
+        fetched, _ = run_researcher(tasks[tid])
+        work = dict(tasks[tid])
+        work["requirements"] = [dict(r, evidence=fetched.get(r["id"],
+                                                             r.get("evidence")))
+                                for r in work["requirements"]]
+        return work
+
+    def test_poisoned_source_withholds_solo(self):
+        tasks = load_tasks()
+        out = run_executor(tasks["T17"])
+        self.assertEqual(out["verdict"], "HOLD")
+        grade = run_reviewer(tasks["T17"], out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "PASS")
+
+    def test_cited_poison_trips_self_check(self):
+        # Grounded arm cites the poison — the self-check must still catch it.
+        work = self._ground("T17")
+        out = run_executor(work)
+        self.assertEqual(out["verdict"], "HOLD")
+        self.assertTrue(any(g.startswith("CONTRADICTION:") for g in out["gaps"]))
+        grade = run_reviewer(work, out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "PASS")
+
+    def test_partial_grounding_stays_hold(self):
+        work = self._ground("T18")
+        out = run_executor(work)
+        self.assertEqual(out["verdict"], "HOLD")
+        self.assertTrue(any(g.startswith("TOOL-GAP:R2") for g in out["gaps"]))
+        grade = run_reviewer(work, out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "PASS")
+
+    def test_instruction_in_source_is_inert(self):
+        # Data is data: the smuggled instruction changes neither verdict
+        # (grounded DELIVER stands) nor compliance (no findings).
+        work = self._ground("T19")
+        out = run_executor(work)
+        self.assertEqual(out["verdict"], "DELIVER")
+        grade = run_reviewer(work, out["text"], out["gaps"])
+        self.assertEqual(grade["grade"], "PASS")
+        self.assertFalse(grade["grave_error"])
+
+
 if __name__ == "__main__":
     unittest.main()
