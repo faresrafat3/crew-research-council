@@ -142,7 +142,9 @@ def run_reviewer(task, output_text, output_gaps):
     """
     findings = []
     for req in task.get("requirements", []):
-        covered = any(req["id"] in g for g in output_gaps)
+        # Exact-segment match (R7 audit): substring matching let "R1" hide
+        # inside "R10:..." gaps. IDs match whole colon-delimited segments only.
+        covered = any(req["id"] in g.split(":") for g in output_gaps)
         if not req.get("verifiable", True) and not req.get("evidence"):
             if not covered:
                 findings.append(f"GAP-MISS:{req['id']}")
