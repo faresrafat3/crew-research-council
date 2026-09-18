@@ -73,6 +73,7 @@ def run_executor(task, hold_on_vague=False):
 
     # Enforce word cap by truncation (executor respects constraints; the
     # reviewer still verifies — constraint-respect is inviolable).
+    pre_cites = re.findall(r"\(evidence: ([^)]*)\)", text)
     for c in task.get("constraints", []):
         m = re.fullmatch(r"MAX_WORDS:(\d+)", c.strip())
         if m:
@@ -82,6 +83,12 @@ def run_executor(task, hold_on_vague=False):
                 text = " ".join(words[:limit])
             constraints_ok, _ = _check_constraint(c, text), None
             constraints_ok = _check_constraint(c, text)[0]
+
+    # Citation-integrity (R8): truncation must not sever grounding. A draft
+    # whose citations did not survive repair is undeliverable — HOLD rather
+    # than a phantom (ungrounded but passing) delivery.
+    severed = [x for x in pre_cites
+               if f"(evidence: {x})" not in text]
 
     # Self-check (R2-A): a draft that still breaches hard constraints after
     # repair is undeliverable — HOLD with the contradiction named, never a
@@ -97,6 +104,9 @@ def run_executor(task, hold_on_vague=False):
     elif residual:
         verdict = "HOLD"
         gaps.append("CONTRADICTION:" + ";".join(residual))
+    elif severed:
+        verdict = "HOLD"
+        gaps.append("CITATION-CUT:" + ";".join(severed))
     else:
         verdict = "DELIVER"
     return {

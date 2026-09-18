@@ -298,9 +298,9 @@ class TestGraderAudit(unittest.TestCase):
         grade = run_reviewer(tasks["T3"], out["text"], out["gaps"])
         self.assertEqual(grade["grade"], "PASS")
 
-    def test_truncation_severs_citation_uncaught(self):
-        # RED demonstration (R7): the word cap cuts both citations off the
-        # grounded delivery, and the pre-fix reviewer still passes it.
+    def test_severed_citation_holds_post_fix(self):
+        # R8 repair: the word cap still cuts both citations, but the draft
+        # now HOLDs instead of delivering a phantom.
         from crew.roles import run_researcher
         import re
         tasks = load_tasks()
@@ -310,11 +310,25 @@ class TestGraderAudit(unittest.TestCase):
                                                              r.get("evidence")))
                                 for r in work["requirements"]]
         out = run_executor(work)
-        self.assertEqual(out["verdict"], "DELIVER")
+        self.assertEqual(out["verdict"], "HOLD")
+        self.assertTrue(any(g.startswith("CITATION-CUT:") for g in out["gaps"]))
         cites = re.findall(r"\(evidence: ([^)]*)\)", out["text"])
         self.assertEqual(cites, [])
         grade = run_reviewer(work, out["text"], out["gaps"])
         self.assertEqual(grade["grade"], "PASS")
+        self.assertFalse(grade["grave_error"])
+
+    def test_intact_citations_still_deliver(self):
+        # The check fires only on severing: T10's short grounded text is
+        # unaffected.
+        from crew.roles import run_researcher
+        tasks = load_tasks()
+        fetched, _ = run_researcher(tasks["T10"])
+        work = dict(tasks["T10"])
+        work["requirements"] = [dict(r, evidence=fetched[r["id"]])
+                                for r in work["requirements"]]
+        out = run_executor(work)
+        self.assertEqual(out["verdict"], "DELIVER")
 
 
 if __name__ == "__main__":
