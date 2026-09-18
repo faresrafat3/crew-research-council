@@ -655,3 +655,24 @@ Pass-1 §4 (testing-maturity) defined drift failure modes (strictness/leniency).
 2. [LawsofSoftwareEngineering, 2026] "Goodhart's Law" — metrics are proxies; targeting corrupts them. https://lawsofsoftwareengineering.com/laws/goodharts-law/ [verified: 2026-09-14]
 3. [Jellyfish, 2022] "Goodhart's Law in Software Engineering and How to Avoid Gaming Your Metrics." https://jellyfish.co/blog/goodharts-law-in-software-engineering-and-how-to-avoid-gaming-your-metrics/ [verified: 2026-09-14, snippet only]
 4. Cross-refs: self-healing.md pass 1 (chaos drills); blocking-authority.md §2 (calibration algorithm), §4 (anti-collusion); tester-soul.md cycle 4 (escape-classification template); quality-metrics.md pass 1 (leading indicators).
+## [DEEP DIVE (freebuff, pass 3, 2026-09-14)]: What Maturity Models Can and Cannot Predict — The Empirical Record of the Ladder Itself
+
+Pass 2 made the model *gaming-resistant*. This pass asks the prior question: is the ladder itself predictive, or is it a bureaucratic ornament? The evidence base is genuinely mixed, and honesty requires saying so.
+
+**Evidence.**
+- The canonical critique (Bach and the context-driven school) argues staged maturity conflates process compliance with outcomes — a team can be level-5 and still ship defects, because the assessment measures paperwork [Bach, maturity-model critiques — snippet-verified].
+- The strongest *supporting* study: Harter, Krishnan & Slaughter (Management Science, 2000) found higher process maturity associated with fewer defects, shorter cycle time, and lower effort in commercial software projects — real, but on waterfall-era, process-heavy organizations; generalization to agent crews is unproven [Harter et al. 2000 — snippet-verified].
+- The product-side alternative: ISO 25010 characterizes quality as product attributes rather than organizational stage, which is the framing the crew's outcome ledger already uses [ISO/IEC 25010 — literature].
+
+**What this means for the council's model.**
+1. The maturity ladder is retained as a **communication and prioritization scaffold**, demoted from predictive instrument: do not claim that level K causes outcome improvements.
+2. **Maturity claims must be paired with ledger deltas** (quality-metrics): a level upgrade is only ratified if defect-escape, flake, or RTS-safety moved over the following quarter. Otherwise the upgrade is reverted as cosmetic — this is the pass-2 anti-Goodhart rule extended from gates to the ladder itself.
+3. Level upgrades additionally require the pass-2 **adversarial gate drill**, not a checklist interview — an appraised level the drill defeats is a fabricated level.
+4. The model doc should carry a standing caveat citing the mixed record (Harter pro; Bach con) so future readers inherit the uncertainty, not a false confidence.
+
+**Cross-links:** quality-metrics pass 3 (metrics only ratified via GQM lineage — same "pair with outcomes" discipline), pass-2 appraisal design.
+
+**Sources.**
+1. [Harter, Krishnan & Slaughter, 2000] "Effects of Process Maturity on Quality, Cycle Time, and Effort in Software Development," *Management Science* 46(4) [snippet-verified: 2026-09-14].
+2. [Bach, ~1994–2006] Context-driven critiques of staged maturity models (e.g., "Maturity is not enough") [snippet-verified: 2026-09-14].
+3. [ISO/IEC 25010] Systems and software Quality Requirements and Evaluation (SQuaRE) — product quality model [literature].
