@@ -35,5 +35,3 @@ if [ -d repro ]; then
     python3 repro/run_repro.py --check
   fi
 fi
-  venv/bin/python repro/run_repro.py
-fi
