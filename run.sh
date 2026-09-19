@@ -25,7 +25,10 @@ print(' '.join(parts))
 if [ -d repro ]; then
   if [ ! -d venv ]; then
     python3 -m venv venv
-    venv/bin/pip install -q torch --index-url https://download.pytorch.org/whl/cu126 transformers 2>&1 | tail -n 1
+    # --extra-index-url (not --index-url): PyTorch wheels come from the CUDA
+    # index while everything else still resolves from PyPI. A single
+    # --index-url replaces the index for ALL packages and breaks the install.
+    venv/bin/pip install -q torch --extra-index-url https://download.pytorch.org/whl/cu126 transformers 2>&1 | tail -n 1
   fi
   venv/bin/python repro/run_repro.py
 fi
