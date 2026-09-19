@@ -1,0 +1,168 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usepackage{natbib}
+\usepackage[hidelinks]{hyperref}
+\newtheorem{principle}{Principle}
+
+\title{Compliance Lives in the Actor, Value Lives in the Team:\\
+Formation Experiments with Withhold-First Language Agents}
+\author{Anatomy-Lab Crew}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We study when teams of language-model agents beat single agents, using a
+blind-graded proxy suite that grows from 7 to 20 tasks across nine experiment
+rounds. A single agent with explicit hold-on-unverified rules reaches 20/20
+with zero grave errors at cost 68; duo, checklist, and routed formations add
+cost without fixing compliance. Teams win only on \emph{resolution}: a routed
+researcher role with a fetch tool converts compliant withholds into grounded
+deliveries (9/20 vs.\ 4/20 at cost 87 vs.\ 68). A red-team round finds one
+metric-invisible hole --- truncation severing citations --- repaired at zero
+cost delta. All agents here are rule-based stand-ins, so every number is a
+protocol result, not an LLM result; we state exactly what must be re-run
+against real models.
+\end{abstract}
+
+\section{Introduction}
+The governing question is from our captain: \emph{did invoking the team improve
+the outcome enough to justify its cost?} Prior work reports both collaboration
+gains and collaboration taxes, often without holding compute fixed. We built a
+minimal crew (router, executor, reviewer, researcher), a blind grader that
+never sees the formation label, and 20 proxy tasks in known-weak classes
+(correction handling, vague and explicit gaps, constraint respect,
+unverifiable claims, conflicting evidence, external sources, contradictions,
+adversarial sources). Nine rounds test compliance, resolution, replication,
+synthesis, red-team attacks, break-and-fix, and consolidation.
+
+\section{Method}
+Each node runs the fixed command \texttt{bash run.sh}: unit tests, then a
+blind evaluation printing per-task verdicts and a \texttt{SUMMARY} line with
+$n$, passes, grave errors, cost (simulated tool calls), and --- from round 3
+--- \emph{resolved} (DELIVER+PASS: compliant \emph{and} useful). Grading is
+blind by construction: the reviewer receives output text and gaps only.
+Formation variants live in versioned \texttt{variant.json} per branch; the
+command string never changes. All 19 tracked runs are local, deterministic,
+and green.
+
+\section{Experiments}
+Table~\ref{tab:main} reports every terminal run we claim. Figure~\ref{fig:cost}
+plots the cost--resolution trade-off.
+
+\begin{table}[h]
+\centering
+\caption{Measured results. Cost = simulated tool calls. Resolved =
+DELIVER+PASS. R7-red resolved includes 1 phantom (see text).}
+\label{tab:main}
+\begin{tabular}{lrrrr}
+\toprule
+Node & $n$ & Passed & Cost & Resolved \\
+\midrule
+baseline-solo & 7 & 6 & 26 & -- \\
+R1 hold-rule & 7 & 7 & 26 & -- \\
+R1 duo & 7 & 6 & 40 & -- \\
+R1 checklist & 7 & 6 & 33 & -- \\
+R2 contradiction-hold & 8 & 8 & 29 & -- \\
+R2 verifier-override & 8 & 8 & 45 & -- \\
+R2 routed & 8 & 7 & 33 & -- \\
+R3 solo-limits & 10 & 10 & 35 & 4 \\
+R3 team-resolve & 10 & 10 & 37 & 5 \\
+R4 solo-replication & 13 & 13 & 44 & 4 \\
+R4 team-replication & 13 & 13 & 48 & 6 \\
+R5 solo-synthesis & 16 & 16 & 54 & 4 \\
+R5 team-synthesis & 16 & 16 & 65 & 8 \\
+R6 solo-adversarial & 19 & 19 & 64 & 4 \\
+R6 team-adversarial & 19 & 19 & 81 & 9 \\
+R7 red (phantom) & 20 & 20 & 87 & 10 \\
+R7 solo-check & 20 & 20 & 68 & 4 \\
+R8 repair & 20 & 20 & 87 & 9 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[scale=0.55]
+\draw[->] (0,0) -- (22,0) node[right] {cost};
+\draw[->] (0,0) -- (0,11) node[above] {resolved};
+\foreach \x in {0,5,10,15,20} \draw (\x,0.1) -- (\x,-0.1) node[below] {\x};
+\foreach \y in {0,2,4,6,8,10} \draw (0.1,\y) -- (-0.1,\y) node[left] {\y};
+\fill[blue] (9.5,4) circle (0.25) node[above right] {R3 solo};
+\fill[red] (10,5) circle (0.25) node[above right] {R3 team};
+\fill[blue] (12,4) circle (0.25) node[below] {R4 solo};
+\fill[red] (13,6) circle (0.25) node[above right] {R4 team};
+\fill[blue] (14.5,4) circle (0.25) node[below] {R5 solo};
+\fill[red] (17.5,8) circle (0.25) node[above right] {R5 team};
+\fill[blue] (17,4) circle (0.25) node[below] {R6 solo};
+\fill[red] (21.5,9) circle (0.25) node[above] {R6 team};
+\fill[red] (21.5,9) circle (0.4);
+\end{tikzpicture}
+\caption{Resolution vs.\ cost: solo arms flat at 4, team arms climb. Blue =
+solo, red = team. Coordinates are (cost/4, resolved) rescaled for legibility;
+exact values in Table~\ref{tab:main}.}
+\label{fig:cost}
+\end{figure}
+
+Four findings. First, compliance comes from decision rules, not passes: the
+hold rule flips the vague-gap failure at identical cost (26), while duo (+14)
+and checklist (+7) repeat the miss. Second, checks belong in the actor: the
+contradiction self-check costs 29 versus 45 for an equivalent verifier
+override. Third, teams earn cost via routed resolution: the researcher role
+grounds external sources (+1 resolution per fetch, T10/T12/T14/T16), while
+genuine conflicts correctly hold on every arm. Fourth, red-teaming found one
+metric-invisible hole --- a word cap severing citations off a passing delivery
+--- repaired as a CITATION-CUT hold at zero cost delta (R7$\to$R8, resolved
+10$\to$9 by removing the phantom).
+
+\begin{principle}[Earned]
+Put compliance checks in the actor; route a missing tool, never a second
+opinion, to exactly the tasks that need it.
+\end{principle}
+
+\section{Related work}
+Sun et al.\ formalize a systematic collaboration tax with a four-stage
+conversational cascade and show prompt interventions targeting all stages
+close much of the gap \citep{sun2026tax}; our hold rule plays that role for
+the cascade's first stage. Dylan et al.\ fix total LM calls and find a
+Planner--Executor--Critic team statistically inseparable from a single agent
+(0.769 vs.\ 0.754, $p=0.80$) at $1.8\times$ calls, with all value from the
+executor \citep{dylan2026equal} --- the closest external replication of our
+re-checking and actor-value findings, on real agents. Ann et al.\ show
+full-solution sharing erases model diversity within one round and that
+critique helps only for easy-to-find violations \citep{ann2026interaction},
+supporting blind grading and minimal routed sharing. On abstention, Luo et
+al.\ show agents fail \emph{when} to stop across 28,000+ tasks
+\citep{luo2026agentic}, and Liu et al.\ report a 59.5\% paired-accuracy
+ceiling with abstention independent of task-solving \citep{liu2026agentabstain}
+--- which sets the honest prior our 100\% stand-in rates must be discounted
+against.
+
+\section{Conclusion}
+On 20 proxy tasks: solo wins compliance cost, teams win resolution value, and
+re-attack keeps both honest. Every number above comes from rule-based
+stand-ins, so nothing here transfers to LLM agents without re-running the
+same protocol --- paired tasks, blind grading, resolution metric, red-team,
+break-fix --- against real models, with timeliness-aware cost and an
+over-withholding penalty added. The harness, fixtures, and ledger are ready;
+the weights are the missing piece.
+
+\begin{thebibliography}{9}
+\bibitem[Sun et al.(2026)]{sun2026tax} Sun et al. The Collaboration Tax: How
+  Much LLM Multi-Agent Systems Pay to Coordinate. 2026.
+\bibitem[Dylan et al.(2026)]{dylan2026equal} Dylan et al. At Equal Inference
+  Cost, Multi-Agent Structure Does Not Beat a Single Frozen Agent. 2026.
+\bibitem[Ann et al.(2026)]{ann2026interaction} Ann et al. The Interaction Tax:
+  When Communication Erases Diversity in Multi-Agent Teams. 2026.
+\bibitem[Luo et al.(2026)]{luo2026agentic} Luo et al. Agentic Abstention: Do
+  Agents Know When to Stop Instead of Act? 2026.
+\bibitem[Liu et al.(2026)]{liu2026agentabstain} Liu et al. AgentAbstain: Do
+  LLM Agents Know When Not to Act? 2026.
+\end{thebibliography}
+
+\end{document}
