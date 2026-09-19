@@ -19,3 +19,13 @@ if v.get('verifier_override'): parts.append('--verifier-override')
 if 'shuffle_seed' in v: parts += ['--shuffle-seed', str(v['shuffle_seed'])]
 print(' '.join(parts))
 ")
+# REPRO stage (present only on branches carrying repro/): isolated venv with
+# torch+transformers, then the paired micro-benchmark. Stdlib stages above are
+# unaffected.
+if [ -d repro ]; then
+  if [ ! -d venv ]; then
+    python3 -m venv venv
+    venv/bin/pip install -q torch --index-url https://download.pytorch.org/whl/cu126 transformers 2>&1 | tail -n 1
+  fi
+  venv/bin/python repro/run_repro.py
+fi

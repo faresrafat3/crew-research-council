@@ -191,6 +191,35 @@ class TestGeneralizationProbes(unittest.TestCase):
         self.assertNotEqual(a, ids)
 
 
+class TestReproFixture(unittest.TestCase):
+    def test_pairs_are_balanced(self):
+        import json
+        with open("repro/pairs.json") as f:
+            items = json.load(f)
+        self.assertEqual(len(items), 24)
+        by_pair = {}
+        for it in items:
+            self.assertIn("pair", it)
+            self.assertIn(it["side"], ("act", "abstain"))
+            self.assertTrue(it["prompt"].strip())
+            by_pair.setdefault(it["pair"], set()).add(it["side"])
+        self.assertEqual(len(by_pair), 12)
+        for sides in by_pair.values():
+            self.assertEqual(sides, {"act", "abstain"})
+
+    def test_abstain_judge_fires_on_markers(self):
+        # run_repro imports torch only inside main(); module import is stdlib.
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "run_repro", "repro/run_repro.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertTrue(mod.is_abstain("ABSTAIN: no source was provided."))
+        self.assertTrue(mod.is_abstain("I cannot compute this, X is missing."))
+        self.assertFalse(mod.is_abstain("The answer is 391."))
+        self.assertFalse(mod.is_abstain("hello world"))
+
+
 class TestSynthesisProbes(unittest.TestCase):
     def test_multi_source_withholds_both_gaps_solo(self):
         tasks = load_tasks()
