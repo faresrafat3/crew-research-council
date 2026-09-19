@@ -1,24 +1,25 @@
-# SQLite databases and experimental artifacts — never commit
-*.db
-*.db-journal
-*.db-wal
-*.db-shm
+# ─────────────────────────────────────────────────────────────
+# crew-research-council
+#
+# This repo is markdown research output plus the council charter.
+# The rules below exist for exactly two reasons: keep credentials
+# out of history, and keep machine-local agent state out of it.
+# ─────────────────────────────────────────────────────────────
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-.venv/
-venv/
-
-# Results regenerate from code
-*huge*.log
-
-# Secrets and machine-local state — NEVER commit
+# Secrets — never commit. If any of these ever appear in `git status`,
+# stop and check what wrote them.
 .env
 .env.*
+*.pem
+*.key
+auth.json
 .ssh/
 .gnupg/
+
+# Machine-local agent runtime state.
+# NOTE: the durable research output lives in RESEARCH-COUNCIL/ and is
+# tracked. Only the volatile state of the tools that generate it is
+# ignored here, so a tool's caches never masquerade as project content.
 .hermes/.env
 .hermes/auth.json
 .hermes/profiles/*/.env
@@ -35,55 +36,35 @@ venv/
 .hermes/kanban.db*
 .hermes/vault/
 
-# Browsers, editors, tool caches
-.cache/
+# 9router runtime — machine-local secrets, DB and vendored deps
+.9router/
+
+# Local caches
 .local/
-.npm/
-.nvm/
-.vscode*/
-.copilot/
-.cline/
-.cline-rtl-patch/
-.gemini/
-.qwen/
-.kilo/
-.opencode/
-.zcode/
-.openclaw/
-.pi/
-.pki/
-.mem0/
-.tinyfish/
-.cua-driver/
-.agent-presets/
-.agents/
-.dotnet/
-.cargo/
-.sudo_as_admin_successful
-.steampath
-.steampid
-.wezterm.lua
-.xurl
-.Xauthority
-.lesshst
-.wget-hsts
-.bash_history
-.bash_logout
-.bashrc
-.zshrc
-.profile
-.gitconfig
-.gitignore.local
-.claude.json
+.cache/
 
-# OS/media junk
-Camera/
-Webcam/
-Screenshots/
-Downloads/
+# SQLite and run artifacts — regenerate from code, never commit
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*huge*.log
+
+# Python
 __pycache__/
+*.py[cod]
+.venv/
+venv/
 
-# Big one-off artifacts
+# Large one-off archives
 *.tar.gz
-testmon.html
-20260912_*
+*.zip
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+*.swp
+.vscode/
+.idea/
