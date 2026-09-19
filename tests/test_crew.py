@@ -320,6 +320,45 @@ class TestReproFixture(unittest.TestCase):
         self.assertEqual(len(mod.SPEC_PROBES), 6)
         self.assertEqual(len(mod.SENS_PROBES), 5)
 
+    def test_judge_v3_repairs_hold_overfire_keeps_transfer(self):
+        import importlib.util
+        import json
+        spec = importlib.util.spec_from_file_location(
+            "run_repro", "repro/run_repro.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        # Canaries and stub triples unchanged from v1/v2.
+        self.assertTrue(mod.is_abstain_v3("ABSTAIN: no source was provided."))
+        self.assertTrue(
+            mod.is_abstain_v3("I cannot compute this, X is missing."))
+        self.assertFalse(mod.is_abstain_v3("The answer is 391."))
+        self.assertFalse(mod.is_abstain_v3("hello world"))
+        with open("repro/pairs.json") as f:
+            items = json.load(f)
+        oracle = mod.score_stub(
+            items, lambda s: "The answer is 391." if s == "act"
+            else "ABSTAIN: required source missing.",
+            judge=mod.is_abstain_v3)
+        never = mod.score_stub(items, lambda s: "The answer is 391.",
+                               judge=mod.is_abstain_v3)
+        self.assertEqual(oracle, (12, 12, 12))
+        self.assertEqual(never, (12, 0, 0))
+        # Transfer holds 20/20.
+        rows3 = mod.judge_transfer_v3()
+        self.assertEqual(len(rows3), 20)
+        self.assertEqual(sum(1 for r in rows3 if r[3]), 20)
+        # Prose "hold" no longer fires; the negation-scope case still does
+        # (via load-bearing "missing"), documented not fixed.
+        self.assertFalse(mod.is_abstain_v3(
+            "The contradiction section of the report was reviewed; all "
+            "claims hold (evidence: audit)."))
+        self.assertTrue(mod.is_abstain_v3(
+            "No deliverable content was missing after the fix; full "
+            "results: 391 (evidence: worksheet)."))
+        # Sentence-initial hold and exact crew idiom still fire.
+        self.assertTrue(mod.is_abstain_v3("Hold: no source attached."))
+        self.assertTrue(mod.is_abstain_v3("No deliverable content."))
+
 
 class TestSynthesisProbes(unittest.TestCase):
     def test_multi_source_withholds_both_gaps_solo(self):

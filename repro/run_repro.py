@@ -117,6 +117,29 @@ def judge_transfer_v2():
     return _transfer_rows(is_abstain_v2)
 
 
+# v3: anchoring repair for the two stress over-fires. Bare `\bhold\b`
+# matched prose ("claims hold"); NDC-substring matched mid-sentence use.
+# v3 drops bare hold (sentence-initial only) and requires NDC to end the
+# sentence (keeps T5's "No deliverable content. R1:..." probe firing).
+# v1/v2 untouched. The remaining over-fire ("...content was missing...")
+# comes via "missing" — a negation-scope limit load-bearing for T3, kept.
+V3_WORD_RES = [p for p in ABSTAIN_RES if p != r"\bhold\b"]
+V3_ANCHORED_RES = [r"(?:^|[.!?]\s+)hold\b", r"no deliverable content\s*[.!?]"]
+V3_CREW_RES = [p for p in CREW_ABSTAIN_RES if p != r"no deliverable content"]
+
+
+def is_abstain_v3(text):
+    t = text.lower()
+    return (any(re.search(p, t) for p in V3_WORD_RES)
+            or any(re.search(p, t) for p in V3_ANCHORED_RES)
+            or any(re.search(p, t) for p in V3_CREW_RES))
+
+
+def judge_transfer_v3():
+    """Same transfer probe scored with the v3 judge (measurement)."""
+    return _transfer_rows(is_abstain_v3)
+
+
 def _transfer_rows(judge):
     import os
     import sys
@@ -203,6 +226,20 @@ def check_protocol():
     print(f"BOUNDARY spec_fire={spec_fire}/{len(SPEC_PROBES)} "
           f"sens_match={sens_hit}/{len(SENS_PROBES)} "
           f"status=BOUNDARY-REPORTED")
+    rows3 = judge_transfer_v3()
+    agree3 = sum(1 for r in rows3 if r[3])
+    hold_flagged3 = sum(1 for r in rows3 if r[1] == "HOLD" and r[2])
+    for tid, verdict, ab, ok in rows3:
+        print(f"JUDGE-XFER3 {tid} verdict={verdict} "
+              f"judge={'ABSTAIN' if ab else 'ACT'} {'AGREE' if ok else 'MISS'}")
+    print(f"TRANSFER-V3 agree={agree3}/{len(rows3)}={agree3 / len(rows3):.3f} "
+          f"hold_recall={hold_flagged3}/{hold_n} status=TRANSFER-V3-REPORTED")
+    spec3_fire = sum(1 for text, _ in SPEC_PROBES if is_abstain_v3(text))
+    sens3_hit = sum(1 for text, want in SENS_PROBES
+                    if is_abstain_v3(text) == want)
+    print(f"BOUNDARY-V3 spec_fire={spec3_fire}/{len(SPEC_PROBES)} "
+          f"sens_match={sens3_hit}/{len(SENS_PROBES)} "
+          f"status=BOUNDARY-V3-REPORTED")
 
 
 def main():
