@@ -16,25 +16,13 @@ auth.json
 .ssh/
 .gnupg/
 
-# Machine-local agent runtime state.
-# NOTE: the durable research output lives in RESEARCH-COUNCIL/ and is
-# tracked. Only the volatile state of the tools that generate it is
-# ignored here, so a tool's caches never masquerade as project content.
-.hermes/.env
-.hermes/auth.json
-.hermes/profiles/*/.env
-.hermes/profiles/*/auth.json
-.hermes/profiles/*/attachments/
-.hermes/profiles/*/bin/
-.hermes/profiles/*/models_dev_cache.json
-.hermes/crew/memory/
-.hermes/crew/experiment/
-.hermes/backups/
-.hermes/sessions/
-.hermes/cache/
-.hermes/state.db*
-.hermes/kanban.db*
-.hermes/vault/
+# Machine-local agent state — entirely untracked.
+# The tools' working copies of the research output live here and are NOT
+# authoritative: the canonical copies are in RESEARCH-COUNCIL/. This was
+# previously tracked in part, which let a local-state sync re-introduce
+# stale duplicates of tracked files (STATUS.md diverged for exactly this
+# reason). Nothing here belongs in the repo, so the whole tree is ignored.
+.hermes/
 
 # 9router runtime — machine-local secrets, DB and vendored deps
 .9router/
