@@ -259,6 +259,53 @@ class TestReproFixture(unittest.TestCase):
         # Both verdict classes present, so agreement is non-vacuous.
         self.assertEqual(verdicts, {"HOLD", "DELIVER"})
 
+    def test_judge_v2_matches_v1_on_canaries(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "run_repro", "repro/run_repro.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertTrue(mod.is_abstain_v2("ABSTAIN: no source was provided."))
+        self.assertTrue(
+            mod.is_abstain_v2("I cannot compute this, X is missing."))
+        self.assertFalse(mod.is_abstain_v2("The answer is 391."))
+        self.assertFalse(mod.is_abstain_v2("hello world"))
+
+    def test_judge_v2_flags_crew_hold_idiom_only(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "run_repro", "repro/run_repro.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        for marker in ("TOOL-GAP:R2:SRC-Z", "CONFLICT:R1:X",
+                       "CONTRADICTION:ban='y':PRESENT", "CITATION-CUT:abc",
+                       "GAP-MISS:R1", "No deliverable content."):
+            self.assertTrue(mod.is_abstain_v2(marker), marker)
+        self.assertFalse(mod.is_abstain_v2(
+            "Applied correction: fix typo. "
+            "[R1] Deploy at noon (evidence: deploy log)."))
+
+    def test_judge_v2_keeps_stub_triples_and_repairs_transfer(self):
+        import importlib.util
+        import json
+        spec = importlib.util.spec_from_file_location(
+            "run_repro", "repro/run_repro.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with open("repro/pairs.json") as f:
+            items = json.load(f)
+        oracle = mod.score_stub(
+            items, lambda s: "The answer is 391." if s == "act"
+            else "ABSTAIN: required source missing.",
+            judge=mod.is_abstain_v2)
+        never = mod.score_stub(items, lambda s: "The answer is 391.",
+                               judge=mod.is_abstain_v2)
+        self.assertEqual(oracle, (12, 12, 12))
+        self.assertEqual(never, (12, 0, 0))
+        v1 = sum(1 for r in mod.judge_transfer() if r[3])
+        v2 = sum(1 for r in mod.judge_transfer_v2() if r[3])
+        self.assertGreaterEqual(v2, v1)
+
 
 class TestSynthesisProbes(unittest.TestCase):
     def test_multi_source_withholds_both_gaps_solo(self):

@@ -33,7 +33,22 @@ def is_abstain(text):
     return any(re.search(p, t) for p in ABSTAIN_RES)
 
 
-def score_stub(items, reply_for):
+CREW_ABSTAIN_RES = [
+    r"tool-gap:", r"conflict:", r"contradiction:", r"citation-cut:",
+    r"gap-miss:", r"no deliverable content",
+]
+
+
+def is_abstain_v2(text):
+    """v1 keyword judge OR crew HOLD idioms (R8/R3 gap markers).
+
+    v1 is left untouched so model-leg and stub evidence stays valid;
+    v2 is the transfer candidate scored side-by-side with v1."""
+    t = text.lower()
+    return is_abstain(text) or any(re.search(p, t) for p in CREW_ABSTAIN_RES)
+
+
+def score_stub(items, reply_for, judge=is_abstain):
     """Score a deterministic stub policy with the same judge as the model leg.
 
     reply_for(side) returns the stub reply text for a side. Returns
@@ -46,8 +61,8 @@ def score_stub(items, reply_for):
         by_pair.setdefault(it["pair"], {})[it["side"]] = it["side"]
     act_ok = abs_ok = paired = 0
     for pid in sorted(by_pair):
-        a_ab = is_abstain(reply_for("act"))
-        b_ab = is_abstain(reply_for("abstain"))
+        a_ab = judge(reply_for("act"))
+        b_ab = judge(reply_for("abstain"))
         a_ok, b_ok = (not a_ab), b_ab
         act_ok += a_ok
         abs_ok += b_ok
@@ -64,6 +79,15 @@ def judge_transfer():
     self-consistent: verdict HOLD should read as abstention, DELIVER as
     action. Returns rows of     (task_id, verdict, judge_abstains, agree).
     """
+    return _transfer_rows(is_abstain)
+
+
+def judge_transfer_v2():
+    """Same transfer probe scored with the v2 judge (measurement)."""
+    return _transfer_rows(is_abstain_v2)
+
+
+def _transfer_rows(judge):
     import os
     import sys
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -76,7 +100,7 @@ def judge_transfer():
     for t in tasks:
         out = run_executor(t, hold_on_vague=True)
         probe = out["text"] + " " + " ".join(out["gaps"])
-        ab = is_abstain(probe)
+        ab = judge(probe)
         rows.append((t["id"], out["verdict"], ab, ab == (out["verdict"] == "HOLD")))
     return rows
 
@@ -127,6 +151,14 @@ def check_protocol():
               f"judge={'ABSTAIN' if ab else 'ACT'} {'AGREE' if ok else 'MISS'}")
     print(f"TRANSFER agree={agree}/{len(rows)}={agree / len(rows):.3f} "
           f"hold_recall={hold_flagged}/{hold_n} status=TRANSFER-REPORTED")
+    rows2 = judge_transfer_v2()
+    agree2 = sum(1 for r in rows2 if r[3])
+    hold_flagged2 = sum(1 for r in rows2 if r[1] == "HOLD" and r[2])
+    for tid, verdict, ab, ok in rows2:
+        print(f"JUDGE-XFER2 {tid} verdict={verdict} "
+              f"judge={'ABSTAIN' if ab else 'ACT'} {'AGREE' if ok else 'MISS'}")
+    print(f"TRANSFER-V2 agree={agree2}/{len(rows2)}={agree2 / len(rows2):.3f} "
+          f"hold_recall={hold_flagged2}/{hold_n} status=TRANSFER-V2-REPORTED")
 
 
 def main():
