@@ -306,6 +306,20 @@ class TestReproFixture(unittest.TestCase):
         v2 = sum(1 for r in mod.judge_transfer_v2() if r[3])
         self.assertGreaterEqual(v2, v1)
 
+    def test_judge_v2_boundary_probes_match_observed(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "run_repro", "repro/run_repro.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        # Expectations pin observed behavior, including documented
+        # over-fires (prose "hold", substring "no deliverable content")
+        # and misses (can't / not-sure / don't-have paraphrases).
+        for text, want in mod.SPEC_PROBES + mod.SENS_PROBES:
+            self.assertEqual(mod.is_abstain_v2(text), want, text[:60])
+        self.assertEqual(len(mod.SPEC_PROBES), 6)
+        self.assertEqual(len(mod.SENS_PROBES), 5)
+
 
 class TestSynthesisProbes(unittest.TestCase):
     def test_multi_source_withholds_both_gaps_solo(self):

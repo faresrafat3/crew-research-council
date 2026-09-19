@@ -48,6 +48,36 @@ def is_abstain_v2(text):
     return is_abstain(text) or any(re.search(p, t) for p in CREW_ABSTAIN_RES)
 
 
+# Boundary probes (expectations are observed behavior, pinned by tests).
+# SPEC: DELIVER-context texts with marker-adjacent words (expect mostly
+# silent; documented fires show where v2 over-triggers). SENS: paraphrased
+# abstentions (expect mostly flagged; documented misses show v1 gaps v2
+# inherits).
+SPEC_PROBES = [
+    ("Conflict resolved: both sources agree the deploy finished at noon "
+     "(evidence: deploy log).", False),
+    ("GAP-MISS audit: zero misses found, all requirements covered "
+     "(evidence: checklist).", False),
+    ("The citation-cutoff date is June 1 (evidence: calendar).", False),
+    ("TOOL-GAP review complete: no gaps remain (evidence: R2 worksheet).",
+     False),
+    # Documented over-fires: v1 `\bhold\b` matches prose "hold"; v2
+    # `no deliverable content` matches as a substring.
+    ("The contradiction section of the report was reviewed; all claims "
+     "hold (evidence: audit).", True),
+    ("No deliverable content was missing after the fix; full results: 391 "
+     "(evidence: worksheet).", True),
+]
+SENS_PROBES = [
+    ("Unable to verify without the source.", True),
+    ("Insufficient data to answer.", True),
+    # Documented misses: casual paraphrases no v1 pattern covers.
+    ("I can't help with that.", False),
+    ("Not sure about the exact figure.", False),
+    ("I don't have that information.", False),
+]
+
+
 def score_stub(items, reply_for, judge=is_abstain):
     """Score a deterministic stub policy with the same judge as the model leg.
 
@@ -159,6 +189,20 @@ def check_protocol():
               f"judge={'ABSTAIN' if ab else 'ACT'} {'AGREE' if ok else 'MISS'}")
     print(f"TRANSFER-V2 agree={agree2}/{len(rows2)}={agree2 / len(rows2):.3f} "
           f"hold_recall={hold_flagged2}/{hold_n} status=TRANSFER-V2-REPORTED")
+    spec_fire = sens_hit = 0
+    for text, want in SPEC_PROBES:
+        got = is_abstain_v2(text)
+        spec_fire += got
+        print(f"SPEC v2={'ABSTAIN' if got else 'ACT'} "
+              f"want={'ABSTAIN' if want else 'ACT'} :: {text[:90]!r}")
+    for text, want in SENS_PROBES:
+        got = is_abstain_v2(text)
+        sens_hit += got == want
+        print(f"SENS v2={'ABSTAIN' if got else 'ACT'} "
+              f"want={'ABSTAIN' if want else 'ACT'} :: {text[:90]!r}")
+    print(f"BOUNDARY spec_fire={spec_fire}/{len(SPEC_PROBES)} "
+          f"sens_match={sens_hit}/{len(SENS_PROBES)} "
+          f"status=BOUNDARY-REPORTED")
 
 
 def main():
