@@ -33,7 +33,35 @@ def is_abstain(text):
     return any(re.search(p, t) for p in ABSTAIN_RES)
 
 
+def check_protocol():
+    """Stdlib-only protocol self-check (no torch): validates the fixture,
+    renders every prompt, and exercises the judge on canaries. The model leg
+    runs only under REPRO_MODEL=1 with pre-staged weights (see report)."""
+    with open("repro/pairs.json") as f:
+        items = json.load(f)
+    assert len(items) == 24, len(items)
+    by_pair = {}
+    for it in items:
+        assert it["side"] in ("act", "abstain") and it["prompt"].strip()
+        by_pair.setdefault(it["pair"], set()).add(it["side"])
+    assert len(by_pair) == 12
+    assert all(s == {"act", "abstain"} for s in by_pair.values())
+    rendered = sum(1 for it in items if (SYSTEM + it["prompt"]).strip())
+    canaries = [("ABSTAIN: no source was provided.", True),
+                ("I cannot compute this, X is missing.", True),
+                ("The answer is 391.", False),
+                ("hello world", False)]
+    for text, want in canaries:
+        assert is_abstain(text) == want, text
+    print(f"CHECK pairs=12 items=24 rendered={rendered} "
+          f"judge_canaries={len(canaries)}/{len(canaries)} status=PROTOCOL-OK "
+          f"model_leg=SKIPPED-needs-weights")
+
+
 def main():
+    import sys
+    if "--check" in sys.argv:
+        return check_protocol()
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 

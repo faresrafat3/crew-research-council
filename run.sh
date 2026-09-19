@@ -19,16 +19,21 @@ if v.get('verifier_override'): parts.append('--verifier-override')
 if 'shuffle_seed' in v: parts += ['--shuffle-seed', str(v['shuffle_seed'])]
 print(' '.join(parts))
 ")
-# REPRO stage (present only on branches carrying repro/): isolated venv with
-# torch+transformers, then the paired micro-benchmark. Stdlib stages above are
-# unaffected.
+# REPRO stage (present only on branches carrying repro/): the model leg needs
+# ~850MB torch + ~1GB weights, measured at ~125KB/s and ~70KB/s on this
+# network (hours). It runs only under REPRO_MODEL=1 with pre-staged
+# downloads; default validates the protocol (pairs, rendering, judge)
+# without weights. No theater: the log line states which path executed.
 if [ -d repro ]; then
-  if [ ! -d venv ]; then
-    python3 -m venv venv
-    # --extra-index-url (not --index-url): PyTorch wheels come from the CUDA
-    # index while everything else still resolves from PyPI. A single
-    # --index-url replaces the index for ALL packages and breaks the install.
-    venv/bin/pip install -q torch --extra-index-url https://download.pytorch.org/whl/cu126 transformers 2>&1 | tail -n 1
+  if [ "${REPRO_MODEL:-0}" = "1" ]; then
+    if [ ! -d venv ]; then
+      python3 -m venv venv
+      venv/bin/pip install -q torch --extra-index-url https://download.pytorch.org/whl/cu126 transformers 2>&1 | tail -n 1
+    fi
+    venv/bin/python repro/run_repro.py
+  else
+    python3 repro/run_repro.py --check
   fi
+fi
   venv/bin/python repro/run_repro.py
 fi
