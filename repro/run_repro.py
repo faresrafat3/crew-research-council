@@ -55,6 +55,32 @@ def score_stub(items, reply_for):
     return act_ok, abs_ok, paired
 
 
+def judge_transfer():
+    """Apply the keyword judge to real crew executor outputs (measurement).
+
+    Substitution, stated honestly: solo executor with hold_on_vague=True
+    and no researcher grounding, so external-source tasks HOLD here even
+    where the TEAM eval delivers them. The mapping under test stays
+    self-consistent: verdict HOLD should read as abstention, DELIVER as
+    action. Returns rows of     (task_id, verdict, judge_abstains, agree).
+    """
+    import os
+    import sys
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    from crew.roles import run_executor
+    with open("tasks/real-missions.json") as f:
+        tasks = json.load(f)
+    rows = []
+    for t in tasks:
+        out = run_executor(t, hold_on_vague=True)
+        probe = out["text"] + " " + " ".join(out["gaps"])
+        ab = is_abstain(probe)
+        rows.append((t["id"], out["verdict"], ab, ab == (out["verdict"] == "HOLD")))
+    return rows
+
+
 def check_protocol():
     """Stdlib-only protocol self-check (no torch): validates the fixture,
     renders every prompt, exercises the judge on canaries, and validates
@@ -92,6 +118,15 @@ def check_protocol():
         print(f"STUB {name} act={a}/{n} abstain={b}/{n} paired={p}/{n}")
     print(f"DISCRIMINANT paired_spread={(oracle[2] - never[2]) / n:.3f} "
           f"status=DISCRIMINANT-OK")
+    rows = judge_transfer()
+    agree = sum(1 for r in rows if r[3])
+    hold_n = sum(1 for r in rows if r[1] == "HOLD")
+    hold_flagged = sum(1 for r in rows if r[1] == "HOLD" and r[2])
+    for tid, verdict, ab, ok in rows:
+        print(f"JUDGE-XFER {tid} verdict={verdict} "
+              f"judge={'ABSTAIN' if ab else 'ACT'} {'AGREE' if ok else 'MISS'}")
+    print(f"TRANSFER agree={agree}/{len(rows)}={agree / len(rows):.3f} "
+          f"hold_recall={hold_flagged}/{hold_n} status=TRANSFER-REPORTED")
 
 
 def main():

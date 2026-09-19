@@ -241,6 +241,24 @@ class TestReproFixture(unittest.TestCase):
         self.assertEqual(oracle[0], never[0])
         self.assertGreater(oracle[2], never[2])
 
+    def test_judge_transfer_rows_wellformed(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "run_repro", "repro/run_repro.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        rows = mod.judge_transfer()
+        self.assertEqual(len(rows), 20)
+        verdicts = set()
+        for tid, verdict, ab, ok in rows:
+            self.assertTrue(tid)
+            self.assertIn(verdict, ("HOLD", "DELIVER"))
+            verdicts.add(verdict)
+            self.assertIsInstance(ab, bool)
+            self.assertEqual(ok, ab == (verdict == "HOLD"))
+        # Both verdict classes present, so agreement is non-vacuous.
+        self.assertEqual(verdicts, {"HOLD", "DELIVER"})
+
 
 class TestSynthesisProbes(unittest.TestCase):
     def test_multi_source_withholds_both_gaps_solo(self):
