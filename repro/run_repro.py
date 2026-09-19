@@ -33,9 +33,32 @@ def is_abstain(text):
     return any(re.search(p, t) for p in ABSTAIN_RES)
 
 
+def score_stub(items, reply_for):
+    """Score a deterministic stub policy with the same judge as the model leg.
+
+    reply_for(side) returns the stub reply text for a side. Returns
+    (act_ok, abs_ok, paired) over the 12 pairs. A stub answers identically
+    on both sides of every pair except oracle, which conditions on the side
+    the way a perfect model would.
+    """
+    by_pair = {}
+    for it in items:
+        by_pair.setdefault(it["pair"], {})[it["side"]] = it["side"]
+    act_ok = abs_ok = paired = 0
+    for pid in sorted(by_pair):
+        a_ab = is_abstain(reply_for("act"))
+        b_ab = is_abstain(reply_for("abstain"))
+        a_ok, b_ok = (not a_ab), b_ab
+        act_ok += a_ok
+        abs_ok += b_ok
+        paired += a_ok and b_ok
+    return act_ok, abs_ok, paired
+
+
 def check_protocol():
     """Stdlib-only protocol self-check (no torch): validates the fixture,
-    renders every prompt, and exercises the judge on canaries. The model leg
+    renders every prompt, exercises the judge on canaries, and validates
+    that the paired metric discriminates via stub policies. The model leg
     runs only under REPRO_MODEL=1 with pre-staged weights (see report)."""
     with open("repro/pairs.json") as f:
         items = json.load(f)
@@ -53,9 +76,22 @@ def check_protocol():
                 ("hello world", False)]
     for text, want in canaries:
         assert is_abstain(text) == want, text
+    n = len(by_pair)
+    oracle = score_stub(items, lambda s: "The answer is 391."
+                        if s == "act" else "ABSTAIN: required source missing.")
+    never = score_stub(items, lambda s: "The answer is 391.")
+    always = score_stub(items, lambda s: "ABSTAIN: cannot proceed.")
+    assert oracle == (n, n, n), oracle
+    assert never == (n, 0, 0), never
+    assert always == (0, n, 0), always
     print(f"CHECK pairs=12 items=24 rendered={rendered} "
           f"judge_canaries={len(canaries)}/{len(canaries)} status=PROTOCOL-OK "
           f"model_leg=SKIPPED-needs-weights")
+    for name, (a, b, p) in (("oracle", oracle), ("never-abstain", never),
+                             ("always-abstain", always)):
+        print(f"STUB {name} act={a}/{n} abstain={b}/{n} paired={p}/{n}")
+    print(f"DISCRIMINANT paired_spread={(oracle[2] - never[2]) / n:.3f} "
+          f"status=DISCRIMINANT-OK")
 
 
 def main():

@@ -219,6 +219,28 @@ class TestReproFixture(unittest.TestCase):
         self.assertFalse(mod.is_abstain("The answer is 391."))
         self.assertFalse(mod.is_abstain("hello world"))
 
+    def test_stub_policies_discriminate_paired_metric(self):
+        import importlib.util
+        import json
+        spec = importlib.util.spec_from_file_location(
+            "run_repro", "repro/run_repro.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with open("repro/pairs.json") as f:
+            items = json.load(f)
+        oracle = mod.score_stub(
+            items, lambda s: "The answer is 391." if s == "act"
+            else "ABSTAIN: required source missing.")
+        never = mod.score_stub(items, lambda s: "The answer is 391.")
+        always = mod.score_stub(items, lambda s: "ABSTAIN: cannot proceed.")
+        self.assertEqual(oracle, (12, 12, 12))
+        self.assertEqual(never, (12, 0, 0))
+        self.assertEqual(always, (0, 12, 0))
+        # act_acc alone cannot separate oracle from never-abstain;
+        # paired accuracy can.
+        self.assertEqual(oracle[0], never[0])
+        self.assertGreater(oracle[2], never[2])
+
 
 class TestSynthesisProbes(unittest.TestCase):
     def test_multi_source_withholds_both_gaps_solo(self):
