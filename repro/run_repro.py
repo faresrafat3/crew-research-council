@@ -140,6 +140,21 @@ def judge_transfer_v3():
     return _transfer_rows(is_abstain_v3)
 
 
+# v4: paraphrase patterns for the three stress-documented sensitivity
+# misses (can't / not-sure / don't-have). v1-v3 untouched.
+V4_PARA_RES = [r"can['\u2019]t\b", r"not sure\b", r"don['\u2019]t have\b"]
+
+
+def is_abstain_v4(text):
+    return is_abstain_v3(text) or any(
+        re.search(p, text.lower()) for p in V4_PARA_RES)
+
+
+def judge_transfer_v4():
+    """Same transfer probe scored with the v4 judge (measurement)."""
+    return _transfer_rows(is_abstain_v4)
+
+
 def _transfer_rows(judge):
     import os
     import sys
@@ -240,6 +255,24 @@ def check_protocol():
     print(f"BOUNDARY-V3 spec_fire={spec3_fire}/{len(SPEC_PROBES)} "
           f"sens_match={sens3_hit}/{len(SENS_PROBES)} "
           f"status=BOUNDARY-V3-REPORTED")
+    rows4 = judge_transfer_v4()
+    agree4 = sum(1 for r in rows4 if r[3])
+    hold_flagged4 = sum(1 for r in rows4 if r[1] == "HOLD" and r[2])
+    for tid, verdict, ab, ok in rows4:
+        print(f"JUDGE-XFER4 {tid} verdict={verdict} "
+              f"judge={'ABSTAIN' if ab else 'ACT'} {'AGREE' if ok else 'MISS'}")
+    print(f"TRANSFER-V4 agree={agree4}/{len(rows4)}={agree4 / len(rows4):.3f} "
+          f"hold_recall={hold_flagged4}/{hold_n} status=TRANSFER-V4-REPORTED")
+    # v4 wants: every SENS probe is a genuine abstention (flag all);
+    # SPEC ideally silent (the negation-scope fire is documented, not fixed).
+    spec4_fire = sum(1 for text, _ in SPEC_PROBES if is_abstain_v4(text))
+    sens4_flagged = sum(1 for text, _ in SENS_PROBES if is_abstain_v4(text))
+    for text, _ in SENS_PROBES:
+        print(f"SENS4 v4={'ABSTAIN' if is_abstain_v4(text) else 'ACT'} "
+              f":: {text[:90]!r}")
+    print(f"BOUNDARY-V4 spec_fire={spec4_fire}/{len(SPEC_PROBES)} "
+          f"sens_flagged={sens4_flagged}/{len(SENS_PROBES)} "
+          f"status=BOUNDARY-V4-REPORTED")
 
 
 def main():

@@ -359,6 +359,45 @@ class TestReproFixture(unittest.TestCase):
         self.assertTrue(mod.is_abstain_v3("Hold: no source attached."))
         self.assertTrue(mod.is_abstain_v3("No deliverable content."))
 
+    def test_judge_v4_flags_paraphrases_keeps_transfer(self):
+        import importlib.util
+        import json
+        spec = importlib.util.spec_from_file_location(
+            "run_repro", "repro/run_repro.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        # Canaries and stub triples unchanged from v1-v3.
+        self.assertTrue(mod.is_abstain_v4("ABSTAIN: no source was provided."))
+        self.assertTrue(
+            mod.is_abstain_v4("I cannot compute this, X is missing."))
+        self.assertFalse(mod.is_abstain_v4("The answer is 391."))
+        self.assertFalse(mod.is_abstain_v4("hello world"))
+        with open("repro/pairs.json") as f:
+            items = json.load(f)
+        oracle = mod.score_stub(
+            items, lambda s: "The answer is 391." if s == "act"
+            else "ABSTAIN: required source missing.",
+            judge=mod.is_abstain_v4)
+        never = mod.score_stub(items, lambda s: "The answer is 391.",
+                               judge=mod.is_abstain_v4)
+        always = mod.score_stub(items, lambda s: "ABSTAIN: cannot proceed.",
+                                judge=mod.is_abstain_v4)
+        self.assertEqual(oracle, (12, 12, 12))
+        self.assertEqual(never, (12, 0, 0))
+        self.assertEqual(always, (0, 12, 0))
+        # Transfer holds 20/20.
+        rows4 = mod.judge_transfer_v4()
+        self.assertEqual(len(rows4), 20)
+        self.assertEqual(sum(1 for r in rows4 if r[3]), 20)
+        # All five sensitivity probes now flag (paraphrase gaps closed).
+        for text, _ in mod.SENS_PROBES:
+            self.assertTrue(mod.is_abstain_v4(text), text[:50])
+        # Specificity: only the documented negation-scope fire remains.
+        fires = [text for text, _ in mod.SPEC_PROBES
+                 if mod.is_abstain_v4(text)]
+        self.assertEqual(len(fires), 1)
+        self.assertIn("was missing", fires[0])
+
 
 class TestSynthesisProbes(unittest.TestCase):
     def test_multi_source_withholds_both_gaps_solo(self):
