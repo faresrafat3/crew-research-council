@@ -406,11 +406,60 @@ class TestReproFixture(unittest.TestCase):
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         for name in ("is_abstain", "is_abstain_v2", "is_abstain_v3",
-                     "is_abstain_v4"):
+                     "is_abstain_v4", "is_abstain_v5"):
             self.assertIs(getattr(mod, name), getattr(abst, name), name)
         for name in ("ABSTAIN_RES", "CREW_ABSTAIN_RES", "V3_WORD_RES",
-                     "V3_ANCHORED_RES", "V3_CREW_RES", "V4_PARA_RES"):
+                     "V3_ANCHORED_RES", "V3_CREW_RES", "V4_PARA_RES",
+                     "V5_PARA_RES", "V5_EVIDENCE_RES"):
             self.assertIs(getattr(mod, name), getattr(abst, name), name)
+
+    def test_judge_v5_scopes_paraphrases_restores_sens_keeps_transfer(self):
+        import importlib.util
+        import json
+        spec = importlib.util.spec_from_file_location(
+            "run_repro", "repro/run_repro.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        # Canaries and stub triples unchanged from v1-v4.
+        self.assertTrue(mod.is_abstain_v5("ABSTAIN: no source was provided."))
+        self.assertTrue(
+            mod.is_abstain_v5("I cannot compute this, X is missing."))
+        self.assertFalse(mod.is_abstain_v5("The answer is 391."))
+        self.assertFalse(mod.is_abstain_v5("hello world"))
+        with open("repro/pairs.json") as f:
+            items = json.load(f)
+        oracle = mod.score_stub(
+            items, lambda s: "The answer is 391." if s == "act"
+            else "ABSTAIN: required source missing.",
+            judge=mod.is_abstain_v5)
+        never = mod.score_stub(items, lambda s: "The answer is 391.",
+                               judge=mod.is_abstain_v5)
+        always = mod.score_stub(items, lambda s: "ABSTAIN: cannot proceed.",
+                                judge=mod.is_abstain_v5)
+        self.assertEqual(oracle, (12, 12, 12))
+        self.assertEqual(never, (12, 0, 0))
+        self.assertEqual(always, (0, 12, 0))
+        # Transfer holds 20/20.
+        rows5 = mod.judge_transfer_v5()
+        self.assertEqual(len(rows5), 20)
+        self.assertEqual(sum(1 for r in rows5 if r[3]), 20)
+        # SENS probes match fixture semantics again (v4 over-flagged all 5).
+        for text, want in mod.SENS_PROBES:
+            self.assertEqual(mod.is_abstain_v5(text), want, text[:50])
+        # Specificity: only the documented negation-scope fire remains.
+        fires = [text for text, _ in mod.SPEC_PROBES
+                 if mod.is_abstain_v5(text)]
+        self.assertEqual(len(fires), 1)
+        self.assertIn("was missing", fires[0])
+        # Grounded paraphrases still flag; bare refusals stay silent.
+        for text in ("Can't verify without the source.",
+                     "Not sure without the data.",
+                     "Don't have the evidence."):
+            self.assertTrue(mod.is_abstain_v5(text), text[:50])
+        for text in ("I can't help with that.",
+                     "Not sure about the exact figure.",
+                     "I don't have that information."):
+            self.assertFalse(mod.is_abstain_v5(text), text[:50])
 
 
 class TestSynthesisProbes(unittest.TestCase):

@@ -59,3 +59,25 @@ V4_PARA_RES = [r"can['\u2019]t\b", r"not sure\b", r"don['\u2019]t have\b"]
 def is_abstain_v4(text):
     return is_abstain_v3(text) or any(
         re.search(p, text.lower()) for p in V4_PARA_RES)
+
+
+# v5 (experiment): scoped paraphrases. v4's bare patterns flag all three
+# SENS ACT-context probes ("can't help with that", "not sure about the
+# exact figure", "don't have that information"), contradicting the fixture
+# want=False semantics. v5 requires a paraphrase to co-occur with an
+# evidence-gap noun, so bare refusals stay ACT while grounded paraphrases
+# ("can't verify without the source") still flag. v1-v4 untouched.
+V5_PARA_RES = list(V4_PARA_RES)
+V5_EVIDENCE_RES = [
+    r"\bsource\b", r"\bdata\b", r"\bevidence\b", r"\bverif\w*\b",
+    r"\banswer\b", r"\bmissing\b", r"\binsufficient\b", r"\bunknown\b",
+]
+
+
+def is_abstain_v5(text):
+    t = text.lower()
+    if is_abstain_v3(text):
+        return True
+    has_para = any(re.search(p, t) for p in V5_PARA_RES)
+    has_ev = any(re.search(p, t) for p in V5_EVIDENCE_RES)
+    return bool(has_para and has_ev)

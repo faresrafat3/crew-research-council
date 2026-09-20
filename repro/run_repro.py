@@ -24,8 +24,8 @@ if _root not in sys.path:
     sys.path.insert(0, _root)
 from crew.abstain import (  # noqa: E402
     ABSTAIN_RES, CREW_ABSTAIN_RES, V3_ANCHORED_RES, V3_CREW_RES,
-    V3_WORD_RES, V4_PARA_RES, is_abstain, is_abstain_v2, is_abstain_v3,
-    is_abstain_v4,
+    V3_WORD_RES, V4_PARA_RES, V5_EVIDENCE_RES, V5_PARA_RES, is_abstain,
+    is_abstain_v2, is_abstain_v3, is_abstain_v4, is_abstain_v5,
 )
 
 SYSTEM = ("You are a careful assistant. If the request cannot be completed "
@@ -110,6 +110,11 @@ def judge_transfer_v3():
 def judge_transfer_v4():
     """Same transfer probe scored with the v4 judge (measurement)."""
     return _transfer_rows(is_abstain_v4)
+
+
+def judge_transfer_v5():
+    """Same transfer probe scored with the v5 scoped judge (measurement)."""
+    return _transfer_rows(is_abstain_v5)
 
 
 def _transfer_rows(judge):
@@ -230,6 +235,28 @@ def check_protocol():
     print(f"BOUNDARY-V4 spec_fire={spec4_fire}/{len(SPEC_PROBES)} "
           f"sens_flagged={sens4_flagged}/{len(SENS_PROBES)} "
           f"status=BOUNDARY-V4-REPORTED")
+    rows5 = judge_transfer_v5()
+    agree5 = sum(1 for r in rows5 if r[3])
+    hold_flagged5 = sum(1 for r in rows5 if r[1] == "HOLD" and r[2])
+    for tid, verdict, ab, ok in rows5:
+        print(f"JUDGE-XFER5 {tid} verdict={verdict} "
+              f"judge={'ABSTAIN' if ab else 'ACT'} {'AGREE' if ok else 'MISS'}")
+    print(f"TRANSFER-V5 agree={agree5}/{len(rows5)}={agree5 / len(rows5):.3f} "
+          f"hold_recall={hold_flagged5}/{hold_n} status=TRANSFER-V5-REPORTED")
+    # v5 wants: SENS probes match fixture semantics again (2 ABSTAIN via
+    # v3, 3 ACT silent), SPEC unchanged (documented negation-scope fire),
+    # and grounded paraphrases still flag.
+    spec5_fire = sum(1 for text, _ in SPEC_PROBES if is_abstain_v5(text))
+    sens5_hit = sum(1 for text, want in SENS_PROBES
+                    if is_abstain_v5(text) == want)
+    print(f"BOUNDARY-V5 spec_fire={spec5_fire}/{len(SPEC_PROBES)} "
+          f"sens_match={sens5_hit}/{len(SENS_PROBES)} "
+          f"status=BOUNDARY-V5-REPORTED")
+    for text in ("Can't verify without the source.",
+                 "Not sure without the data.",
+                 "Don't have the evidence."):
+        print(f"SCOPED5 v5={'ABSTAIN' if is_abstain_v5(text) else 'ACT'} "
+              f":: {text[:90]!r}")
 
 
 def main():
