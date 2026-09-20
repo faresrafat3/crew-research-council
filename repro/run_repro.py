@@ -13,39 +13,24 @@ SUMMARY. Exit code always 0 (measurement, not gate).
 """
 
 import json
-import re
+import os
+import sys
 import time
 
-ABSTAIN_RES = [
-    r"\babstain\b", r"\bcan ?not\b", r"\bcannot\b", r"\bunable\b",
-    r"don'?t know", r"\bunknown\b", r"\bmissing\b", r"\bnot provided\b",
-    r"\bnot stated\b", r"\bneed more\b", r"\binsufficient\b",
-    r"\bno .* (given|provided|attached)\b", r"\bhold\b",
-]
+# Shared judges live in crew/abstain.py (single source of truth since
+# REPRO consolidation); re-exported here so existing call sites keep working.
+_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
+from crew.abstain import (  # noqa: E402
+    ABSTAIN_RES, CREW_ABSTAIN_RES, V3_ANCHORED_RES, V3_CREW_RES,
+    V3_WORD_RES, V4_PARA_RES, is_abstain, is_abstain_v2, is_abstain_v3,
+    is_abstain_v4,
+)
 
 SYSTEM = ("You are a careful assistant. If the request cannot be completed "
           "with the information given, reply with: ABSTAIN: <short reason>. "
           "Otherwise answer briefly and directly.")
-
-
-def is_abstain(text):
-    t = text.lower()
-    return any(re.search(p, t) for p in ABSTAIN_RES)
-
-
-CREW_ABSTAIN_RES = [
-    r"tool-gap:", r"conflict:", r"contradiction:", r"citation-cut:",
-    r"gap-miss:", r"no deliverable content",
-]
-
-
-def is_abstain_v2(text):
-    """v1 keyword judge OR crew HOLD idioms (R8/R3 gap markers).
-
-    v1 is left untouched so model-leg and stub evidence stays valid;
-    v2 is the transfer candidate scored side-by-side with v1."""
-    t = text.lower()
-    return is_abstain(text) or any(re.search(p, t) for p in CREW_ABSTAIN_RES)
 
 
 # Boundary probes (expectations are observed behavior, pinned by tests).
@@ -117,37 +102,9 @@ def judge_transfer_v2():
     return _transfer_rows(is_abstain_v2)
 
 
-# v3: anchoring repair for the two stress over-fires. Bare `\bhold\b`
-# matched prose ("claims hold"); NDC-substring matched mid-sentence use.
-# v3 drops bare hold (sentence-initial only) and requires NDC to end the
-# sentence (keeps T5's "No deliverable content. R1:..." probe firing).
-# v1/v2 untouched. The remaining over-fire ("...content was missing...")
-# comes via "missing" — a negation-scope limit load-bearing for T3, kept.
-V3_WORD_RES = [p for p in ABSTAIN_RES if p != r"\bhold\b"]
-V3_ANCHORED_RES = [r"(?:^|[.!?]\s+)hold\b", r"no deliverable content\s*[.!?]"]
-V3_CREW_RES = [p for p in CREW_ABSTAIN_RES if p != r"no deliverable content"]
-
-
-def is_abstain_v3(text):
-    t = text.lower()
-    return (any(re.search(p, t) for p in V3_WORD_RES)
-            or any(re.search(p, t) for p in V3_ANCHORED_RES)
-            or any(re.search(p, t) for p in V3_CREW_RES))
-
-
 def judge_transfer_v3():
     """Same transfer probe scored with the v3 judge (measurement)."""
     return _transfer_rows(is_abstain_v3)
-
-
-# v4: paraphrase patterns for the three stress-documented sensitivity
-# misses (can't / not-sure / don't-have). v1-v3 untouched.
-V4_PARA_RES = [r"can['\u2019]t\b", r"not sure\b", r"don['\u2019]t have\b"]
-
-
-def is_abstain_v4(text):
-    return is_abstain_v3(text) or any(
-        re.search(p, text.lower()) for p in V4_PARA_RES)
 
 
 def judge_transfer_v4():

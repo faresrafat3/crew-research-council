@@ -398,6 +398,20 @@ class TestReproFixture(unittest.TestCase):
         self.assertEqual(len(fires), 1)
         self.assertIn("was missing", fires[0])
 
+    def test_judges_come_from_shared_crew_module(self):
+        import importlib.util
+        import crew.abstain as abst
+        spec = importlib.util.spec_from_file_location(
+            "run_repro", "repro/run_repro.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        for name in ("is_abstain", "is_abstain_v2", "is_abstain_v3",
+                     "is_abstain_v4"):
+            self.assertIs(getattr(mod, name), getattr(abst, name), name)
+        for name in ("ABSTAIN_RES", "CREW_ABSTAIN_RES", "V3_WORD_RES",
+                     "V3_ANCHORED_RES", "V3_CREW_RES", "V4_PARA_RES"):
+            self.assertIs(getattr(mod, name), getattr(abst, name), name)
+
 
 class TestSynthesisProbes(unittest.TestCase):
     def test_multi_source_withholds_both_gaps_solo(self):
