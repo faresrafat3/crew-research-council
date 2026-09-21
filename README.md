@@ -11,8 +11,7 @@ The board is the ONLY shared state. Chat threads are Q&A only; no decision lives
 
 ## The pipeline (strict order per mission)
 
-edge bets → scout evidence → architect plan → razor cut → ship build → razor cut → gate verdict → coach compound.
-States: CLAIM → OBJECTION → VETO/SHAPE → VERDICT.
+edge bets → scout evidence → architect plan → razor cut → ship build → razor cut → gate verdict → coach compound. States: CLAIM → OBJECTION → VETO/SHAPE → VERDICT.
 
 ## Veto rights
 

@@ -3,41 +3,39 @@
 > **What this file is:** the local declaration of what may never be edited in place here. It is the
 > authoritative detail for this project; `~/CONSTITUTION.md` §2 is the umbrella index.
 > **Owner:** Fares. **Language:** artifacts English, chat Arabic.
->
-> **RECONSTRUCTION — 2026-09-21.** The original was created 2026-09-20, was never `git add`ed, and was
-> deleted by a concurrent writer. It is in no commit (`git log --all` → empty) and `git fsck` finds no
-> dangling blob, so **these are not the original bytes** (the original was 41 lines / 2375 bytes; its
-> hash is unknown because it was never staged). The zones below are the ones the audit trail documents
-> — `local/compliance/2026-09-20-gaps.md` §2b and the referent scan in `local/context/` that ran while
-> the file still existed — and every path is verified to resolve on disk. **The original's complete
-> referent list is not fully recoverable**, so treat this as a floor, not a restoration. It is tracked
-> in git from now on (`git ls-files PROTECTED.md`), which is the failure this file now exists to close.
 
 ## Protected (do not edit in place)
 
 | Path | Why |
 |---|---|
-| `RESEARCH-COUNCIL/**` | Research **input**, already ingested by the study — changing it corrupts the study (§2) |
-| `RESEARCH-COUNCIL/STATUS.md` | The canonical status record; the repo boundary commit names it as the one that survives |
-| `tests/**`, `crew/**`, `harness/**`, `repro/**` | Present on disk and **git-ignored** — one copy, no history, no backup. Deleting or overwriting any of them is unrecoverable. This is the exact failure mode that lost the file you are reading |
+| `RESEARCH-COUNCIL/**` (briefs, prompts, methodology, guardrails, `OUTPUT/**`) | The **ingested research corpus**. `CONTEXT.md` is the system brief the council was given; `OUTPUT/**` is the delivered evidence. Changing the briefs after ingestion corrupts the study — a superseding brief is a new file, not an edit. |
+| `RESEARCH-COUNCIL/STATUS.md` | The **canonical** status surface for the council (per the 2026-09-19 commit). Maintained by append/update with a record, never silently rewritten. |
+| `tests/**`, `crew/**`, `harness/**`, `repro/**` | Currently untracked working copies (only `__pycache__` on disk). Do not treat the empty trees as an implemented test/harness layer. |
 
 ## The gate
 
-**None** — there is no build gate in this project. The repository tracks documents: no runner, no
-executable surface, no `.json` / `.sh` / `.py` to execute. The written record is the verification, and
-`local/scripts/constitution-sweep.sh` files that as a gap rather than pretending prose is a command.
+There is no build gate in this project. The binding discipline is the project's own law:
+
+- `TEST-POLICY.md` §3 — **the Iron Law:** no production code without a witnessed failing test first;
+  no "done" claim without a RED reference + GREEN log + clean full suite.
+- `README.md` — the board is the ONLY shared state; no decision lives in chat.
+
+Run the board protocol (APPEND / FLAG / SNAPSHOT / RESTORE) rather than editing shared state directly.
 
 ## Safe write-path
 
-`README.md` and the non-council surfaces.
+`README.md` · `BLACKBOARD.md` · `GOAL.md` · `PROJECT.md` · `ENTITY.md` · `GENESIS.md` · `VOICES.md` ·
+`THROUGHPUT.md` · `ARENA.md` · `bets-ledger.md` · `leaderboard.md` · `REVIEW-01.md` · `REVIEW-02.md` ·
+`v2-ARCHITECTURE.md` · `TESTING-COUNCIL.md` · `TEST-POLICY.md`.
 
 ## Local laws that bind any edit here
 
-- The council's own `GOAL.md` law freezes births and team-layer changes while the captain is away.
-- "One home per fact": a fact lives in one document; the other side links (`CONSTITUTION.md` §2).
-- *The original file's own list is not fully recoverable; the two above are the ones the audit trail
-  names.*
+- The board is the only shared state; chat threads are Q&A only.
+- @razor holds hard VETO at both cut gates — must cite the deletion rule AND propose the smaller
+  surviving subset. No subset, no veto.
+- Compression is not a veto reason: cutting words is not cutting scope.
 
 ## If you believe a protected file must change
 
-Do not edit it. File a new dated document beside it and link the supersession from here.
+Add a **new dated** document beside it and record the supersession. For a research input, that means
+a new brief the council is re-run against — never a rewrite of the brief already ingested.

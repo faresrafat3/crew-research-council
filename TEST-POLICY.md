@@ -2,14 +2,11 @@
 
 ## 1. Purpose
 
-This document defines the testing discipline for Crew v2, a multi-agent AI crew system. Every agent, formation, and task MUST follow this policy.
+Testing discipline for Crew v2 (multi-agent crew); binding on every agent, formation, and task.
 
 ## 2. Scope
 
-This policy applies to:
-- All agent profiles (engineer, tester, researcher, architect, critic, razor, completer, firstmate)
-- All formations (SOLO, DUO, PIPELINE, FULL)
-- All task types (code, research, analysis, creative)
+Applies to all agent profiles (engineer, tester, researcher, architect, critic, razor, completer, firstmate) · all formations (SOLO, DUO, PIPELINE, FULL) · all task types (code, research, analysis, creative).
 
 ## 3. The Iron Law (Engineer)
 
@@ -18,45 +15,19 @@ NO PRODUCTION CODE WITHOUT A WITNESSED FAILING TEST FIRST.
 NO "DONE" CLAIM WITHOUT RED REFERENCE + GREEN LOG + CLEAN FULL SUITE.
 ```
 
-**Rationale:** Tests-first answers what code should do; tests-after merely rationalizes what was built [Hermes TDD Skill, 2026]. The iron law eliminates the #1 failure mode in Crew v2: code shipping untested (COORD-01, COORD-02 evidence).
+**Rationale:** Tests-first answers what code should do; tests-after rationalizes what was built [Hermes TDD Skill, 2026]. The iron law kills Crew v2's #1 failure mode: untested code shipping (COORD-01/02 evidence).
 
-**Enforcement:**
-- Engineer MUST request RED tests from tester before implementation
-- Engineer MUST provide RED log reference (commit hash or message ID) when declaring DONE
-- Engineer MUST NOT weaken assertions to make tests pass
-- Engineer MUST NOT delete or skip tests to meet deadlines
+**Enforcement:** engineer MUST (a) request RED tests from tester before implementation, (b) provide a RED log reference (commit hash / message ID) when declaring DONE; MUST NOT (c) weaken assertions to force a pass, (d) delete or skip tests for deadlines.
 
 ## 4. Tester Activation Rules
 
-Tester is activated when:
-- Task requires code with tests
-- Task says "write tests" or "test coverage"
-- Task has acceptance criteria that need verification
-- Engineer declares DONE (tester verifies)
-- Formation is PIPELINE or FULL
-
-Tester is NOT activated when:
-- Task is SOLO and explicitly marked "no tests needed"
-- Task is pure research (read-only)
-- Task is creative (writing, design)
+**Activated:** task requires code with tests · says "write tests"/"test coverage" · acceptance criteria need verification · engineer declares DONE (tester verifies) · formation is PIPELINE/FULL.
+**NOT activated:** SOLO explicitly marked "no tests needed" · pure research (read-only) · creative (writing, design).
 
 ## 5. Tester Blocking Authority
 
-Tester MUST block (HOLD/ROLLBACK) when:
-1. Missing tests for any REQ-ID
-2. Coverage below threshold (line <80%, branch <80%)
-3. Mutation score below threshold (PIPELINE <70%, FULL <80%)
-4. Flaky test not quarantined
-5. Constraint violation detected
-6. RED log missing or fabricated
-7. Test asserts on implementation details
-8. Over-mocked test (no real integration)
-
-Tester MUST NOT block on:
-- Style preferences
-- Scope disagreements (escalate to critic)
-- Ambiguous requirements (escalate to firstmate)
-- External service outages
+**MUST block (HOLD/ROLLBACK):** (1) missing tests for any REQ-ID · (2) coverage <80% line/branch · (3) mutation <70% PIPELINE / <80% FULL · (4) unquarantined flaky test · (5) constraint violation · (6) missing/fabricated RED log · (7) implementation-detail assertions · (8) over-mocked test (no real integration).
+**MUST NOT block on:** style · scope disagreements (→ critic) · ambiguous requirements (→ firstmate) · external outages.
 
 ## 6. Escalation Ladder
 
@@ -64,36 +35,21 @@ Tester MUST NOT block on:
 Tester blocks → Engineer appeals (once) → Critic tie-break → Human escalation
 ```
 
-**Human escalation package:**
-- Issue: what is blocked and why
-- Impact: what is delayed
-- What was tried: engineer's appeal argument
-- Decision needed: specific options
-- Time sensitivity: deadline if any
+**Human escalation package:** issue (what/why blocked) · impact (what's delayed) · what was tried (engineer's appeal) · decision needed (options) · time sensitivity (deadline).
 
 ## 7. Formation-Specific Rules
 
 ### SOLO
-- Engineer writes own tests (no tester activation)
-- Self-verification required
-- Coverage threshold: 70% line, 60% branch
+Engineer writes own tests (no tester) · self-verification · coverage 70% line / 60% branch.
 
 ### DUO (Engineer → Tester)
-- Tester writes RED tests first
-- Engineer implements to pass tests
-- Tester verifies GREEN + gates
-- Coverage threshold: 80% line, 80% branch
+Tester writes RED tests first · engineer implements to pass · tester verifies GREEN + gates · coverage 80% line / 80% branch.
 
 ### PIPELINE (Researcher → Architect → Engineer → Tester → Critic)
-- Tester active from task start
-- Each stage has test requirements
-- Critic reviews 100% of FULL tasks
-- Coverage threshold: 80% line, 80% branch, 70% mutation
+Tester active from task start · per-stage test requirements · critic reviews 100% of FULL tasks · coverage 80% line / 80% branch, 70% mutation.
 
 ### FULL (All agents)
-- All PIPELINE rules apply
-- Non-functional testing required (performance, security)
-- Coverage threshold: 80% line, 80% branch, 80% mutation
+All PIPELINE rules · non-functional testing required (performance, security) · coverage 80% line / 80% branch, 80% mutation.
 
 ## 8. Test Quality Standards
 
@@ -191,18 +147,11 @@ crew/
 
 ## 13. Compliance
 
-Violations of this policy are tracked in the quality ledger. Repeated violations trigger:
-1. First: Warning + retraining
-2. Second: Formation restriction (SOLO only)
-3. Third: Profile suspension pending review
+Violations tracked in the quality ledger; repeated: (1) warning + retraining, (2) formation restriction (SOLO only), (3) profile suspension pending review.
 
 ## 14. Review Cycle
 
-This policy is reviewed quarterly. Changes require:
-- Tester approval
-- Critic review
-- Firstmate sign-off
-- Human operator final approval
+Reviewed quarterly; changes require tester approval · critic review · firstmate sign-off · human operator final approval.
 
 ---
 

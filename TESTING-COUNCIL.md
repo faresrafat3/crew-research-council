@@ -4,14 +4,12 @@
 
 **Testing is not a phase — it is a way of thinking about correctness.**
 
-The purpose of testing is not to prove code works. It is to **discover the ways code can fail** before users do. A test that passes is a test that found nothing. A test that fails is a test that taught you something.
+Testing's purpose is not to prove code works but to **discover how it fails** before users do. A passing test found nothing; a failing test taught you something.
 
 ## Core Principles
 
 ### 1. Test Behavior, Not Implementation
-- What does the function return? → TEST THAT
-- How does it compute it? → DON'T TEST THAT
-- If you refactor internals and tests break → tests are wrong
+What the function returns → test that · how it computes → don't · if refactors break tests, the tests are wrong.
 
 ### 2. Test at the Right Level
 | Level | Tests | Speed | Cost | Use When |
@@ -21,19 +19,13 @@ The purpose of testing is not to prove code works. It is to **discover the ways 
 | E2E | 10% | min | high | Critical user flows, revenue paths |
 
 ### 3. Independent Tests
-- No test depends on another test's state
-- No test depends on execution order
-- Each test sets up its own data and tears it down
+No cross-test state · no execution-order dependence · each test sets up and tears down its own data.
 
 ### 4. Repeatable Tests
-- Same input → same output, every time
-- No flakiness from timing, randomness, or external state
-- If a test is flaky → fix it or delete it, don't ignore it
+Same input → same output, every time · no flakiness from timing, randomness, or external state · flaky → fix or delete, never ignore.
 
 ### 5. Fast Feedback
-- Unit tests run in milliseconds
-- Full suite runs in minutes, not hours
-- If CI takes 30+ minutes → tests are too high-level
+Unit tests in milliseconds · full suite in minutes, not hours · CI 30+ min → tests are too high-level.
 
 ## The Testing Lifecycle
 
@@ -60,26 +52,16 @@ REPEAT
 ## Test Types & Responsibilities
 
 ### Unit Tests (@tester responsibility)
-- Pure functions: given input → expected output
-- Edge cases: empty, null, zero, negative, max
-- Error paths: invalid input, missing data, boundary
-- No mocking of core logic — mock only I/O
+Pure functions (input → expected output) · edge cases (empty, null, zero, negative, max) · error paths (invalid input, missing data, boundary) · no mocking of core logic — only I/O.
 
 ### Integration Tests (@tester + @engineer)
-- Module interaction: does A correctly call B?
-- Database: do queries return correct data?
-- External API: does the integration handle real responses?
-- Cache: does TTL work? Does invalidation work?
+Module interaction (does A call B right?) · DB (queries return correct data?) · external API (real responses handled?) · cache (TTL + invalidation?).
 
 ### E2E Tests (@tester + @executor)
-- Critical user journey: can a user complete the core flow?
-- Cross-module: does the full stack work together?
-- Error at scale: what happens when the system is under stress?
+Critical user journey (core flow completable?) · cross-module (full stack together?) · error at scale (behavior under stress?).
 
 ### Contract Tests (for APIs)
-- Does the API return the schema it promises?
-- Do consumers get what they expect?
-- Version compatibility: does v1 still work for old clients?
+Schema promised = schema returned? · consumers get what they expect? · v1 still works for old clients?
 
 ## Anti-Patterns (What NOT to Do)
 
@@ -111,27 +93,12 @@ Before declaring tests complete:
 
 **The tester's job is to break things gracefully.**
 
-A tester does not trust code. A tester asks:
-- "What if this input is null?"
-- "What if this API is down?"
-- "What if two users do this at the same time?"
-- "What if this list is empty?"
-- "What if this number is negative?"
-- "What if this string is 10,000 characters?"
+A tester does not trust code; a tester asks: what if the input is null? the API is down? two users act at once? the list is empty? the number is negative? the string is 10,000 chars?
 
-The tester is not the enemy of the engineer. The tester is the engineer's best friend — finding bugs now is cheaper than finding them in production.
+The tester isn't the engineer's enemy but their best friend: bugs found now cost less than bugs found in production.
 
 ## Integration with Crew v2
 
-The @tester bot:
-1. Reviews task acceptance criteria
-2. Writes tests BEFORE engineering starts (or alongside)
-3. Verifies every module independently
-4. Runs the full suite before declaring done
-5. Reports coverage and gaps
+The @tester bot: (1) reviews task acceptance criteria, (2) writes tests BEFORE engineering starts (or alongside), (3) verifies every module independently, (4) runs the full suite before declaring done, (5) reports coverage and gaps.
 
-The @tester has authority to BLOCK merge if:
-- Tests are missing for critical paths
-- Tests are flaky
-- Tests assert on implementation details
-- Coverage is below threshold for the task type
+**BLOCK merge if:** critical-path tests missing · tests flaky · implementation-detail assertions · coverage below the task-type threshold.
