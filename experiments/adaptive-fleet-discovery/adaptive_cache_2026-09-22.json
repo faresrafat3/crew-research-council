@@ -1,0 +1,64 @@
+{
+ "ts": 1790118902.6729934,
+ "lanes": [
+  {
+   "gateway": "gemini",
+   "alive": [
+    {
+     "model": "models/gemma-4-26b-a4b-it",
+     "latency": 0.82
+    },
+    {
+     "model": "models/gemini-flash-lite-latest",
+     "latency": 0.92
+    },
+    {
+     "model": "models/gemini-3-flash-preview",
+     "latency": 0.92
+    },
+    {
+     "model": "models/gemini-3.6-flash",
+     "latency": 1.14
+    },
+    {
+     "model": "models/gemini-3.5-flash-lite",
+     "latency": 1.32
+    },
+    {
+     "model": "models/gemini-3.8-flash",
+     "latency": 2.22
+    },
+    {
+     "model": "models/gemini-3.1-flash-lite",
+     "latency": 3.55
+    },
+    {
+     "model": "models/gemini-3.1-flash-lite-preview",
+     "latency": 3.73
+    },
+    {
+     "model": "models/gemini-3.5-flash",
+     "latency": 10.03
+    }
+   ],
+   "keys": 0
+  },
+  {
+   "gateway": "shim",
+   "health": {
+    "alive": null
+   }
+  },
+  {
+   "gateway": "cline",
+   "health": {
+    "lanes": [
+     "cline",
+     "orcarouter"
+    ],
+    "keys_total": 12,
+    "cooling": []
+   }
+  }
+ ]
+}
