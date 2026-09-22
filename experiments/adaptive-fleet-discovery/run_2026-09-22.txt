@@ -1,0 +1,3 @@
+bind task: models/gemini-flash-lite-latest @ https://generativelanguage.googleapis.co
+bind reflection: models/gemini-3.6-flash @ https://generativelanguage.googleapis.co
+bind agent: models/gemini-3.6-flash @ https://generativelanguage.googleapis.co
