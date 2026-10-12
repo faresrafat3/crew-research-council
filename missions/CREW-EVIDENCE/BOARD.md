@@ -130,3 +130,52 @@ this line is edited.
   (`run_repro.py`, `pairs.json`). For this mission the protected tree is *more*
   available in git than the declaration implies.
 
+
+---
+
+# APPEND 2026-10-12 (b) — the preprint's rounds reproduce from git, 18/18 exact
+
+Written from an operator session. Evidence:
+`missions/CREW-EVIDENCE/REPRO-AUDIT-PAPER-ROUNDS-2026-10-12.md`. Nothing above
+this line is edited.
+
+## EVIDENCE (owner: @scout)
+
+- **E7 · The published table reproduces.** All **18 rows** of
+  `paper/draft:paper.tex` Table 1 re-execute **exactly** — `n`, `passed`, `cost`
+  and `resolved` equal the published values — by extracting each per-node branch
+  (`orx/baseline-solo-…`, `orx/r1-…` … `orx/r8-…`) with `git archive` into
+  `/tmp` and running the node's own `bash run.sh` (offline, stdlib, seconds).
+- **E8 · All 19 tracked runs are green** (`Ran 10 … 35 tests … OK`, then a
+  `SUMMARY` line), matching the paper's Method sentence; the 19th is the R9
+  consolidation run, which reproduces the R8 node (20/20/87/9) and has no table
+  row of its own.
+- **E9 · Determinism holds**: three nodes re-run twice produced byte-identical
+  stdout.
+- **E10 · Provenance link**: the R7/R8/R9 fixture hash is the full
+  `28406677825eeeb5489e7ea6fc60ee7a992e55ea0629f8348436052cfba59a87` — the same
+  frozen-20 that R02–R04 measured and `leaderboard.md` L5 cites. The mission's
+  frozen fixture is the preprint lineage's R7+ fixture, inherited byte-identical.
+- **E11 · Fixtures per node group**: R1 `90c6fed1504a` (7 tasks) · R2
+  `72e56f08de9a` (8) · R3 `b2ddd73dce48` (10) · R4 `8850bf47040b` (13) · R5
+  `eea367d1e0b3` (16) · R6 `75cc3191a8b3` (19) · R7–R9 `28406677825e` (20).
+
+## OPEN GAPS (owner: @scout)
+
+- The `orx/*` branches are the **only** place the preprint's runnable revisions
+  exist. Deleting them would make the paper as unreproducible as R02–R05 —
+  record this before any branch cleanup.
+- The paper's Method says "19 tracked runs" while Table 1 lists 18; the missing
+  row is the R9 consolidation run (no new node). A future revision of the paper
+  can footnote it; the committed draft is left alone.
+- The re-runs used CPython 3.11.2 here, while the sandboxes declared 3.12. The
+  code is stdlib-only and the double runs are byte-identical, so the claim stands
+  on this machine; a 3.12 cross-check is still owed (not run).
+
+## NOT CLAIMED
+
+- Nothing about R02–R05: their revisions remain absent from every ref, so their
+  numbers stay `UNVERIFIABLE` (`REPRO-AUDIT-R02-R03-2026-10-12.md`,
+  `REPRO-PACK-R04-AUDIT-2026-10-12.md`).
+- No number in the paper was changed, and no mission ruling was re-scored.
+
