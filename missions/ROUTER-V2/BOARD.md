@@ -394,3 +394,49 @@ NOT-RUN command list) · `missions/ROUTER-V2/REPRO-PACK-R04-ADDENDUM-2026-10-12.
 - No frozen paper was edited by this audit; the two new files are dated
   siblings, and the R04 `DECISIONS-LOG.md` rows are appends.
 
+
+# AUDIT 2026-10-12 (b) — R02 and R03 to the same standard as R04 (read-only)
+
+Papers: `missions/ROUTER-V2/REPRO-AUDIT-R02-R03-2026-10-12.md` (evidence tables +
+the fresh runs) · `missions/ROUTER-V2/FINDINGS-R03-NOTE-2026-10-12.md` (F2, the
+dated sibling of the frozen R03 findings).
+
+## EVIDENCE-AUDIT (owner: @scout)
+
+- EA6 · **R02's baseline witness reproduces by execution**: `git archive
+  origin/orx/repro-consolidation-judge-promoted-to-shared-cre | tar -x -C /tmp/anc46`
+  then `python3 -m unittest discover -s tests` → `Ran 46 tests … OK` — the
+  "source suite 46 passed at copy time" of `REPRO-PACK.md` L6 and E3's
+  "Ran 46 … OK". The same command on `orx/r9-…` prints `Ran 35 tests … OK`, so
+  the retrievable ancestor is a *lineage*, not one revision.
+- EA7 · **R02's champion arm reproduces by execution** on the r9 tree:
+  `SUMMARY n=20 passed=20 rate=1.000 grave_errors=0 total_cost=68 resolved=4
+  routing_match=19/20 wall_s=0.00 formation=solo` — identical to R02's published
+  line on n/passed/rate/grave/cost/resolved; `routing_match` differs (19/20 vs
+  11/20), which is the field R02's `DECISIONS-LOG.md` flags and R03's ADR-10
+  redefines (R03 H10 itself reports 19/20 post-cut).
+- EA8 · R02 BOARD E3 is **structurally confirmed** on that revision
+  (`crew/eval.py` L45–46 defines `used` with `"routed"`, L57–58 redefines it
+  without) while its KeyError crash is unreachable there (`argparse` rejects
+  `--formation routed`) — the ref predates the 2026-09-21 sandbox E3 cites.
+- EA9 · R03's quoted arithmetic recomputes exactly except one net: `12/159 =
+  7.55`, `23/307 = 7.49`, `23/292 = 7.88`, `23/307 = 0.07492`, `23/292 =
+  0.07877`, `307 − 292 = 15`, `15/292 = 5.14%` — but the six quoted per-class
+  deltas sum to **+16** against that **+15** (**F2**, note filed beside the
+  frozen findings; the generated per-class log is on no ref, so no side is
+  picked).
+- EA10 · R05's registered bounds are arithmetically consistent
+  (`14/16 = 0.875`, `14/18 = 0.778`); nothing else about R05 is reachable.
+
+## OPEN GAPS-AUDIT (owner: @scout)
+
+- R03's claimed P14 pin (`logs/precut-sha256.txt`) is on **no ref**: the practice
+  P14 cites as earned cannot be verified from a clone. Same for its post-cut
+  verification (`tools/verify_postcut_r03.py`, `logs/round-03-postcut.txt`) and
+  H16's control suite.
+- The ladder modules, `crew/expertise.py`, `tasks/expanded-missions.json` and
+  both rounds' logs are on no ref → R02's ladder arms and every R03 number stay
+  `UNVERIFIABLE`.
+- Reproducing a *revision* is not reproducing a *round*: the runs above executed
+  the round-01 lineage, never the sandbox revisions the rounds measured.
+
