@@ -238,3 +238,26 @@ file that landed. No such file exists — R03's board section went into
 `*-R03.md`. The frozen line is left exactly as written; this note is the
 correction rather than an edit (same practice as the 2026-09-20 retracted
 claim).
+
+---
+## APPEND 2026-10-12 — CREW-EVIDENCE gap closure + R04 reproducibility audit (operator session)
+
+- `missions/CREW-EVIDENCE/BOARD.md` §APPEND 2026-10-12: the recorded OPEN GAP
+  "the later revision's `run_repro.py` (321 lines) vs rescued (294) … any other
+  difference is unexamined" is answerable from git — both revisions are
+  retrievable and their diff is **exactly the v5 block** (3 hunks / 33 lines).
+  Identity with the rescued copy is still owed: that copy is outside the repo.
+- `missions/ROUTER-V2/REPRO-PACK-R04-AUDIT-2026-10-12.md` +
+  `REPRO-PACK-R04-ADDENDUM-2026-10-12.md` +
+  `REFERENCE-INTEGRITY-SWEEP-2026-10-12.md`: R04's reported numbers are
+  unreachable in git (v2 stack, expanded fixture, tools, every log); its frozen
+  pre-registration hash is verified in-repo; the frozen-20 fixture is
+  retrievable (15 of 31 non-`main` refs); R04 pins **no** measured revision
+  (P14 gap) and R05 must pin `logs/artifacts-sha256.txt` +
+  `logs/fixture-sha256.txt` before it measures.
+- Sweep findings also on the board: `9304650` (cited by
+  `PROTECTED-RECOVERY-20260921.md` L24) is absent from all 33 refs, and the
+  R05 pre-registration named by `bets-ledger.md` L10 is not in the repository.
+- **Not claimed:** nothing promoted, no frozen paper edited, no suite or trial
+  executed, no artifact reconstructed.
+

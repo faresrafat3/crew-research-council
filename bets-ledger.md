@@ -16,3 +16,13 @@ written. P1 and P2 were derivable from the fixture and the registered rules with
 no arm and no gate, and they are marked pre-GREEN. The rules, arms, endpoints
 and fixture were fixed before any arm ran; no rule was changed after seeing a
 number. This disclosure is repeated in the pre-registration's own header.
+
+**Dated note on the R05 row (2026-10-12, audit).** The path that row names —
+`runs/2026-09-22-router-round-05/missions/PRE-REGISTRATION-R05.md` — is **not in
+this repository**, and no `*-R05.md` paper exists on any of its 33 refs, so the
+sha256 `2f5c4b46…` cannot be checked from a clone: the row is carried from the
+round-05 sandbox. The row, its sha and its `PENDING` outcome are left exactly as
+written; this note is the correction, not an edit (same practice as the
+2026-09-20 retracted claim). Evidence:
+`missions/ROUTER-V2/REFERENCE-INTEGRITY-SWEEP-2026-10-12.md` §4 and
+`missions/ROUTER-V2/REPRO-PACK-R04-AUDIT-2026-10-12.md` R15.
