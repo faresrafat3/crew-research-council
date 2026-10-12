@@ -93,3 +93,40 @@ _none_
 ## DISTILLED RULES (owner: @coach)
 
 _none yet_
+
+---
+
+# APPEND 2026-10-12 — the "later revision" gap is retrievable from git
+
+Written from an operator session (the Owner's order in chat), recorded as such
+per this board's opening note. Evidence:
+`missions/ROUTER-V2/REFERENCE-INTEGRITY-SWEEP-2026-10-12.md` §5. Nothing above
+this line is edited.
+
+## OPEN GAPS — closed / narrowed (owner: @scout)
+
+- **CLOSED.** The OPEN GAPS line at L51 — *"The later revision's `run_repro.py`
+  (321 lines) vs rescued (294): only the v5 block was restored; any other
+  difference is unexamined"* — is answerable from the repository, because **both
+  revisions are in git**:
+  - `origin/orx/repro-consolidation-judge-promoted-to-shared-cre:repro/run_repro.py`
+    — 294 lines, sha256 `433c4bcfe2be0cfe3a3ebfa2e2c583bee142df403b8dd6dad6e54b9c655f4fa5`;
+  - `origin/orx/repro-judge-v5-scoped-paraphrase-vs-transfer:repro/run_repro.py`
+    — 321 lines, sha256 `d7441d3680443080ee4e9d13c443f6bc8de5deb0d0670118f72197502d8c3754`.
+  `diff -u` between them (**RUN**, 2026-10-12): **3 hunks / 33 changed lines, all
+  of them the v5 block** — the `is_abstain_v5` + `V5_*` import,
+  `judge_transfer_v5()`, and the `TRANSFER-V5` / `BOUNDARY-V5` / `SCOPED5`
+  report lines. **No other difference exists between the two revisions.**
+- **NARROWED, not closed.** Whether the repository's 294-line blob *is* the
+  artifact this mission calls "rescued" is unproven: the rescued copy lives
+  outside the repository, so the identity check still needs it. E1/E2 stand
+  unchanged, and no claim above is re-scored by this append.
+- **Corroborated on the same ref** (E3, unchanged): the later revision's
+  `tests/test_crew.py` carries **47** `def test` methods (E3: "run=47"), and its
+  `crew/abstain.py` holds `is_abstain_v5` (E3: "the v5 bindings and body are
+  recoverable").
+- **Note for the record:** `repro/**` — declared an untracked working copy by
+  `PROTECTED.md` L13 — is committed on **10** `orx/repro-*` refs
+  (`run_repro.py`, `pairs.json`). For this mission the protected tree is *more*
+  available in git than the declaration implies.
+
