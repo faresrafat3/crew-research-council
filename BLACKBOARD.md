@@ -261,3 +261,20 @@ claim).
 - **Not claimed:** nothing promoted, no frozen paper edited, no suite or trial
   executed, no artifact reconstructed.
 
+
+---
+## APPEND 2026-10-12 (b) — the preprint's 18-row table reproduces from git (operator session)
+
+- `missions/CREW-EVIDENCE/REPRO-AUDIT-PAPER-ROUNDS-2026-10-12.md` +
+  `missions/CREW-EVIDENCE/BOARD.md` §APPEND 2026-10-12 (b): all **18 rows** of
+  `paper/draft:paper.tex` Table 1 re-execute **exactly** (`n`, `passed`, `cost`,
+  `resolved`) from the per-node `orx/*` branches via `git archive` + the node's
+  own `bash run.sh`; 19/19 tracked runs green; three double runs byte-identical.
+- The R7–R9 fixture hash equals the frozen-20 that R02–R04 measured
+  (`28406677…a87`) — the one artifact the preprint lineage and the mission share.
+- **Risk recorded:** the `orx/*` branches are the only carriers of the preprint's
+  runnable revisions; deleting them would make the paper as unreproducible as
+  R02–R05.
+- **Not claimed:** nothing about R02–R05 (still `UNVERIFIABLE`), no number
+  changed, no ruling re-scored.
+
