@@ -1,79 +1,65 @@
-# 🔬 CREW RESEARCH COUNCIL
+# Crew Research Council
 
-## What This Is
+This repo is the research arm of Crew v2, a multi-agent crew system. External agents research one question at a time and write the result into `OUTPUT/`. The operator turns those documents into agent configurations, routing rules, architecture decisions, and procedures. Nothing here runs; it is all input to that work.
 
-This repository is the **Crew Research Council** — a structured knowledge base of deep research tasks for the Crew v2 multi-agent AI system. External agents read this repo, pick research questions, and produce comprehensive, cited, implementation-ready research documents.
+## Who this is for
 
-## Who This Is For
+External research agents: workbuddy, zcode, cline, freebuff, opencode, or whichever agent the operator points at this repo. You need read access and nothing else. You do not run the crew.
 
-You are an external research agent (workbuddy, zcode, cline, freebuff, opencode, or similar). You have been granted read access to this repo to conduct deep research on behalf of the Crew v2 project.
+## What you do
 
-## Your Role
+1. Read `CONTEXT.md` for the system, then `METHODOLOGY.md` for how research is done here.
+2. Read `GUARDRAILS.md`. It is short, and breaking it wastes the work.
+3. Open `STATUS.md`, which records what is finished. If `PROMPTS/INBOX.md` still lists something open, take the highest-priority one. If everything is finished, go deeper instead.
+4. Research it and cite what you use.
+5. Write the document to `OUTPUT/<topic>.md`, following the format in `OUTPUT/README.md`.
+6. Record it in `STATUS.md`.
 
-You are a **Research Council Member**. Your job is to:
-1. Read the context and methodology in this repo
-2. Pick a research question from `PROMPTS/`
-3. Conduct exhaustive, cited research
-4. Output a comprehensive document to `OUTPUT/`
-5. Update `STATUS.md` with your findings
+## What exists
 
-## The Mission
+Every domain below has at least one document. Per-file status, contents, and deep-dive counts live in `STATUS.md` under `## Output Inventory`. This page does not repeat them.
 
-Build the **complete knowledge base** for Crew v2 — a multi-agent AI crew system. The research you produce will be converted directly into agent configurations, routing rules, system architecture, and operational procedures.
+| Domain | Covers | Start with |
+|---|---|---|
+| Testing | Test discipline, TDD, gates, quality metrics | `tdd-protocol.md` |
+| Memory | Memory architecture, knowledge management | `memory-architecture.md` |
+| Communication | Inter-agent protocols, message passing | `communication-protocols.md` |
+| Coordination | Routing, formation selection, expertise tracking | `routing-integration.md` |
+| Self-healing | Self-improvement, root cause analysis | `self-healing.md` |
+| Production | Deployment, monitoring, high availability | `production-deployment.md` |
+| Security | Multi-agent security, sandboxing | `multi-agent-security.md` |
+| Scalability | Scaling patterns, load balancing | `scalability-patterns.md` |
+| Human loop | Human in the loop, escalation | `human-in-the-loop.md` |
+| Cost | Token economics, optimization | `cost-optimization.md` |
+| Explainability | Debugging, provenance, transparency | `explainability.md` |
+| Embodiment | Agent personalities, voices, roles | `agent-embodiment.md` |
+| Tools | Tool integration, differentiation | `tool-differentiation.md` |
+| Evaluation | Benchmarking, evaluation frameworks | `evaluation-frameworks.md` |
+| Conflict | Conflict resolution, decision mechanisms | `conflict-resolution.md` |
 
-## Domains
-
-Research is organized into domains:
-
-| Domain | Description | Status |
-|--------|-------------|--------|
-| **TESTING** | Testing discipline, TDD, quality gates | ✅ Complete |
-| **MEMORY** | Memory architecture, knowledge management | ⏳ Pending |
-| **COMMUNICATION** | Inter-agent protocols, message passing | ⏳ Pending |
-| **COORDINATION** | Routing, formation selection, expertise tracking | ⏳ Pending |
-| **SELF_HEALING** | Self-improvement, root cause analysis | ⏳ Pending |
-| **PRODUCTION** | Deployment, monitoring, HA | ⏳ Pending |
-| **SECURITY** | Multi-agent security, sandboxing | ⏳ Pending |
-| **SCALABILITY** | Scaling patterns, load balancing | ⏳ Pending |
-| **HUMAN_LOOP** | Human-in-the-loop, escalation | ⏳ Pending |
-| **COST** | Token economics, optimization | ⏳ Pending |
-| **EXPLAINABILITY** | Debugging, provenance, transparency | ⏳ Pending |
-| **EMBODIMENT** | Agent personalities, voices, roles | ⏳ Pending |
-| **TOOLS** | Tool integration, differentiation | ⏳ Pending |
-| **EVALUATION** | Benchmarking, evaluation frameworks | ⏳ Pending |
-| **CONFLICT** | Conflict resolution, decision mechanisms | ⏳ Pending |
+All files sit directly in `OUTPUT/`, not in per-domain folders.
 
 ## Rules
 
-1. **Research only.** Do not modify any file outside `OUTPUT/` and `STATUS.md`.
-2. **Cite everything.** Every claim needs a source.
-3. **Be exhaustive.** Do not summarize — provide full analysis.
-4. **Be specific.** Every recommendation must be implementable.
-5. **Stay in scope.** This repo defines your boundaries. Do not wander.
+1. Research only. Write to `OUTPUT/*.md`, `STATUS.md`, and `PROMPTS/QUESTIONS.md`; do not run code, tests, or deployments. Everything else is read-only.
+2. Cite every claim. If you cannot verify something, say so in the document instead of smoothing over it.
+3. No summaries. "Set line coverage to 90%" is useful. "Improve coverage" is not.
+4. Every recommendation has to be buildable by someone reading it cold.
 
-## How to Work
+## Going deeper
 
-1. Read `CONTEXT.md` — understand the system
-2. Read `METHODOLOGY.md` — how to do deep research
-3. Read `GUARDRAILS.md` — what you must NOT do
-4. Check `STATUS.md` — see what's done and what's pending
-5. Pick the highest priority pending prompt from `PROMPTS/`
-6. Research exhaustively
-7. Write output to `OUTPUT/<domain>/<topic>.md`
-8. Update `STATUS.md` with your results
+When the topic is already covered, do not open a second file. Append to the existing one:
 
-## Keep Going
+```markdown
+## [DEEP DIVE]: <specific focus>
+```
 
-After completing a prompt:
-1. Check `STATUS.md` for the next pending item
-2. If `PROMPTS/` has new items, pick the highest priority one
-3. Continue until all prompts are complete
-4. Then start deep-dive cycles: pick existing output, go deeper, append findings
+Say what the dive adds that the base document does not. Repeating the base in different words is not a deep dive.
 
-## Believe in Yourself
+## When you are stuck
 
-You are capable of breakthrough research. Do not stop at surface-level findings. Push deeper. Cross-reference. Synthesize. Challenge assumptions. The quality of this research directly determines the quality of the Crew v2 system.
+Add the question to `PROMPTS/QUESTIONS.md` and keep working on something clear. Do not stop and wait.
 
-## Contact
+## The bar
 
-If you need clarification, add a question to `PROMPTS/QUESTIONS.md`. The operator will respond.
+A document is finished when another agent could build from it without asking you anything. If it needs a conversation to be useful, it is not done.
