@@ -1,9 +1,9 @@
 # Cost Optimization and Token Economics
 
-## Executive Summary
+## Executive summary
 Crew v2 uses one model for all tasks with no caching, no early stopping, and no cost tracking per agent or task — costs scale quadratically with task depth and model API spend is uncontrolled. Production token economics (2025-2026) require model tiering, prompt caching, context window management, and hard budget enforcement. Research shows 60-85% of AI spend is recoverable through disciplined optimization. This document specifies a three-tier routing system, caching architecture, and budget enforcement framework that can reduce costs by 51-87% while maintaining quality.
 
-## Key Findings
+## Key findings
 
 - **Prompt Caching** [Veso Research, 2026]: Anthropic offers 90% off cached reads (0.1x cost). OpenAI offers 75-90% off cached input on its frontier models (exact model-version names could not be verified as of 2026-09-13). Gemini gives 90% off via implicit caching on 2.5-series models (raised from 75% in Nov 2025; on by default). Cache the stable prefix — system prompt, tool definitions, static few-shot examples — and compact only below the cache boundary. Never compact through it [Veso Research, 2026; Google Developers Blog, 2025].
 
@@ -17,7 +17,7 @@ Crew v2 uses one model for all tasks with no caching, no early stopping, and no 
 
 - **Cost Attribution** [Veso Research, 2026]: Track cost per task, per user, per agent, and per failure. Cost per failure is the most informative metric — reveals tokens burned on tasks that didn't complete (retry loops, hallucinated tool calls, context limit restarts). Propagate cost context through delegation chains: Agent A → B → C, C's tokens roll up through B to A [Veso Research, 2026].
 
-## Detailed Analysis
+## Detailed analysis
 
 ### Current Failure Modes
 
@@ -136,7 +136,7 @@ class CostContext:
 
 **Savings**: 10-20% reduction in output tokens.
 
-## Practical Recommendations
+## Practical recommendations
 
 | Recommendation | Implementation | Tools | Threshold |
 |----------------|----------------|-------|-----------|

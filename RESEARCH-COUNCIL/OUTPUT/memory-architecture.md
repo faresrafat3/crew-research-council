@@ -1,9 +1,9 @@
 # Multi-Agent Memory and Knowledge Management
 
-## Executive Summary
+## Executive summary
 Crew v2 has no systematic memory — each agent starts fresh, causing repeated research, lost context, and inability to learn from past failures. State-of-the-art multi-agent memory systems use hierarchical graph structures (G-Memory, 2025) or brain-inspired subsystems (BMAM, 2026) to enable cross-trial learning. This document proposes a four-tier memory architecture (per-task, per-agent, per-crew, cross-crew) with role-aware retrieval, rate-distortion compaction, and EWC-inspired catastrophic forgetting prevention, improving on Crew v2's current zero-memory baseline.
 
-## Key Findings
+## Key findings
 
 - **G-Memory (NeurIPS 2025)** implements a three-tier graph hierarchy: insight graph (abstracted lessons), query graph (task metadata), interaction graph (raw trajectories). It improves MAS success rates by up to 20.89% and knowledge QA by 10.12% without framework modifications [G-Memory, 2025].
 - **BMAM (ACL Findings 2026)** decomposes memory into episodic (timeline-indexed traces), semantic (knowledge graph), salience-aware (importance-weighted consolidation), and prefrontal (query routing + 10-item working buffer). Achieves 78.45% on LoCoMo, outperforming seven baselines. "Soul Portability Test" shows 87.5% identity integrity across export-clear-restore [BMAM, 2026].
@@ -13,7 +13,7 @@ Crew v2 has no systematic memory — each agent starts fresh, causing repeated r
 - **MemoryAgentBench (2025)** identifies four memory competencies: Accurate Retrieval, Test-Time Learning, Long-Range Understanding, Selective Forgetting (resolving contradictions) [MemoryAgentBench, 2025].
 - **Catastrophic Forgetting** in agent memory is mitigated by Elastic Weight Consolidation (EWC), which penalizes changes to important parameters while allowing new learning — adapted for memory stores as importance-weighted write protection [Huszár, 2018; Multiple Memory Systems, 2025].
 
-## Detailed Analysis
+## Detailed analysis
 
 ### The Memory Hierarchy Problem
 
@@ -170,7 +170,7 @@ Where:
 | Importance scoring | Learned (init: heuristic) | Start with heuristic; train on task outcomes |
 | Compaction scheduler | Cron (weekly/monthly) | Tier 2→3 and 3→4 batch jobs |
 
-## Practical Recommendations
+## Practical recommendations
 
 | Recommendation | Implementation | Tools | Threshold |
 |----------------|----------------|-------|-----------|
@@ -416,11 +416,11 @@ Where:
 > **Status:** Complete | **Date:** 2026-09-13 | **Freshness:** [verified: 2026-09-13 — all sources checked live via exa + tinyfish web search on this date]
 > **Method note:** Every numeric claim carries its source and as-of date. Where vendors disagree (Mem0 vs Zep benchmark dispute), both sides are reported.
 
-## Executive Summary
+## Executive summary
 
 Crew v2's core defect is architectural, not behavioral: every agent starts every task with a fresh context window, so the crew re-pays the same learning cost on every run and its only knowledge assets (librarian's case shelf, firstmate's JSONL expertise log) are write-only. The research literature has converged on a five-layer memory hierarchy — working/task memory, per-agent private memory, crew/group shared memory, org/company memory, and a distilled global layer — with writes flowing *up* only after extraction and validation, and reads flowing *down* through scoped, hybrid retrieval [1][5][20]. The highest-leverage change for Crew v2 is procedural memory stored as editable playbooks (the ACE pattern: incremental deltas, never monolithic rewrites) [16], plus a governed shared store with scope enforcement, temporal supersession, provenance, and policy-controlled propagation — the four primitives that a 2026 production study found are *all* required, because long-context retrieval alone fails in four measurable ways (unauthorized leakage, stale propagation, contradiction persistence, provenance collapse) [2]. Forgetting must be designed as deliberately as remembering: TTLs per layer, recency-weighted retrieval, and supersede-on-write, or the store rots within weeks [22]. Benchmarks (LoCoMo, LongMemEval, BEAM) provide honest baselines: full-context replay reaches 72.9% on LoCoMo at ~26K tokens/query, while selective memory pipelines reach 66.9–92.5% (depending on version, vendor-reported) at 1.8K–7K tokens — but memory poisoning is the unclosed security hole, and existing prompt-injection defenses do not cover it [23].
 
-## Key Findings
+## Key findings
 
 1. **"Fresh context every task" is the #1 capability tax.** LongMemEval shows commercial assistants and long-context LLMs lose 30% accuracy on information across sustained interactions; long-context models drop 30–60% on LongMemEval-S [10]. An agent with no memory re-commits the same failures (the engineer's forgotten tests) indefinitely.
 2. **The architecture consensus is a hierarchy, not one store.** Computer-architecture framing (I/O layer / cache layer / memory layer) with explicit cache-sharing and memory-access protocols is the 2026 reference model [1]; production systems use 5–6 typed stores (MIRIX: core, episodic, semantic, procedural, resource, knowledge vault) [5].
@@ -433,7 +433,7 @@ Crew v2's core defect is architectural, not behavioral: every agent starts every
 9. **Memory poisoning is an unsolved attack class.** Four write channels, nine structural vulnerabilities, six attack classes; a single poisoned write exerts long-term influence, and "existing prompt injection defenses fail to cover memory poisoning attacks" [23].
 10. **Vendor benchmarks disagree; use them as ranges, not truths.** Mem0 reports 66.9% LoCoMo @ ~1.8K tokens (paper) [8] and 92.5% @ ~6.9K tokens (Apr 2026 update, self-reported) [24]; Zep publicly disputes Mem0's methodology and claims superior accuracy when "evaluated correctly" [25]. Full-context baseline: 72.9% @ ~26K tokens, 9.87s median latency [24].
 
-## Detailed Analysis
+## Detailed analysis
 
 ### 1. The problem: Crew v2 has write-only memory
 

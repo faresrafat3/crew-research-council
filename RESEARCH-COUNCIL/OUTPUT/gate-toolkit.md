@@ -1,6 +1,6 @@
 # Gate Toolkit — Executable Pass-2 Protocols
 
-## Executive Summary
+## Executive summary
 
 The pass-2 deep dives specified gates and statistics; this output makes them **runnable**. `gate_toolkit.py` implements five protocols (c=0 audit sampling, zero-flip flake gate, RTS safety KPI, p-chart limits, Nelson run rules with baseline lock) in dependency-free stdlib Python. The accompanying suite (35 tests) achieves a **100% mutation score** against a 15-mutant curated harness — beating the council's own mutation gate (70% PR / 80% nightly, tester-soul.md cycle 4 D6-D7). The gap between "specified" and "executable" is where protocols get skipped; this closes it (the COORD lesson, applied to the council itself).
 

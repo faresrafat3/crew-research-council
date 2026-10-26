@@ -1,9 +1,9 @@
 # Explainability and Debugging for Agent Crews
 
-## Executive Summary
+## Executive summary
 Crew v2 has message history but no structured provenance — when something goes wrong, debugging requires reading hundreds of messages. Production multi-agent systems require decision provenance, replay debugging, and "why did agent X do Y" traceability. Research (2025-2026) shows debugging must shift from trace inspection to regression prevention, converting production failures into enforced quality gates. This document specifies a provenance framework with structured traces, time-travel debugging, and automated root cause analysis.
 
-## Key Findings
+## Key findings
 
 - **Braintrust (2026)** captures complete traces across model calls, tool invocations, and retrieval steps in an expandable tree of nested spans. Each span shows inputs, outputs, timing, cost, and evaluation scores. One-click trace-to-eval conversion: production failure → eval case → CI gate [Braintrust, 2026].
 
@@ -17,7 +17,7 @@ Crew v2 has message history but no structured provenance — when something goes
 
 - **Maxim AI (2026)** provides distributed tracing at session, trace, and span levels with visual replay and automated evaluation. Visual map of agent-to-agent communication for failure attribution [Maxim AI, 2026].
 
-## Detailed Analysis
+## Detailed analysis
 
 ### Current Failure Modes
 
@@ -212,7 +212,7 @@ class EvalCase:
 - Side-by-side comparison of two traces.
 - Export trace for offline analysis.
 
-## Practical Recommendations
+## Practical recommendations
 
 | Recommendation | Implementation | Tools | Threshold |
 |----------------|----------------|-------|-----------|

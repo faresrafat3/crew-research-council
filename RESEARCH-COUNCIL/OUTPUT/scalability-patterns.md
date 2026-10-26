@@ -1,9 +1,9 @@
 # Scalability Patterns for Multi-Agent Crews
 
-## Executive Summary
+## Executive summary
 Crew v2 has 81 agents sharing one machine, one context window, and one terminal — this cannot scale beyond minimal workloads. Research (2025-2026) shows multi-agent system benefits are highly contingent on task characteristics: coordination overhead can cause 39-70% performance degradation on sequential tasks while yielding +80% improvements on parallelizable tasks. This document specifies a hierarchical crew architecture with group sizes of ≤10 agents per hierarchy level, decision boundaries for when to use multi-agent vs single-agent, and patterns for scaling from 8 to 80 to 800 agents.
 
-## Key Findings
+## Key findings
 
 - **Towards a Science of Scaling Agent Systems (arXiv, 2512.08296, 2025)** establishes the first quantitative model for multi-agent scaling. Key finding: if single agent baseline accuracy > 45%, multi-agent coordination overhead outweighs benefits. Coordination overhead grows as T = 2.72 × (n + 0.5)^1.724, meaning a few agents can be 5-6x less efficient than single agent [arXiv, 2512.08296, 2025].
 - **Centralized coordination** improves performance by 80.8% on parallelizable tasks (financial reasoning). **Decentralized coordination** excels on dynamic web navigation (+9.2%). **All multi-agent variants degrade** by 39-70% on sequential constraint satisfaction tasks [arXiv, 2512.08296].
@@ -12,7 +12,7 @@ Crew v2 has 81 agents sharing one machine, one context window, and one terminal 
 - **Five canonical architectures** [arXiv, 2512.08296]: Independent (no communication), Centralized (orchestrator), Decentralized (peer-to-peer), Hybrid (hierarchy + lateral), Single Agent (baseline). Architecture-task alignment determines success, not number of agents.
 - **Decision boundary** [arXiv, 2512.08296]: P_SA* = 0.154 (standardized), corresponding to raw performance ≈ 0.45. If single agent accuracy > 45%, use single agent. Cross-validation achieves 87% correct architecture selection.
 
-## Detailed Analysis
+## Detailed analysis
 
 ### When NOT to Use Multi-Agent
 
@@ -128,7 +128,7 @@ def select_formation(task):
 - Coordination overhead should not exceed 30% of total task time.
 - If overhead > 30%: reduce agent count or switch to simpler formation.
 
-## Practical Recommendations
+## Practical recommendations
 
 | Recommendation | Implementation | Tools | Threshold |
 |----------------|----------------|-------|-----------|

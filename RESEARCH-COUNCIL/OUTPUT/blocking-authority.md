@@ -1,10 +1,10 @@
 # Blocking Authority and Governance: When the Crew v2 Tester May Block a Release
 
-## Executive Summary
+## Executive summary
 
 This document defines the blocking authority of the Crew v2 tester agent: the exact conditions under which it may hard-stop a release (BLOCK), the conditions it may only flag (ADVISE), and how disagreements are resolved through a timed escalation ladder ending in a human operator override. The design follows one governing principle drawn from every real system studied: **the tester is a required status check, not the sole ruler** — it blocks mechanically (like GitHub's required checks and Google's presubmits), its blocks fail closed for high-risk work but fail open for read-only work, and the only actor who can override a block is the human operator, whose override is a recorded decision with a reason attached [Winters et al., 2020; GitHub Docs, n.d.; AWS, n.d.]. Thresholds are set from published evidence where it exists (Google's 1.5% flake-run baseline, DORA's 0–15% elite change-failure band, Google's three-consecutive-failure retry rule) and marked as proposed defaults with reasoning where it does not. The charter's central calibration loop — block precision vs. escape rate — is the tester's own four-key-metrics discipline, so the gate tightens or loosens on data rather than on opinion.
 
-## Key Findings
+## Key findings
 
 ### How real engineering organizations gate releases
 - Google requires every change list (CL) to clear three separable approval "bits" — a peer LGTM, a directory **code-owner approval**, and a language **readability approval** — and even then "files in a workspace are committed to the central repository only after going through the Google code-review process" [Winters et al., 2020; Potvin & Levenberg, 2016].
@@ -29,7 +29,7 @@ This document defines the blocking authority of the Crew v2 tester agent: the ex
 - Mature escalation is mechanical, not judgmental: PagerDuty escalates automatically "if no one takes action before the timeout elapses," with a default 30-minute timeout [PagerDuty, n.d.]; industry practice caps escalation at three tiers and sets the timeout from the acknowledgment SLO [incident.io, 2026].
 - For AI agents specifically: pause high-risk actions for review, "implement timeout policies… with safe fallback actions (typically blocking the operation)," log every decision with reviewer identity and timestamp, and start with maximum oversight then remove checkpoints as correction rates decline [AWS, n.d.; AWS re:Invent, 2025].
 
-## Detailed Analysis
+## Detailed analysis
 
 ### 1. How real engineering organizations gate releases
 
@@ -190,7 +190,7 @@ Situation → verdict → next actor → message to send. (All messages via `mes
 | 19 | Emergency: **production down**, fix ready, tests not yet written | **Break-glass L0→L3** | operator | "BREAK-GLASS: RC-1 fix for prod outage. Ladder shortened to operator decision; regression test (B5) required post-hoc within 24h; override will be logged [Google eng-practices, n.d.; NIST SP 800-171 (Daydream summary), n.d.]." |
 | 20 | Tests assert **internal private methods**, changed-line coverage technically 100% | **BLOCK (B7)** | engineer | "BLOCK B7: tests assert implementation internals (`_helper`), not observable behavior — excluded from gate credit. Rewrite against the public API [Winters et al., 2020]." |
 
-## Practical Recommendations
+## Practical recommendations
 
 | Recommendation | Implementation | Tools | Threshold/Target |
 |---|---|---|---|
@@ -208,7 +208,7 @@ Situation → verdict → next actor → message to send. (All messages via `mes
 | Calibrate monthly from outcome data | Track block precision, escape rate, override rate, flake rate; apply the §7.7 adjustment rules | Metrics file + weekly review | Precision ≥ 80%, escape ≤ 5%, override < 10%, CFR ≤ 15% (DORA elite band) [DORA, 2018; Google, 2021] |
 | Fix the tester's own failure mode | If the tester cannot run tests (env missing), emit HOLD-on-unverified with the stated gap — never PASS | Tester SOUL instruction | 0 fabricated passes (crew law P4) |
 
-## Metrics and Targets
+## Metrics and targets
 
 | Metric | What is measured | Target | Warning threshold | Action on breach |
 |---|---|---|---|---|

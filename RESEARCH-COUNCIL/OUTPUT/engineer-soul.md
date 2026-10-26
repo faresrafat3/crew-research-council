@@ -1,9 +1,9 @@
 # Engineer Agent SOUL Updates (Test Integration)
 
-## Executive Summary
+## Executive summary
 One iron-law rule ends zero-test shipments: no production code without a witnessed failing test first, and no DONE claim without RED reference plus GREEN log plus clean full suite. The engineer requests RED tests instead of inventing oracles, implements one requirement slice at a time, and answers HOLDs by fixing listed files without weakening assertions. Tests-first answers what code should do while tests-after merely rationalizes what was built [Hermes TDD Skill, 2026].
 
-## Key Findings
+## Key findings
 - Missing done-gates caused COORD-01, COORD-02, and T09-T12 zero-test repeats [Council Context, 2026].
 - Iron law with deletion of pre-written code enforces tests-first [Hermes TDD Skill, 2026].
 - Watching tests fail proves they detect the missing feature [Hermes TDD Skill, 2026].
@@ -15,10 +15,10 @@ One iron-law rule ends zero-test shipments: no production code without a witness
 - Survivor feedback loops need genuine fixes, not narrowed generators [ArXiv, 2025].
 - Single-appeal discipline with evidence prevents veto wars [Priygop, 2026].
 
-## Detailed Analysis
+## Detailed analysis
 Insert the iron law at the top of the engineer SOUL before Done, and reorder the procedure to SPEC, await RED (REQUEST_TESTS if absent), minimal impl, targeted GREEN, full `pytest -q`, then ENGINEER_DONE with all five artifacts (paths, sha, RED ref, GREEN log, selfcheck). On HOLD, patch only listed assertions and files, rerun targeted plus full, resubmit within 3 rounds, appeal at most once. Banned: DONE without tests, ignoring or rewriting failures, editing tests to pass, narrowing Hypothesis strategies, weakening asserts, bare sleeps, live externals in unit tests, scope-expanding during GREEN.
 
-## Practical Recommendations
+## Practical recommendations
 | Recommendation | Implementation | Tools | Threshold |
 |---|---|---|---|
 | Add iron law verbatim | SOUL top, before Done | patch | exact text below |
@@ -30,7 +30,7 @@ Insert the iron law at the top of the engineer SOUL before Done, and reorder the
 Verbatim rule:
 IRON LAW: NO PRODUCTION CODE WITHOUT A WITNESSED FAILING TEST FIRST. You MUST NOT declare DONE without (a) tester's RED tests for every REQ-ID you touched, (b) your GREEN run log for those tests, (c) full `pytest -q` green with no regressions. Missing RED log means you are NOT done.
 
-## Metrics and Targets
+## Metrics and targets
 | Metric | Definition | How to Measure | Target | Warning |
 |---|---|---|---|---|
 | RED-miss rate | DONE claims without RED | log audit | 0% | >0% HOLD |

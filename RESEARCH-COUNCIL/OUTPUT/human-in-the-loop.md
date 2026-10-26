@@ -1,9 +1,9 @@
 # Human-in-the-Loop Integration
 
-## Executive Summary
+## Executive summary
 Crew v2 has human escalation but no structured interface — operators get raw logs, not a dashboard, and approval flows are ad-hoc. Production multi-agent systems require explicit approval gates, adjudication queues, and operator dashboards with full context. The EU AI Act (August 2026) mandates human oversight for high-risk agentic systems. This document specifies a HITL architecture with confidence-based routing, SLA-bound approval queues, and cryptographic payload locking, adapted from Sphinx, Aegis, and production patterns (2025-2026).
 
-## Key Findings
+## Key findings
 
 - **Sphinx (2026)** is an open-source HITL control plane: unified approval queue for every framework, SLA with auto-degradation (escalate/auto-approve/auto-reject on timeout), decision log with delta diffing, and tamper-evident capture (SHA3-256 hash chain + Ed25519 signatures). Governance KPIs: escalation rate, timeout rate, correction rate, reviewer agreement, error escape rate, SLA compliance [Sphinx, 2026].
 - **Aegis (CloudMatos, 2025)** implements inline approvals with short-lived Ed25519-signed override tokens, threshold tiers (Tier1: ≤$5k auto; Tier2: $5k-$50k approval_needed), debounce windows (30-300s), and OpenTelemetry spans for every decision [Aegis, 2025].
@@ -11,7 +11,7 @@ Crew v2 has human escalation but no structured interface — operators get raw l
 - **Weir (2026)** treats approvers as finite-capacity resources with pressure-aware queuing: Normal → Elevated → Critical states based on decision latency and queue depth. Governance agent is proposal-only; deterministic policy engine validates all decisions [Weir, 2026].
 - **KLA Decision Desk (2026)** provides a triage inbox with four dimensions: Priority, Team, Agent, State. Every decision is captured as an OpenTelemetry span and written to a cryptographic ledger (ImmuDB) for audit [KLA, 2026] — **[unverified: source could not be located online as of 2026-09-13; treat the four-dimension triage design as a candidate pattern, not established practice]**.
 
-## Detailed Analysis
+## Detailed analysis
 
 ### Current Failure Modes
 
@@ -145,7 +145,7 @@ Stage 6: EXECUTION
 - [ ] Payload locking to prevent mutation.
 - [ ] Dual verification for highest-risk categories.
 
-## Practical Recommendations
+## Practical recommendations
 
 | Recommendation | Implementation | Tools | Threshold |
 |----------------|----------------|-------|-----------|

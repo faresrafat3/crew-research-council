@@ -18,19 +18,19 @@ Each file follows this format:
 ```markdown
 # [TOPIC]
 
-## Executive Summary
+## Executive summary
 [3-5 sentences]
 
-## Key Findings
+## Key findings
 [Bullet points, max 10 per section]
 
-## Detailed Analysis
+## Detailed analysis
 [Exhaustive, cited]
 
-## Practical Recommendations
+## Practical recommendations
 [Specific, implementable]
 
-## Metrics and Targets
+## Metrics and targets
 [With numbers]
 
 ## References

@@ -1,11 +1,11 @@
 # CI/CD Integration for AI Agent Testing
 
-## Executive Summary
+## Executive summary
 Every engineer commit triggers unit + targeted mutation with JUnit coverage JSON mutation reports artifacts; tester verdict gates merges large tests async nightly. No native Actions dashboard so upload-artifact + reporters workaround [GitHub Community 2025], CTRF one-command flaky summaries [CTRF 2026], history flips [TestDino 2026], exit-2 mutation gate [Mutagen 2026]. Golden three-layer eval + break drills catch regressions.
 
 In this model, the commit pipeline is blocking and fast (<10 min): `pytest -q` small-first, coverage JSON, targeted `mutmut` on touched lines, oracle/tautology/mock lints, and flake history check. Large, slow, and nondeterministic work — full E2E (capped journeys), full mutation, live contracts, golden eval, break drills — runs async on nightly schedule. Tester verdict (PROMOTE/HOLD/ROLLBACK) gates merges, with quarantine as advisory PR comment and 20-green re-promotion. Artifacts (`junit.xml`, `cov.json`, `mutation-report.json`, `flake-history.json`) provide the audit trail that a native dashboard would otherwise supply.
 
-## Key Findings
+## Key findings
 
 1. **No native GitHub Actions test dashboard — use upload-artifact + reporters workaround:** Actions has no first-class test-results UI, so persist `junit.xml` via `actions/upload-artifact@v4` and render on PRs with `dorny/test-reporter@v1`, Allure reports published to GitHub Pages [GitHub Community 2025].
 2. **CTRF gives one-command flaky summaries:** Common Test Report Format (CTRF) JSON normalizes JUnit/XUnit across runners and produces single-command flaky-test summaries for Actions annotations and PR comments [CTRF 2026].
@@ -18,7 +18,7 @@ In this model, the commit pipeline is blocking and fast (<10 min): `pytest -q` s
 9. **PROMOTE / HOLD / ROLLBACK verdicts from 38 runs across 20 releases:** Tester-agent verdict object with evidence links gates merge/deploy; field study of 38 pipeline runs over 20 releases shows verdict-gating catches escape-defects that coverage-alone misses [ArXiv 2026].
 10. **Probabilistic LLM outputs need schema + embedding + judge, not point equality:** Golden eval is three-layer — JSON-schema validity, latency budget, embedding cosine similarity, plus LLM-judge rubric score — never exact string match [ArizenAI 2025].
 
-## Detailed Analysis
+## Detailed analysis
 
 ### 1. Blocking Commit Pipeline (fast-gate, <10 min)
 - **Runner:** `pytest -q` small-first: `tests/unit` then `tests/integration`, `-v --tb=short --strict-markers`, parallelized with `pytest-xdist --numprocesses=auto --dist=loadscope`, Hypothesis `ci` profile.

@@ -1,9 +1,9 @@
 # Agent Communication Protocol Optimization
 
-## Executive Summary
+## Executive summary
 Crew v2 uses fire-and-forget `message_agent()` with no ordering guarantees, duplicate detection, priority queuing, or backpressure — causing race conditions, lost messages, and unbounded token costs. Industry best practices (2025-2026) converge on event-driven architecture (EDA) with hybrid sync/async patterns: synchronous request-response for tool calls within an agent, EDA for inter-agent communication. This document specifies a protocol with exactly-once semantics, priority lanes, circuit breakers, and dead letter queues, adapted from SW4RM, A2A, and production multi-agent systems.
 
-## Key Findings
+## Key findings
 
 - **Event-Driven Architecture (EDA) is the consensus for multi-agent systems** [Zylos Research, 2026]. LangGraph 1.0 uses Pregel/BSP where state updates ARE events. AutoGen v0.4 rebuilt around an actor model with typed message passing. Google's A2A protocol uses Server-Sent Events for long-running tasks.
 - **SW4RM Protocol (2026)** specifies a central Scheduler with priority-based task ordering (-19 to 20), three communication classes (PRIVILEGED, STANDARD, BULK), and explicit lifecycle management with idempotency tokens and deduplication windows [SW4RM, 2026].
@@ -13,7 +13,7 @@ Crew v2 uses fire-and-forget `message_agent()` with no ordering guarantees, dupl
 - **Idempotency**: At-least-once delivery requires idempotent handling. Azure Service Bus deduplicates by ID within a configurable window. Event sourcing provides natural idempotency: events recorded before execution, replay reconstructs state [Zylos Research, 2026].
 - **Dead Letter Queues (DLQ)**: Isolate failures without blocking the workload. ML-based automated DLQ triage classifies failure types and routes to remediation workflows [Zylos Research, 2026].
 
-## Detailed Analysis
+## Detailed analysis
 
 ### Current Failure Modes in Crew v2
 
@@ -213,7 +213,7 @@ class DeadLetterMessage:
 | Idempotency | Redis cache with TTL | Fast dedup lookup |
 | Observability | MLflow tracing + custom metrics | Full trace across agents |
 
-## Practical Recommendations
+## Practical recommendations
 
 | Recommendation | Implementation | Tools | Threshold |
 |----------------|----------------|-------|-----------|

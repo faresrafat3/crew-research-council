@@ -1,9 +1,9 @@
 # Conflict Resolution and Decision Mechanisms
 
-## Executive Summary
+## Executive summary
 Crew v2 has an escalation ladder (tester → critic → human) but no systematic conflict resolution for other disagreements (architect vs. researcher, engineer vs. tester on non-blocking issues). Multi-agent systems require structured decision mechanisms: voting (majority, weighted, consensus), adjudication, and deadlock breaking. Research (2025-2026) shows majority voting is brittle under confabulation consensus, while structured debate with evidence-based adjudication outperforms simple voting. This document specifies a conflict resolution framework with RoundTable-inspired group decision-making, AGENTAUDITOR-style reasoning tree analysis, and DynaDebate-style dynamic path generation.
 
-## Key Findings
+## Key findings
 
 - **RoundTable (arXiv, 2411.07161, 2024)** investigates group decision-making in multi-agent collaboration. Majority voting causes inefficient collaboration due to strict acceptance criteria. Unanimous voting gives 87% lower initial performance than the best-performing method. Adaptive voting with early stopping outperforms both [RoundTable, 2024].
 - **AGENTAUDITOR (arXiv, 2602.09341, 2026)** moves beyond frequency-based aggregation by organizing agent traces into a Reasoning Tree that explicitly represents agreements and divergences. Structure-Adaptive Auditor performs localized adjudication at Critical Divergence Points (CDPs), converting global trace evaluation into targeted branch-level comparison. Outperforms majority voting and LLM-as-judge under confabulation consensus [AGENTAUDITOR, 2026].
@@ -11,7 +11,7 @@ Crew v2 has an escalation ladder (tester → critic → human) but no systematic
 - **Multi-Agent Debate (MAD) Protocols (2025)** summarize decision mechanisms: majority/supermajority/unanimous voting, weighted/confidence-modulated aggregation (Dawid-Skene, calibrated weighting), sequential/simultaneous/hybrid turns. Consensus-based MAD faces conformity bias, error propagation, and high token cost [EmergentMind, 2025].
 - **Beyond the Strongest LLM (2025)** shows multi-turn multi-agent orchestration matches or exceeds the strongest single model. Revealing authorship increases self-voting and ties; showing ongoing votes amplifies herding (speeds convergence but can yield premature consensus) [Beyond the Strongest LLM, 2025].
 
-## Detailed Analysis
+## Detailed analysis
 
 ### Current Failure Modes
 
@@ -118,7 +118,7 @@ Final: PostgreSQL + REST
 4. **Evidence requirement**: Agents must cite evidence, not just state position.
 5. **Devil's advocate**: Assign one agent to argue against the emerging consensus.
 
-## Practical Recommendations
+## Practical recommendations
 
 | Recommendation | Implementation | Tools | Threshold |
 |----------------|----------------|-------|-----------|

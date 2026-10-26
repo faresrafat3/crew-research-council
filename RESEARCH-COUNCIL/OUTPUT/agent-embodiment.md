@@ -1,9 +1,9 @@
 # Agent Embodiment and Personality Design
 
-## Executive Summary
+## Executive summary
 Crew v2 agents have SOULs with declared biases but in practice produce similar outputs — voice is not systematically tracked or enforced, and agents converge to the same personality. Research (2025-2026) shows that distinct agent personalities improve team performance through cognitive diversity, but require explicit design to prevent convergence. This document specifies a personality framework with voice dimensions, drift detection, and differentiation patterns, adapted from research on multi-agent personality design and CrewAI's cognitive memory patterns.
 
-## Key Findings
+## Key findings
 
 - **CrewAI Cognitive Memory (2025)** demonstrates that agents with distinct memory profiles produce more diverse outputs. Personality is encoded in SOUL.md with specific voice patterns, decision heuristics, and interaction styles [CrewAI, 2025].
 - **DynaDebate (arXiv, 2601.05746, 2026)** identifies model homogeneity as a key failure mode: agents with identical mental sets generate nearly identical responses, causing debate to collapse. Dynamic path generation breaks homogeneity by introducing diverse perspectives [DynaDebate, 2026].
@@ -11,7 +11,7 @@ Crew v2 agents have SOULs with declared biases but in practice produce similar o
 - **Persona Design Research (2025)** establishes that effective agent personas have: (1) clear role identity, (2) distinct voice patterns, (3) specific decision heuristics, (4) interaction style preferences, (5) declared biases and blind spots.
 - **Voice Drift Detection (2025)** uses embedding similarity to track consistency of agent voice across sessions. Drift > 30% triggers recalibration.
 
-## Detailed Analysis
+## Detailed analysis
 
 ### Current Failure Modes
 
@@ -136,7 +136,7 @@ Crew v2 agents have SOULs with declared biases but in practice produce similar o
 - If all agents produce outputs with cosine similarity > 0.8 → convergence detected.
 - Response: inject new perspective (different model, different prompt, or human input).
 
-## Practical Recommendations
+## Practical recommendations
 
 | Recommendation | Implementation | Tools | Threshold |
 |----------------|----------------|-------|-----------|

@@ -3,11 +3,11 @@
 > **Scope:** A survey of existing test-maturity models, a purpose-built 5-level maturity model for an LLM multi-agent crew ("AI-Crew Testing Maturity", ACTM), an evidence-based assessment of where Crew v2 stands today, and a migration path to Level 5 with a runnable assessment rubric.
 > **Research date:** 2026-09-13. All web sources verified on this date. Internal trial evidence (COORD-01, COORD-02, T09–T12, DECISIVE-01, P4) is cited as `[internal: …]` per the council context file and is not web-referenced.
 
-## Executive Summary
+## Executive summary
 
 Existing test-maturity models — TMMi (5 levels, 16 process areas), TPI NEXT (key areas with A–D level scales and checkpoints), CMMI (the structural parent of TMMi), ISTQB's expert-level test-process-improvement track, Google's internal Test Certified program (5 levels, one quarter per step), and the Capgemini/Sogeti World Quality Report — are well documented but none addresses the specific failure modes of an LLM agent crew: non-deterministic outputs, SOUL-file "process definitions", agents with no blocking authority, and behavior that cannot be asserted exactly. This document defines the **AI-Crew Testing Maturity (ACTM) model**: L1 *Ad Hoc* → L2 *Gated* → L3 *Institutionalized* → L4 *Measured & Eval-Driven* → L5 *Self-Verifying*, each level carrying entry criteria, numeric gates, required practices and tooling, exit criteria, failure modes, and a calendar estimate grounded in published transition data. Assessed against ACTM, **Crew v2 sits at Level 1 (0 of 5 L2 gates passing)** — the engineer produced zero test files across COORD-01/COORD-02, no agent can block untested code, the completer does not run tests, and fixed bugs recurred because they were never regression-tested (T09–T12). The migration path is deliberately front-loaded with quick wins (SOUL edits + a GitHub Actions gate reach L2 in 1–2 weeks), followed by structural changes (tester agent with blocking authority, regression corpus, then numeric gates and statistically-reported evals), and the operator can re-assess with the pass/fail rubric in §Detailed Analysis D.5 at any time.
 
-## Key Findings
+## Key findings
 
 ### On the existing landscape (survey)
 
@@ -42,7 +42,7 @@ Existing test-maturity models — TMMi (5 levels, 16 process areas), TPI NEXT (k
 - **Regression-capture rate** (the % of past failure cases with a permanent automated test) is the crew-specific metric that would have directly prevented T09–T12's recurrences; no existing external model defines it, so ACTM defines it and marks its thresholds as proposed defaults.
 - **Automated test generation from failures is proven at industrial scale**: Meta's ACH system generated 571 mutation-guided privacy tests from 9,095 mutants across 10,795 classes, with 73% engineer acceptance — the existence proof for ACTM Level 5 [Harman et al., 2025].
 
-## Detailed Analysis
+## Detailed analysis
 
 ### A. Survey of existing maturity models
 
@@ -403,7 +403,7 @@ Grounded anchors: Google's Test Certified levels were each designed for "within 
 - **The P4 doctrine is the moral foundation of the whole ladder:** compliance beats completion at every level — an ungated "done" is a false claim, and the rubric institutionalizes exactly that.
 - **DECISIVE-01 is respected:** gates tier by task class, and Level 5 tracks testing cost per task so the crew never over-pays for simple work.
 
-## Practical Recommendations
+## Practical recommendations
 
 | Recommendation | Implementation | Tools | Threshold/Target |
 |---|---|---|---|
@@ -423,7 +423,7 @@ Grounded anchors: Google's Test Certified levels were each designed for "within 
 | Auto test-generation on failure (L5) | On HOLD/escape, tester drafts the regression test without operator; tester reviews before it joins the gate; track acceptance rate | crew + mutmut loop | 100% failures → test within 1 cycle; acceptance tracked (Meta's 73% is the realistic reference [Harman et al., 2025]) |
 | Adversarial drills (L5) | Quarterly: inject known failure classes (incl. operator-curated private set); measure detection | drill harness | ≥ 1 drill/quarter; ≥ 90% detection |
 
-## Metrics and Targets
+## Metrics and targets
 
 | Metric | Definition | Measurement | L2 target | L3 target | L4 target | L5 target | Warning threshold |
 |---|---|---|---|---|---|---|---|

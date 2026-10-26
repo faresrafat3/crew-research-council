@@ -1,9 +1,9 @@
 # Production Deployment and Monitoring
 
-## Executive Summary
+## Executive summary
 Crew v2 runs on a single machine with no high availability, monitoring, or cost tracking — a single point of failure with no observability into agent behavior or system health. Production multi-agent systems require health checks, circuit breakers, rate limiting, cost monitoring, and agent drift detection. This document specifies a deployment architecture with MLflow-based observability, Datadog-style AI gateway controls, and the Agent Stability Index (ASI) for drift monitoring, adapted from production patterns at Google, Microsoft, and Datadog (2025-2026).
 
-## Key Findings
+## Key findings
 
 - **Agent Drift** [arXiv, 2601.04170, 2026] is quantified via the Agent Stability Index (ASI) across 12 dimensions. Financial analysis shows 53.2% drift by 500 interactions; compliance 39.7%; enterprise automation 31.8%. Combined monitoring increases overhead 23% but extends completion time only 9%.
 - **MLflow** [2026] provides out-of-the-box multi-agent tracing: `mlflow.<framework>.autolog()` instruments every agent step, tool call, and delegation decision. Full trace gives the "story" that individual input/output monitoring misses.
@@ -13,7 +13,7 @@ Crew v2 runs on a single machine with no high availability, monitoring, or cost 
 - **Context overflow** [Factory AI, 2026] is gradual: tool outputs accumulate across dozens of steps until a single large response tips the model. Agents lose coherent access to original objectives by ~60% context mark without active compaction.
 - **Six agent failure categories** [Microsoft, 2025]: tool misuse, context loss, goal drift, retry loops, cascading errors, silent quality degradation.
 
-## Detailed Analysis
+## Detailed analysis
 
 ### Current Failure Modes
 
@@ -200,7 +200,7 @@ mlflow.crewai.autolog()  # or mlflow.langchain.autolog()
 - Load balancer: round-robin with health checks.
 - Failover: if machine A fails, machine B takes over tasks.
 
-## Practical Recommendations
+## Practical recommendations
 
 | Recommendation | Implementation | Tools | Threshold |
 |----------------|----------------|-------|-----------|

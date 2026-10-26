@@ -1,9 +1,9 @@
 # Tool Integration and Differentiation Strategy
 
-## Executive Summary
+## Executive summary
 Crew v2 agents share most tools — researcher has web_search, engineer has terminal, but differentiation is not systematic. Some tasks benefit from more specialized toolsets, and uncontrolled tool access creates security risks. Research (2025-2026) shows that tool differentiation improves outcomes when aligned with agent roles, but requires careful access control to prevent privilege escalation. This document specifies a capability-based tool assignment framework with tool result sharing patterns and differentiation measurement.
 
-## Key Findings
+## Key findings
 
 - **OWASP AI Agent Security (2026)** identifies tool abuse & privilege escalation as a key risk: agents exploiting overly permissive tools to perform unintended actions. Least-privilege principle must apply to agent tools [OWASP, 2026].
 - **Microsoft Agent Governance Toolkit (2025)** implements capability-based tool access: agents request capabilities at runtime, granted based on ring level and task context. Capabilities are scoped, time-limited, and auditable [Microsoft, 2025].
@@ -11,7 +11,7 @@ Crew v2 agents share most tools — researcher has web_search, engineer has term
 - **Tool-Coordination Trade-off (arXiv, 2512.08296, 2025)** shows tool-heavy tasks suffer disproportionately from multi-agent coordination overhead. 16-tool software engineering tasks see efficiency penalties compounding as environmental complexity increases [arXiv, 2512.08296].
 - **Stellar Cyber (2026)** reports tool misuse and privilege escalation as the most common agentic threat (520 incidents). The "confused deputy" problem: agents tricked into using tools in unauthorized ways [Stellar Cyber, 2026].
 
-## Detailed Analysis
+## Detailed analysis
 
 ### Current Failure Modes
 
@@ -163,7 +163,7 @@ class ToolSandbox:
 - Outputs exceeding size limits are truncated.
 - External URLs in outputs are checked against allowlist.
 
-## Practical Recommendations
+## Practical recommendations
 
 | Recommendation | Implementation | Tools | Threshold |
 |----------------|----------------|-------|-----------|

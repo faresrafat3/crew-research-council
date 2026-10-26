@@ -1,9 +1,9 @@
 # Self-Healing and Self-Improvement Mechanisms
 
-## Executive Summary
+## Executive summary
 Crew v2 has coach and historian agents but no systematic self-improvement loop — escapes are tracked but not automatically converted to patches, and failures repeat across tasks. State-of-the-art self-healing systems (VIGIL 2025, ROAD 2025, Goal-Oriented Reliability 2025) use reflective runtimes that ingest behavioral logs, diagnose failures via structured protocols (Roses/Buds/Thorns), and propose prompt/code adaptations under guardrails. This document specifies a self-healing loop for Crew v2 with automated root cause analysis, self-patching with human approval, and graceful degradation patterns.
 
-## Key Findings
+## Key findings
 
 - **VIGIL (2025)** is a reflective runtime that supervises a sibling agent: ingests behavioral logs, converts events into structured emotions (EmoBank with decay), derives Roses/Buds/Thorns (RBT) diagnosis, and generates prompt/code adaptations under guardrails. Achieves meta-procedural self-repair without source code inspection [VIGIL, 2025].
 - **ROAD (2025)** treats optimization as dynamic debugging: an Analyzer performs root-cause analysis, an Optimizer aggregates patterns, and a Coach integrates strategies into Decision Tree Protocols. Achieves 5.6% success rate increase and 3.8% accuracy boost in 3 automated iterations [ROAD, 2025].
@@ -13,7 +13,7 @@ Crew v2 has coach and historian agents but no systematic self-improvement loop �
 - **Agent drift** [arXiv, 2601.04170, 2026]: quantified via Agent Stability Index (ASI) across 12 dimensions. Financial analysis shows 53.2% drift by 500 interactions. Combined monitoring increases overhead 23% but extends completion time only 9%.
 - **Graceful degradation** [Zylos Research, 2026]: 5-level degradation model: FULL → SIMPLIFIED → CACHED → MINIMAL → REJECT. Pre-flight token estimation prevents context overflow.
 
-## Detailed Analysis
+## Detailed analysis
 
 ### Current Failure Mode
 
@@ -197,7 +197,7 @@ class RegressionTest:
 | Regression testing | pytest-style test runner | Automated, repeatable |
 | Drift detection | ASI computation | Quantified, trend-based |
 
-## Practical Recommendations
+## Practical recommendations
 
 | Recommendation | Implementation | Tools | Threshold |
 |----------------|----------------|-------|-----------|

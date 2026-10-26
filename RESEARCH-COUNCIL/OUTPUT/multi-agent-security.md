@@ -1,9 +1,9 @@
 # Security and Safety in Multi-Agent Systems
 
-## Executive Summary
+## Executive summary
 Crew v2 agents share a filesystem, can execute arbitrary code, and trust each other's outputs with no inter-agent security boundary — a single compromised agent can exfiltrate data, escalate privileges, or corrupt the entire crew. Multi-agent systems face unique risks: prompt injection between agents, tool misuse, data exfiltration via outputs, and supply chain attacks. This document specifies a defense-in-depth security architecture with ring-based access control, sandboxing, behavioral monitoring, and audit logging, adapted from OWASP AI Agent Security, Microsoft Agent Governance Toolkit, and production patterns (2025-2026).
 
-## Key Findings
+## Key findings
 
 - **OWASP AI Agent Security Cheat Sheet (2026)** identifies key risks: prompt injection (direct & indirect), tool abuse & privilege escalation, data exfiltration, sensitive data exposure. Multi-agent systems are explicitly called out for preventing privilege escalation through agent chains [OWASP, 2026].
 - **Parallax (arXiv, 2604.12986, 2026)** demonstrates that 40% of AI agent frameworks contain exploitable prompt injection flaws. The reference implementation (OpenParallax) uses process-level separation, canary verification at startup, security tokens for agent-engine authentication, and append-only audit logs with SHA-256 hash chains [Parallax, 2026].
@@ -12,7 +12,7 @@ Crew v2 agents share a filesystem, can execute arbitrary code, and trust each ot
 - **Microsoft Agent Governance Toolkit (2025)** implements ring-based security with breach detection, circuit breakers, and kill switches. Agents start in sandbox (Ring 3) and require consensus to elevate [Microsoft, 2025].
 - **Tao An (2025)** describes the "lethal trifecta" for agent vulnerabilities: access to private data + exposure to untrusted content + ability to communicate externally. Defense requires layered implementation: input validation, permission controls, behavioral monitoring, comprehensive audit logging [Tao An, 2025].
 
-## Detailed Analysis
+## Detailed analysis
 
 ### Current Failure Modes in Crew v2
 
@@ -147,7 +147,7 @@ class AuditEvent:
 - Archive: indefinite in append-only file with hash chain.
 - EU AI Act compliance: high-risk systems must retain logs for regulatory review.
 
-## Practical Recommendations
+## Practical recommendations
 
 | Recommendation | Implementation | Tools | Threshold |
 |----------------|----------------|-------|-----------|

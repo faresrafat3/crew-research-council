@@ -1,9 +1,9 @@
 # Evaluation and Benchmarking Frameworks
 
-## Executive Summary
+## Executive summary
 COORD-01 and COORD-02 were ad-hoc benchmarks. Crew v2 needs a systematic evaluation framework that measures coordination quality, not just task completion. Research (2025-2026) shows multi-agent evaluation requires measuring collective intelligence, coordination overhead, and regression detection across diverse task types. This document specifies a benchmarking framework with task archetype coverage, coordination quality metrics, and CI-integrated regression gates.
 
-## Key Findings
+## Key findings
 
 - **MemoryAgentBench (2025)** identifies four memory competencies: Accurate Retrieval, Test-Time Learning, Long-Range Understanding, Selective Forgetting. Benchmarks must stress specific behaviors, not just overall accuracy [MemoryAgentBench, 2025].
 - **Towards a Science of Scaling Agent Systems (arXiv, 2512.08296, 2025)** evaluates five architectures across four benchmarks (BrowseComp-Plus, Finance-Agent, PlanCraft, Workbench) with 180 controlled configurations. Key insight: architecture-task alignment determines success, not number of agents [arXiv, 2512.08296].
@@ -11,7 +11,7 @@ COORD-01 and COORD-02 were ad-hoc benchmarks. Crew v2 needs a systematic evaluat
 - **Braintrust (2026)** converts production traces into evaluation cases, then enforces them in CI/CD. Trace-to-eval workflow: capture failure → create eval case → block merge on regression [Braintrust, 2026].
 - **Galileo (2026)** identifies six failure categories unique to agents: tool misuse, context loss, goal drift, retry loops, cascading errors, silent quality degradation. Benchmarks must cover all six [Galileo, 2026].
 
-## Detailed Analysis
+## Detailed analysis
 
 ### Current Failure Modes
 
@@ -126,7 +126,7 @@ class BenchmarkRunner:
 - Per-Patch: targeted regression suite (affected agents).
 - Weekly: longitudinal trend report.
 
-## Practical Recommendations
+## Practical recommendations
 
 | Recommendation | Implementation | Tools | Threshold |
 |----------------|----------------|-------|-----------|
