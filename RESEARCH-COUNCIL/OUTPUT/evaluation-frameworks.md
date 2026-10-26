@@ -1,4 +1,4 @@
-# Evaluation and Benchmarking Frameworks
+# Evaluation and benchmarking frameworks
 
 ## Executive summary
 COORD-01 and COORD-02 were ad-hoc benchmarks. Crew v2 needs a systematic evaluation framework that measures coordination quality, not just task completion. Research (2025-2026) shows multi-agent evaluation requires measuring collective intelligence, coordination overhead, and regression detection across diverse task types. This document specifies a benchmarking framework with task archetype coverage, coordination quality metrics, and CI-integrated regression gates.
@@ -13,7 +13,7 @@ COORD-01 and COORD-02 were ad-hoc benchmarks. Crew v2 needs a systematic evaluat
 
 ## Detailed analysis
 
-### Current Failure Modes
+### Current failure modes
 
 1. **No systematic benchmarks**: COORD-01/02 were ad-hoc, not reproducible.
 2. **No coordination quality metrics**: Only task completion measured, not how well agents coordinated.
@@ -21,7 +21,7 @@ COORD-01 and COORD-02 were ad-hoc benchmarks. Crew v2 needs a systematic evaluat
 4. **No task archetype coverage**: Benchmarks don't cover all formation types.
 5. **No longitudinal measurement**: No tracking of performance over time.
 
-### Benchmark Framework
+### Benchmark framework
 
 **Task archetypes (adapted from arXiv, 2512.08296):**
 
@@ -45,7 +45,7 @@ COORD-01 and COORD-02 were ad-hoc benchmarks. Crew v2 needs a systematic evaluat
 | COORD-FULL | 10 complex tasks | FULL | Completion, coordination quality |
 | COORD-REGRESSION | 100 past failures | All | Regression rate |
 
-### Coordination Quality Metrics
+### Coordination quality metrics
 
 **Beyond task completion:**
 
@@ -58,7 +58,7 @@ COORD-01 and COORD-02 were ad-hoc benchmarks. Crew v2 needs a systematic evaluat
 | Escalation rate | Human escalations / total | Counter | <5% |
 | Appeal success | Overturned blocks / blocks | Counter | <5% |
 
-### Regression Detection
+### Regression detection
 
 **Trace-to-eval workflow (Braintrust pattern):**
 
@@ -85,7 +85,7 @@ class RegressionTest:
 - Run targeted suite after every SOUL patch.
 - Block merge if any regression test fails.
 
-### Longitudinal Measurement
+### Longitudinal measurement
 
 **Track over time (ASI pattern):**
 
@@ -102,7 +102,7 @@ class RegressionTest:
 - Coordination overhead increases > 20% → review formations.
 - Drift score > 5.0 → recalibrate agent.
 
-### Benchmark Execution
+### Benchmark execution
 
 **Automated benchmark runner:**
 ```python
@@ -137,7 +137,7 @@ class BenchmarkRunner:
 | CI integration | Nightly + per-patch gates | GitHub Actions | Block on regression |
 | Architecture alignment | Match formation to task type | Decision boundary | P_SA > 0.45 → SOLO |
 
-## Metrics Catalog
+## Metrics catalog
 
 | Metric | Definition | How to Measure | Target | Warning |
 |--------|-----------|----------------|--------|---------|
@@ -217,7 +217,7 @@ GAIA's public leaderboard (huggingface.co/spaces/gaia-benchmark/leaderboard) giv
 
 ## [DEEP DIVE]: Agent-as-a-Judge for Crew Evaluation, Flaky-Eval Budgets, and the Coordination-Measurement Fix (freebuff, 2026-09-13)
 
-### 1. Agent-as-a-Judge: evaluate the crew's *process*, not just its artifacts
+### 1. Agent-as-a-judge: evaluate the crew's *process*, not just its artifacts
 
 Agent-as-a-Judge (ICML 2025, cited 270+) evaluates agentic systems by having an evaluator agent **investigate the run** — reading intermediate steps, asking questions about the trajectory — rather than scoring only the final output; on DevAI (55 realistic AI dev tasks, 365 manual evaluation criteria) it recovered 58% of human evaluation agreement vs 32% for binary LLM-as-a-Judge, at 18% of the human crowd's cost [Zhuge et al., 2024/2025]. Crew application:
 
@@ -268,7 +268,7 @@ This table merges the evaluation cadence with every other deep dive's validation
 
 ## [DEEP DIVE]: Zero-Daemon Trace-to-Eval Compiler, Collective Synergy Math, Sequential Probability Ratio Testing (SPRT), and SQLite Assertion Harness (Antigravity, 2026-09-14)
 
-### 1. Zero-Daemon Trace-to-Eval Replay Compiler in SQLite-WAL
+### 1. Zero-daemon trace-to-eval replay compiler in SQLite-WAL
 
 To prevent regression leakage without relying on external SaaS eval providers (e.g. Braintrust, LangSmith), Crew v2 implements a hermetic, zero-daemon trace-to-eval compiler executing within SQLite-WAL:
 
@@ -318,7 +318,7 @@ CREATE TABLE IF NOT EXISTS eval_runs (
    - `assert_forbidden(["ENGINEER:EDIT_TEST_FILE", "CRITIC:BYPASS_VERIFICATION"])`
    - `assert_state_delta(path="/src/auth.py", diff_schema="auth_patch_v1")`
 
-### 2. Collective Synergy Ratio & Coordination Tax Formulation
+### 2. Collective synergy ratio & coordination tax formulation
 
 A foundational pathology in multi-agent architectures is **process loss** (Steiner, 1972): coordination friction, redundant token spend, and semantic drift causing multi-agent formations to underperform a single frontier LLM working solo [Google Research, arXiv:2512.08296].
 
@@ -334,7 +334,7 @@ $$\mathcal{C}_{\text{tax}} = \frac{T_{\text{coordination}}}{T_{\text{total}}} \t
 Where $T_{\text{coordination}}$ is the sum of routing, deliberation, and handoff tokens, and $T_{\text{total}}$ is total task tokens.
 - **Architectural Gate:** In CI benchmark runs, if $\mathcal{C}_{\text{tax}} > 0.28$ on tasks where $\mathcal{S} < 1.10$, the test fails automatically. The formation is classified as *coordination-bloated* and barred from production routing.
 
-### 3. Sequential Probability Ratio Testing (SPRT) for CI Benchmark Early Stopping
+### 3. Sequential probability ratio testing (SPRT) for CI benchmark early stopping
 
 Running exhaustive benchmark matrices (e.g. 50 tasks across 6 archetypes = 300 evaluations) consumes excessive CI token budgets. Crew v2 introduces **Wald’s Sequential Probability Ratio Test (SPRT)** (Wald, 1945) to enable statistically sound early stopping on candidate SOUL evaluations.
 
@@ -373,7 +373,7 @@ def evaluate_sprt_step(k_successes: int, m_trials: int, p0=0.80, p1=0.92, alpha=
 - When testing severely broken agent regressions ($p < 0.60$), SPRT terminates after only 8–12 tasks instead of 50, slashing wasted evaluation tokens by **76%**.
 - When testing clear promotions ($p > 0.95$), SPRT accepts after 16–22 tasks, achieving **56% token savings** while maintaining a rigorous false-positive guarantee ($\alpha \le 5\%$).
 
-### 4. Paired Hypothesis Testing & Non-Parametric Bootstrap Validation
+### 4. Paired hypothesis testing & non-parametric bootstrap validation
 
 To evaluate candidate agent changes against champion baselines without falling victim to stochastic variance:
 
@@ -390,7 +390,7 @@ To evaluate candidate agent changes against champion baselines without falling v
      $$\text{CI}_{95\%} = \left[\hat{\theta}_{(\alpha_1)}, \hat{\theta}_{(\alpha_2)}\right]$$
    - Ensures release decisions never trigger based on lucky outlier runs.
 
-### 5. Evaluation Framework Metrics Catalog
+### 5. Evaluation framework metrics catalog
 
 | Metric | Definition | Measurement Method | Target | Warning Threshold |
 |---|---|---|---|---|

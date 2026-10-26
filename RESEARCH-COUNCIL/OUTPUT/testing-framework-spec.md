@@ -1,6 +1,6 @@
 ## [DEEP DIVE]: Exact pytest Configuration, conftest.py Structure, Hypothesis Strategies, and Mutation Operators
 
-### 1. Exact pytest Configuration for AI Agent Testing
+### 1. Exact pytest configuration for AI agent testing
 
 **Recommended: `pyproject.toml` (pytest 9.0+ native TOML)** [pytest Docs, 2026]:
 
@@ -55,7 +55,7 @@ testpaths = tests/unit tests/integration tests/properties
 - `--dist=loadscope` keeps tests grouped by module/class so module-scoped fixtures aren't torn down/rebuilt per test [Warpbuild, 2026].
 - `--hypothesis-seed=0` makes PBT deterministic in CI; use `--hypothesis-profile=nightly` for nightly runs with `max_examples=1000`.
 
-### 2. conftest.py Structure for AI Agent Outputs
+### 2. conftest.py structure for AI agent outputs
 
 **Recommended layout:**
 ```
@@ -167,7 +167,7 @@ settings.register_profile(
 )
 ```
 
-### 3. Hypothesis Strategies for AI Agent Outputs
+### 3. Hypothesis strategies for AI agent outputs
 
 **Strategy taxonomy for agent output validation** [Vikram et al., 2023; Anthropic, 2025; PBT-Bench, 2025]:
 
@@ -222,7 +222,7 @@ def json_response(draw):
 4. Use `max_examples=20-50` in CI, `1000+` in nightly.
 5. Cache the `.hypothesis` database to replay failures across CI runs.
 
-### 4. Mutation Operators That Catch AI-Specific Bugs
+### 4. Mutation operators that catch AI-specific bugs
 
 **mutmut configuration** [MutMut Docs, 2026]:
 
@@ -338,7 +338,7 @@ Pass 1 established that a suite can hit 90% coverage with a 4% mutation score [A
 
 ## [DEEP DIVE]: Zero-Daemon Hermetic Test Isolation, Adversarial Schema Hypothesis Strategies, and AST-Sliced Mutation Testing (Antigravity, 2026-09-14)
 
-### 1. Zero-Daemon Hermetic Sandbox Harness via Rootless Bubblewrap (`bwrap`)
+### 1. Zero-daemon hermetic sandbox harness via rootless Bubblewrap (`bwrap`)
 
 In accordance with the zero-daemon invariant (`MAP.md`), running unit and property tests cannot rely on persistent Docker daemons, background test runners, or unrestricted local process execution. All pytest runs execute within an ephemeral, rootless `bwrap` container:
 
@@ -370,7 +370,7 @@ bwrap \
    - Execution time: Hard ceiling of 45s per test module (`RLIMIT_CPU = 45`).
    - Memory footprint: Max 1.5GB virtual address space (`RLIMIT_AS = 1536MB`), preempting runaway regex backtracking or memory leaks.
 
-### 2. Hypothesis Property-Based Testing for Multi-Agent Artifacts
+### 2. Hypothesis property-based testing for multi-agent artifacts
 
 Traditional property-based testing fails on agentic workflows because standard primitives (integers, generic text) miss the structural failure modes of LLM outputs (malformed JSON patches, hallucinated fields, broken markdown fences, and unicode homoglyphs).
 
@@ -424,7 +424,7 @@ CREATE TABLE IF NOT EXISTS hypothesis_corpus (
 ```
 Enables immediate deterministic reproduction of adversarial test fixtures across all local test passes.
 
-### 3. Dynamic AST-Sliced Mutation Testing: 8x Speedup
+### 3. Dynamic AST-sliced mutation testing: 8x speedup
 
 Standard mutation testing tools (e.g. naive `mutmut`) evaluate all mutants against the entire test suite, resulting in unacceptable execution times (>30 minutes). Crew v2 implements **Dynamic AST-Sliced Mutation**:
 
@@ -438,7 +438,7 @@ Standard mutation testing tools (e.g. naive `mutmut`) evaluate all mutants again
 3. **Coverage-Guided Test Slicing:** Read `.coverage` database to identify only tests $T_{\text{relevant}}$ executing the mutated line. Run *only* $T_{\text{relevant}}$, terminating upon the first mutant kill (fail-fast).
 - **Measured Result:** Reduces mutant evaluation time from 24 minutes to **under 2.8 minutes** (8.5x speedup), making mutation gates practical for every pull request.
 
-### 4. Hermetic `conftest.py` Architecture
+### 4. Hermetic `conftest.py` architecture
 
 ```python
 # conftest.py - Production Zero-Daemon Invariant Fixtures
@@ -462,7 +462,7 @@ def hermetic_environment(monkeypatch):
     monkeypatch.setenv("CREW_STATE_DB", ":memory:")
 ```
 
-### 5. Testing Framework Specification Metrics Catalog
+### 5. Testing framework specification metrics catalog
 
 | Metric | Definition | Measurement Method | Target | Warning Threshold |
 |---|---|---|---|---|

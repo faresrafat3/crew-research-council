@@ -1,4 +1,4 @@
-# Routing and Formation Integration
+# Routing and formation integration
 
 ## Executive summary
 Tester joins DUO as verifier, PIPELINE as pre-engineering RED author plus final gate, and FULL as mandatory gate with critic review; SOLO stays lightweight. Activation triggers on testability, acceptance criteria, DONE claims, source touches, or complex formations. Message flows carry SPEC, RED, GREEN, suite evidence, critic review, and verdict artifacts in order, with large tests scheduled async so gates stay under 10 minutes [SQRBOK, 2025].
@@ -149,7 +149,7 @@ Pass 2 gave the router asymmetric error economics (missed-block ≫ false-block)
 
 ## [DEEP DIVE]: Antigravity — Zero-Daemon Formation Dispatcher, Cost-Sensitive Multi-Attribute Utility & Dynamic Escalation DAG
 
-### 1. The Autonomous Formation Dispatch Problem
+### 1. The autonomous formation dispatch problem
 
 In multi-agent architectures, static task allocation fails in two directions:
 1. **Under-Routing (Catastrophic False Negatives)**: Routing a high-risk, security-sensitive or core architectural change to `SOLO` (Engineer only), skipping the Tester and Critic. As demonstrated in COORD-01/02 failure traces, unverified code ships with zero tests, causing costly production escapes ($C_{\text{FN}} \gg 0$).
@@ -198,7 +198,7 @@ Under the zero-daemon invariant (`MAP.md`), routing must operate without long-ru
 
 ---
 
-### 2. SQLite-WAL Formation Dispatcher Schema
+### 2. SQLite-WAL formation dispatcher schema
 
 ```sql
 -- Schema: Formation Dispatcher & Escalation Ledger (formation_dispatch.sql)
@@ -241,7 +241,7 @@ CREATE INDEX IF NOT EXISTS idx_telemetry_formation ON formation_execution_teleme
 
 ---
 
-### 3. Cost-Sensitive Multi-Attribute Utility Optimization (CS-MAUO)
+### 3. Cost-sensitive multi-attribute utility optimization (CS-MAUO)
 
 Following Bayesian decision theory and cost-sensitive classification (Elkan, IJCAI 2001; Keeney & Raiffa 1993), the router selects the optimal formation $F^* \in \{\text{SOLO}, \text{DUO}, \text{PIPELINE}, \text{FULL}\}$ by maximizing expected utility:
 
@@ -251,7 +251,7 @@ Where $\mathbf{x} = [r_{\text{blast}}, c_{\text{cyclomatic}}, s_{\text{security}
 
 $$U(F, \mathbf{x}) = - \Big[ C_{\text{FN}} \cdot \mathbb{P}(\text{Defect} \mid F, \mathbf{x}) + C_{\text{FP}} \cdot \mathbb{P}(\text{Overkill} \mid F, \mathbf{x}) + \lambda \cdot \widetilde{\text{Cost}}_{\text{tokens}}(F) \Big]$$
 
-#### 3.1 Asymmetric Cost Parameters
+#### 3.1 Asymmetric cost parameters
 - **Defect Escape Penalty ($C_{\text{FN}} = 50.0$)**: An escaped bug shipped to production requires emergency rollback, incident response, and SOUL repair.
 - **Overkill Friction Penalty ($C_{\text{FP}} = 1.0$)**: Extra agent deliberation adds latency and compute, but preserves system invariants.
 - **Normalized Token Cost ($\lambda = 0.50$)**:
@@ -268,7 +268,7 @@ Any task with greater than a **1.96% probability of defect** MUST NOT be dispatc
 
 ---
 
-### 4. Zero-Daemon Dispatcher & Dynamic Escalation Implementation
+### 4. Zero-daemon dispatcher & dynamic escalation implementation
 
 ```python
 """Zero-daemon formation dispatcher and dynamic escalation engine."""
@@ -408,7 +408,7 @@ class FormationDispatcher:
 
 ---
 
-### 5. Quantitative Invariants & Calibration Targets
+### 5. Quantitative invariants & calibration targets
 
 | Dimension | Target Metric | Bound / Threshold | Hard Invariant |
 |---|---|---|---|

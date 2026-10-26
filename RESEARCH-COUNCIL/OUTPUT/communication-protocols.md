@@ -1,4 +1,4 @@
-# Agent Communication Protocol Optimization
+# Agent communication protocol optimization
 
 ## Executive summary
 Crew v2 uses fire-and-forget `message_agent()` with no ordering guarantees, duplicate detection, priority queuing, or backpressure — causing race conditions, lost messages, and unbounded token costs. Industry best practices (2025-2026) converge on event-driven architecture (EDA) with hybrid sync/async patterns: synchronous request-response for tool calls within an agent, EDA for inter-agent communication. This document specifies a protocol with exactly-once semantics, priority lanes, circuit breakers, and dead letter queues, adapted from SW4RM, A2A, and production multi-agent systems.
@@ -15,7 +15,7 @@ Crew v2 uses fire-and-forget `message_agent()` with no ordering guarantees, dupl
 
 ## Detailed analysis
 
-### Current Failure Modes in Crew v2
+### Current failure modes in Crew v2
 
 1. **No ordering guarantee**: Messages arrive out of order. Engineer receives tester verdict before RED log.
 2. **No duplicate detection**: Same task dispatched twice → duplicate work.
@@ -24,7 +24,7 @@ Crew v2 uses fire-and-forget `message_agent()` with no ordering guarantees, dupl
 5. **No dead letter queue**: Failed messages are lost, not quarantined.
 6. **No retry with backoff**: Transient failures cause permanent message loss.
 
-### Protocol Specification
+### Protocol specification
 
 **Message Schema (adapted from SW4RM + Agentplace):**
 
@@ -73,7 +73,7 @@ class AgentMessage:
 | STANDARD | 50 req/s | 100 | Default agent-to-agent |
 | BULK | 20 req/s | 40 | Background, logging, non-urgent |
 
-### Delivery Patterns
+### Delivery patterns
 
 **Pattern 1: Request-Response (synchronous, for tool calls):**
 ```
@@ -103,7 +103,7 @@ All agents subscribed to topic receive message.
 Topics: tester.verdict, critic.review, engineer.done, etc.
 ```
 
-### Duplicate Detection and Idempotency
+### Duplicate detection and idempotency
 
 **Idempotency token format:** `{producer_id}:{operation_type}:{deterministic_hash}`
 
@@ -126,7 +126,7 @@ class IdempotentHandler:
         self.processed[token] = time.now() + self.dedup_window
 ```
 
-### Backpressure and Rate Limiting
+### Backpressure and rate limiting
 
 **Token bucket rate limiter per agent:**
 ```python
@@ -156,7 +156,7 @@ class TokenBucket:
 2. When queue depth = 100%: reject with `buffer_full` error.
 3. When process time > 2x average: trigger circuit breaker (HALF_OPEN).
 
-### Dead Letter Queue
+### Dead letter queue
 
 **DLQ triggers:**
 - Max retries exceeded (default 5)
@@ -183,7 +183,7 @@ class DeadLetterMessage:
     last_failure: datetime
 ```
 
-### Circuit Breaker
+### Circuit breaker
 
 **States:**
 - CLOSED: Normal operation. Requests pass through.
@@ -201,7 +201,7 @@ class DeadLetterMessage:
 
 **Recovery:** After `recovery_timeout` (default 30s), circuit enters HALF_OPEN. If next request succeeds, close. If fails, reopen.
 
-### Implementation Stack
+### Implementation stack
 
 | Component | Tool | Justification |
 |-----------|------|---------------|
@@ -226,7 +226,7 @@ class DeadLetterMessage:
 | Circuit breaker | Per-agent state machine | Custom | Trip on 3 consecutive failures |
 | Exactly-once | Idempotent handler + dedup | Redis | 3600s window |
 
-## Metrics Catalog
+## Metrics catalog
 
 | Metric | Definition | How to Measure | Target | Warning |
 |--------|-----------|----------------|--------|---------|
@@ -373,7 +373,7 @@ RETURNING *;
 ```
 Throughput benchmark on local NVMe in WAL mode: **>14,200 dequeues/sec** at p95 latency < 1.4ms with zero external background processes, fully satisfying both the high-throughput and zero-cruft architectural directives.
 
-### 2. Wait-For Graph (WFG) deadlock detection and cycle preemption
+### 2. Wait-for graph (WFG) deadlock detection and cycle preemption
 
 In complex multi-agent formations (e.g., DUO, PIPELINE, and FULL), circular wait dependencies cause agentic deadlocks at rates between 25% and 95% when agents synchronously await each other's outputs or confirmations [Tian Pan, 2026; arXiv:2503.00717, 2025].
 
@@ -414,7 +414,7 @@ class InterruptibleAgentRunner:
 ```
 **Outcome:** Cuts wasted tokens on invalidated runs by **73%** and prevents the engineer agent from committing code after a test oracle failure has already been signaled.
 
-### 4. Context compression via RFC 6902 JSON Patch state propagation
+### 4. Context compression via RFC 6902 JSON patch state propagation
 
 Multi-agent coordination increases token burn by up to ~15x compared to single-agent workflows [Anthropic, 2025]. The dominant driver is redundant context echo: sending full file contents, complete conversation transcripts, or comprehensive system states on every inter-agent handoff [Wang et al., 2026].
 
@@ -550,7 +550,7 @@ Pass-1 fixed delivery semantics, ordering keys, and jitter; pass-3 covers the tw
 - Crew mapping — the formation pipelines (researcher→architect→engineer→tester→critic) write to real surfaces (files, ledger rows, messages, memory). Today a mid-pipeline failure leaves partial artifacts with no undo contract. The rule to adopt: **every forward action in a PIPELINE/FULL task must register its compensation at dispatch time** — file edits carry the pre-image (diff-revert), ledger rows are append-only with a voiding entry, sent messages carry a retraction event, memory writes follow the MV-Register revision rule (memory pass 3). Two orchestration styles are supported by the pattern: choreography (event-driven, each agent triggers the next) or orchestration (a central coordinator drives steps) — the crew's dispatcher is already the orchestrator; the ledger is already the saga log.
 - The TDD-protocol state machine (pass 1) is effectively a saga state machine for the code path; this extends it to every other artifact surface with the same discipline: no step without a registered undo, and ROLLBACK = run compensations in reverse order.
 
-### 2. Hybrid Logical Clocks: make the ordering keys causal
+### 2. Hybrid logical clocks: make the ordering keys causal
 - Pass-1's per-task ordering keys sequence messages within a task, but wall-clock timestamps across agents are subject to skew and are **not causally ordered** — a message can carry a timestamp earlier than a message it causally depends on. Lamport clocks give causality but lose physical-time meaning (bad for logs, timeouts, and humans reading the ledger); HLC combines both: a timestamp is (physical, logical, node-id), preserves causality like a logical clock, stays close to physical time (bounded by network NTP drift), and enables consistent snapshots [Kulkarni et al., 2014; Buffalo TR 2014-04].
 - HLC is production-proven in exactly the role the crew needs: MongoDB's hybrid timestamps for causally-ordered operations across nodes [sookocheff, 2022], CockroachDB's hybrid clock for transaction ordering.
 - Crew mapping: replace wall-clock-only timestamps in message envelopes and ledger rows with HLC tuples (the ledger already stores actor+timestamp; the logical counter is a one-column addition). Effects: (a) causal ordering is verifiable — "did the tester see the engineer's GREEN before issuing the verdict?" becomes a checkable fact, which strengthens the verdict-gate audit trail (blocking-authority evidence links); (b) concurrent (incomparable) writes to memory are *detected* rather than hidden — feeding the MV-Register rule in memory pass 3; (c) the LWW tie-breaker of last resort becomes causally sound.

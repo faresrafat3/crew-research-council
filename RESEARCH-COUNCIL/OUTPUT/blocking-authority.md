@@ -1,4 +1,4 @@
-# Blocking Authority and Governance: When the Crew v2 Tester May Block a Release
+# Blocking authority and governance: when the Crew v2 tester may block a release
 
 ## Executive summary
 
@@ -268,7 +268,7 @@ Situation → verdict → next actor → message to send. (All messages via `mes
 
 > **[Merge note — dsh, 2026-09-15]** The base document below (BLOCK/ADVISE charter: B1–B7 + P4 HOLD, RC-1/2/3 risk classes, 5-rung escalation ladder, calibration rules, 20-situation decision table, 35 URL-verified references) was restored after a local-state sync left this file appendix-only; all deep-dive appendices are preserved verbatim beneath it. Vocabulary mapping from the v1 base used by the appendices: PROMOTE≈PASS, HOLD/ROLLBACK≈BLOCK; escalation ladder = §7.4; calibration = §7.7; collusion/independence = §7.6 (C1–C6). Appendix citations are author-year style from their original authors and were not re-verified against URLs during this merge; the base's References section is URL-verified [verified 2026-09-13]. The Antigravity appendix references `MAP.md` (crew-level repo file, outside this council) — treated as the crew's own architectural constraint.
 
-### 1. Real-World Examples of Tester Blocking Abuse
+### 1. Real-world examples of tester blocking abuse
 
 **Pattern 1: The Overly Strict Gatekeeper** [Medium, 2025]
 - Symptom: Tester blocks 50%+ of tasks on style preferences, out-of-scope performance, or ambiguous requirements.
@@ -300,7 +300,7 @@ Situation → verdict → next actor → message to send. (All messages via `mes
 - Root cause: Tester escalates too frequently (low threshold).
 - Fix: Calibrate escalation rate. Safety-optimal escalation is below full escalation. Monitor reviewer workload.
 
-### 2. Calibrating Tester Strictness Automatically
+### 2. Calibrating tester strictness automatically
 
 **Calibration signals** [IJECS, 2026; KnowMBA, 2025]:
 
@@ -343,7 +343,7 @@ quarterly_calibration():
 - Human approves adjustments > 10% absolute.
 - Adjustments are versioned in TEST-POLICY.md.
 
-### 3. Optimal Escalation Time
+### 3. Optimal escalation time
 
 **Evidence-based escalation timeouts** [Priygop, 2026; arXiv, 2026]:
 
@@ -367,7 +367,7 @@ quarterly_calibration():
 - If exceeded: raise tester confidence threshold by 5%.
 - If zero for 4 weeks: lower threshold by 5% (may be too lenient).
 
-### 4. Handling Tester-Critic Collusion
+### 4. Handling tester-critic collusion
 
 **Collusion scenarios:**
 
@@ -498,7 +498,7 @@ Pass 2 gave the blocker statistical audit machinery (c=0 sampling). One operatio
 
 ## [DEEP DIVE]: Antigravity — Zero-Daemon Cryptographic Gate Enforcement, M-of-N Threshold Escalation & Bayesian Calibration
 
-### 1. Zero-Daemon Cryptographic Gate Enforcement Architecture
+### 1. Zero-daemon cryptographic gate enforcement architecture
 
 In distributed multi-agent workflows, blocking authority easily degenerates into advisory recommendations or insecure status flags in volatile memory. Under the strict zero-daemon architectural invariant (`MAP.md`), gating must be non-bypassable, decentralized, and verifiable without running persistent gatekeeper daemons or background evaluation servers.
 
@@ -531,7 +531,7 @@ We implement cryptographic gate enforcement via **Ed25519 Capability Tokens** (R
 +-------------------------------------------------------------------------------+
 ```
 
-#### 1.1 SQLite-WAL Schema for Cryptographic Gate Ledger
+#### 1.1 SQLite-WAL schema for cryptographic gate ledger
 
 ```sql
 -- Schema: Cryptographic Gate Enforcement Ledger (gate_ledger.sql)
@@ -580,7 +580,7 @@ CREATE INDEX IF NOT EXISTS idx_gate_tokens_sha ON gate_capability_tokens(git_sha
 CREATE INDEX IF NOT EXISTS idx_gate_eval_task ON gate_evaluations(task_id, verdict);
 ```
 
-#### 1.2 Zero-Daemon Gate Minter and Git Hook Verifier
+#### 1.2 Zero-daemon gate minter and Git hook verifier
 
 ```python
 """Zero-daemon gate token issuance and pre-push hook verifier."""
@@ -745,9 +745,9 @@ class GateEnforcementEngine:
 
 ---
 
-### 2. Dual-Key Escalation Protocol & Collusion Detection Quotient (CDQ)
+### 2. Dual-key escalation protocol & collusion detection quotient (CDQ)
 
-#### 2.1 M-of-N Threshold Escalation Protocol
+#### 2.1 M-of-N threshold escalation protocol
 When an engineer agent appeals a Tester's `HOLD` or `ROLLBACK` verdict, unilateral override is strictly prohibited. An emergency promotion or threshold relaxation requires an M-of-N threshold signature:
 
 $$\text{Verdict}_{\text{override}} = \text{ThresholdSign}_{M/N}(\sigma_1, \sigma_2, \dots, \sigma_M) \quad \text{where } M \ge 2, \; N \ge 3$$
@@ -757,7 +757,7 @@ In Crew v2:
 - **No Single Agent Self-Approval**: An Engineer agent's key is explicitly blocked from the threshold set for its own code diff.
 - **Time-Bounded Leases**: All emergency override tokens carry a hard maximum Time-To-Live ($TTL_{\max} = 900\text{ seconds}$ / 15 minutes), forcing either automated canary validation or automatic rollback.
 
-#### 2.2 Collusion Detection Quotient (CDQ)
+#### 2.2 Collusion detection quotient (CDQ)
 To detect Pattern 4 (The Capture: Engineer and Tester secretly colluding to maximize throughput by passing weak implementations), we define the **Collusion Detection Quotient (CDQ)**.
 
 CDQ monitors inter-agent agreement against statistical independence using Cohen's Kappa ($\kappa$) coupled with conditional defect discovery:
@@ -822,7 +822,7 @@ def evaluate_cdq(
 
 ---
 
-### 3. Bayesian Beta-Binomial Strictness Calibration
+### 3. Bayesian beta-binomial strictness calibration
 
 Static thresholds suffer from two catastrophic failure modes: threshold drift (becoming overly permissive as suites grow) and gridlock (overly strict gates halting throughput). 
 
@@ -842,7 +842,7 @@ With posterior variance:
 
 $$\text{Var}(\theta \mid k, N) = \frac{(\alpha_0 + k)(\beta_0 + N - k)}{(\alpha_0 + \beta_0 + N)^2 (\alpha_0 + \beta_0 + N + 1)}$$
 
-#### 3.1 Damped Strictness Shift Equation
+#### 3.1 Damped strictness shift equation
 To adjust the mutation gate threshold $T_{\text{mut}}$ (nominal $T^* = 0.80$) and assertion strictness without inducing oscillatory limit cycles, we apply a damped, variance-penalized update:
 
 $$\Delta T = \gamma \cdot \text{clip}\left( \frac{\mathbb{E}[\theta] - \theta^*}{\sqrt{\text{Var}(\theta) + \epsilon}}, \, -\delta_{\max}, \, \delta_{\max} \right)$$
@@ -894,7 +894,7 @@ class BayesianStrictnessCalibrator:
 
 ---
 
-### 4. Quantitative Thresholds & Invariants Summary
+### 4. Quantitative thresholds & invariants summary
 
 | Mechanism | Metric / Parameter | Target Threshold | Action on Breach |
 |---|---|---|---|

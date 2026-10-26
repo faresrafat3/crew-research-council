@@ -1,6 +1,6 @@
 ## [DEEP DIVE]: Flaky Tests in the TDD Cycle, State Machine, Async Delays, and Tester Bugs
 
-### 1. Handling Flaky Tests in the TDD Cycle
+### 1. Handling flaky tests in the TDD cycle
 
 **The flake problem in AI-agent TDD** [Bell et al., 2018; FlakyTest, 2026]:
 - Flaky tests erode trust in the RED→GREEN gate. If a test flips between pass/fail on identical code, the engineer cannot know whether their fix worked.
@@ -34,7 +34,7 @@ FLAKE_DETECTED:
 4. No hidden global state — fixtures scope="function" only for GREEN phase tests [Hermes TDD Skill, 2026]
 5. Idempotent tests — each test creates its own data, never depends on prior test execution order
 
-### 2. Full State Machine for the Role-Split TDD Protocol
+### 2. Full state machine for the role-split TDD protocol
 
 **States and transitions:**
 
@@ -95,7 +95,7 @@ DONE
 
 **State persistence:** each transition writes to ledger with timestamp, actor, and evidence. Full state machine is auditable for post-mortems.
 
-### 3. Async Communication Delays
+### 3. Async communication delays
 
 **Problem:** message_agent() is fire-and-forget. Tester or engineer may not respond immediately. Meanwhile the dispatch cycle continues.
 
@@ -116,7 +116,7 @@ DONE
 
 **VS Code handoff parallel** [Microsoft, 2026]: VS Code uses explicit handoff agents with message queues. Each phase emits a structured message that the next phase consumes. If a phase times out, the queue holds the message and retries once before escalating.
 
-### 4. When the Tester Itself Has Bugs
+### 4. When the tester itself has bugs
 
 **Problem:** The tester is an AI agent. It can write buggy tests, false REDs, or miss real regressions.
 
@@ -198,7 +198,7 @@ The RED→GREEN cycle assumes a deterministic system under test. For LLM-in-the-
 
 ## [DEEP DIVE]: Zero-Daemon CAS State Machine Orchestration, AST Oracle Validation Firewall, and Sequential Chi-Square Flake Defense (Antigravity, 2026-09-14)
 
-### 1. Zero-Daemon SQLite-WAL Compare-And-Swap (CAS) State Orchestrator
+### 1. Zero-daemon SQLite-WAL compare-and-swap (CAS) state orchestrator
 
 In adherence to the DSH zero-daemon invariant (`MAP.md`), the TDD protocol cannot rely on a persistent supervisor service (e.g. celery, systemd daemon, or background node process) to orchestrate state handoffs between `tester`, `engineer`, and `critic`. All lifecycle transitions are enforced via atomic Compare-And-Swap (CAS) transactions inside SQLite-WAL:
 
@@ -246,7 +246,7 @@ CREATE INDEX IF NOT EXISTS idx_tdd_audit ON tdd_state_transitions(task_id, creat
 2. **Implementation File Locking (Pre-Commit Hook):**
    The engineer's local pre-commit check queries `tdd_state_machine`. If `current_state != 'AWAIT_GREEN'` or `test_suite_merkle_root` does not match the disk state of `tests/`, all file modifications outside `tests/` are blocked at the filesystem level. The engineer physically *cannot commit implementation code without an active, verified RED token*.
 
-### 2. AST-Based Oracle Validation Firewall: Defeating Tautological Tests
+### 2. AST-based oracle validation firewall: defeating tautological tests
 
 A catastrophic failure mode in LLM-driven TDD is **oracle subversion**: the tester agent synthesizes tests that pass unconditionally, or emit tautologies that verify nothing about code correctness [Eleks, 2025; Shinn et al., 2023].
 
@@ -295,7 +295,7 @@ class OracleFirewallVisitor(ast.NodeVisitor):
 **Rejection Protocol:**
 If any `ORACLE_XX` violation is found, the state machine transitions immediately to `TESTER_BUG`. The tester is given the exact line number and violation code. If the tester fails to fix the AST violation within 2 attempts, the task escalates to human operator review with the tautology proof attached.
 
-### 3. Sequential Chi-Square Flake Defense: Preventing P-Hacking Attacks
+### 3. Sequential chi-square flake defense: preventing p-hacking attacks
 
 When tests exhibit nondeterministic behavior (e.g., due to unseeded random numbers, unmocked network sockets, or race conditions), a misaligned engineer agent can exploit naive retry mechanisms by continuously re-running tests until a lucky pass occurs ("p-hacking GREEN").
 
@@ -307,7 +307,7 @@ $$\chi^2 = \sum_{j \in \{\text{Pass}, \text{Fail}\}} \frac{(O_j - E_j)^2}{E_j} =
 - If $\chi^2 > \chi^2_{1, 0.05} = 3.841$, the null hypothesis of compliance with the $90\%$ tolerance band is rejected at $p < 0.05$.
 - **Automated Quarantine Gate:** The test is immediately moved to `.quarantine/` and denied GREEN certification. The engineer cannot claim victory; the failure is logged as an active defect, preventing flaky tests from contaminating the release trunk.
 
-### 4. Measurable TDD Protocol Metrics Catalog
+### 4. Measurable TDD protocol metrics catalog
 
 | Metric | Definition | Measurement Method | Target | Warning Threshold |
 |---|---|---|---|---|

@@ -1,4 +1,4 @@
-# Scalability Patterns for Multi-Agent Crews
+# Scalability patterns for multi-agent crews
 
 ## Executive summary
 Crew v2 has 81 agents sharing one machine, one context window, and one terminal — this cannot scale beyond minimal workloads. Research (2025-2026) shows multi-agent system benefits are highly contingent on task characteristics: coordination overhead can cause 39-70% performance degradation on sequential tasks while yielding +80% improvements on parallelizable tasks. This document specifies a hierarchical crew architecture with group sizes of ≤10 agents per hierarchy level, decision boundaries for when to use multi-agent vs single-agent, and patterns for scaling from 8 to 80 to 800 agents.
@@ -14,7 +14,7 @@ Crew v2 has 81 agents sharing one machine, one context window, and one terminal 
 
 ## Detailed analysis
 
-### When NOT to Use Multi-Agent
+### When NOT to use multi-agent
 
 **The baseline paradox** [arXiv, 2512.08296]:
 If a single agent can solve >45% of the task, adding agents:
@@ -32,7 +32,7 @@ If a single agent can solve >45% of the task, adding agents:
 | Dynamic web navigation | P_SA = 0.40 | Decentralized Multi-Agent | P2P information fusion excels |
 | Sequential constraint | P_SA = 0.50+ | Single Agent | Multi-agent degrades 39-70% |
 
-### Hierarchical Crew Architecture
+### Hierarchical Crew architecture
 
 **Problem**: Flat coordination scales as O(n²). With 81 agents, each agent potentially communicates with 80 others.
 
@@ -64,7 +64,7 @@ Level 0: Root Coordinator (firstmate)
 - Parent coordinator sees group-level summaries, not individual agent messages.
 - Reduces O(n·m) to O(g²) where g = group count.
 
-### Decision Boundary for Crew v2
+### Decision boundary for Crew v2
 
 **Quantitative criterion** [arXiv, 2512.08296]:
 
@@ -91,7 +91,7 @@ def select_formation(task):
         return "SOLO"  # Sequential or high single-agent accuracy
 ```
 
-### Scaling Patterns
+### Scaling patterns
 
 **Pattern 1: Agent Pool (Horizontal Scaling)**
 - Multiple instances of the same agent type.
@@ -115,7 +115,7 @@ def select_formation(task):
 - Cache build artifacts (engineer rebuilds same module → reuse).
 - Reduces redundant agent work by 30-50%.
 
-### Preventing Coordination Overhead Domination
+### Preventing coordination overhead domination
 
 **Rules to keep overhead sub-linear:**
 1. **Limit message rounds**: Max 3 rounds of debate between agents.
@@ -140,7 +140,7 @@ def select_formation(task):
 | Overhead monitoring | Track coordination time vs execution time | Timer | <30% overhead |
 | Early stopping | Stop debate at consensus | Consensus detector | 3 rounds max |
 
-## Metrics Catalog
+## Metrics catalog
 
 | Metric | Definition | How to Measure | Target | Warning |
 |--------|-----------|----------------|--------|---------|
@@ -184,7 +184,7 @@ Example with crew-shaped numbers: researcher tasks arrive at λ = 0.2/min with m
 1. Measure λ and W per role from the ledger (the same counters as the golden signals), recompute pool sizes weekly; a pool is misconfigured the moment W doubles (a latency SLO breach signals it via `ready=false` flapping).
 2. Never grow a pool to compensate for rising W without checking whether W's growth is a defect (self-healing ASI dimensions latency >+50%, token efficiency >+50% already detect this) — adding agents to hide a regression is how 81 agents share one terminal today.
 
-### 3. The decision boundary needs a per-archetype baseline portfolio, not one P_SA
+### 3. The decision boundary needs a per-archetype baseline portfolio, not one p_SA
 
 A single P_SA > 0.45 threshold [arXiv:2512.08296] hides that the *task archetype* determines the payoff. Anthropic's production data: token usage alone explains **80% of performance variance** on hard research tasks — multi-agent wins largely because parallel work increases total tokens/work done [Anthropic, 2025]. Translate: measure P_SA per task archetype (planning, analysis, tool-heavy, web-dynamic, sequential-constraint) on the crew's own evaluation suite (evaluation-frameworks.md), store as a 5-entry portfolio, and let firstmate dispatch on the archetype's measured P_SA. The crossover shifts per archetype; the 0.45 constant is only the initial prior. Re-estimate monthly; the architecture-selection accuracy metric (>85%) audits the classifier, not the threshold.
 
@@ -207,7 +207,7 @@ Keep the ≤10-per-group rule [SWARM+, 2026], and add the split trigger: split w
 
 ## [DEEP DIVE]: Ephemeral Worker Multiplexing, Work-Stealing Scheduling, BAMAS Budget Inheritance, and Fork-Bomb Prevention (Antigravity, 2026-09-14)
 
-### 1. Scaling 81 agents on single-machine hardware: Ephemeral Worker Multiplexing
+### 1. Scaling 81 agents on single-machine hardware: ephemeral worker multiplexing
 
 The premise that "81 agents require 81 running daemon processes" is an anti-pattern that leads to severe memory exhaustion (24GB+ RSS), context thrashing, and OS file descriptor starvation (`MAP.md`: zero background daemons allowed). The production pattern is **stateless agent profiles executed over a fixed ephemeral worker pool** [He et al., 2026; Northflank, 2026]:
 
@@ -232,7 +232,7 @@ Static FIFO or round-robin scheduling causes severe head-of-line blocking when l
   $$W_{\text{effective}}(t) = \text{Priority} - \left(\alpha \cdot \Delta t_{\text{queued}}\right) \quad (\alpha = 0.05)$$
   Any task waiting in queue for $>30\text{s}$ is automatically elevated to the HIGH priority lane, preventing low-priority background analysis tasks from being starved indefinitely by incoming high-priority bursts.
 
-### 3. Subagent tree recursion limits and fork-bomb defense (BAMAS Pattern)
+### 3. Subagent tree recursion limits and fork-bomb defense (BAMAS pattern)
 
 Unconstrained agent fan-out causes exponential subagent explosion ("Agent Fork Bombs"), burning through token budgets and triggering cascading timeouts [Yang et al., AAAI 2026].
 
@@ -246,7 +246,7 @@ When Agent $A$ with remaining token allocation $T_A$ spawns $m$ child subagents,
 $$T_{\text{child}} = \min\left(T_{\text{default}}, \frac{T_A}{m + 1} \times 0.85\right)$$
 15% of the parent budget is strictly reserved for the parent to synthesize the returned child artifacts. If a subagent hits $T_{\text{child}}$, the harness raises a non-fatal `BUDGET_EXHAUSTED` interrupt, compelling the child to return its partial results immediately.
 
-### 4. Measurable Scalability Metrics Catalog
+### 4. Measurable scalability metrics catalog
 
 | Metric | Target | Warning Threshold | How Measured |
 |---|---|---|---|

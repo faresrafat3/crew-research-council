@@ -1,4 +1,4 @@
-# Security and Safety in Multi-Agent Systems
+# Security and safety in multi-agent systems
 
 ## Executive summary
 Crew v2 agents share a filesystem, can execute arbitrary code, and trust each other's outputs with no inter-agent security boundary — a single compromised agent can exfiltrate data, escalate privileges, or corrupt the entire crew. Multi-agent systems face unique risks: prompt injection between agents, tool misuse, data exfiltration via outputs, and supply chain attacks. This document specifies a defense-in-depth security architecture with ring-based access control, sandboxing, behavioral monitoring, and audit logging, adapted from OWASP AI Agent Security, Microsoft Agent Governance Toolkit, and production patterns (2025-2026).
@@ -14,7 +14,7 @@ Crew v2 agents share a filesystem, can execute arbitrary code, and trust each ot
 
 ## Detailed analysis
 
-### Current Failure Modes in Crew v2
+### Current failure modes in Crew v2
 
 1. **No inter-agent trust boundary**: Agents trust each other's outputs blindly.
 2. **Shared filesystem**: All agents can read/write any file.
@@ -23,7 +23,7 @@ Crew v2 agents share a filesystem, can execute arbitrary code, and trust each ot
 5. **No audit trail**: No structured log of which agent touched which data.
 6. **Prompt injection vulnerability**: Researcher fetches web content that could contain injection payloads.
 
-### Threat Model
+### Threat model
 
 | Threat | Attacker | Vector | Impact |
 |--------|----------|--------|--------|
@@ -34,7 +34,7 @@ Crew v2 agents share a filesystem, can execute arbitrary code, and trust each ot
 | Supply chain | External (dependency) | Malicious code in project deps | Persistent backdoor |
 | Memory poisoning | Compromised agent | Corrupts shared memory | Repeated failures |
 
-### Security Architecture (Defense-in-Depth)
+### Security architecture (defense-in-depth)
 
 **Five layers (adapted from OWASP + Parallax):**
 
@@ -67,7 +67,7 @@ Crew v2 agents share a filesystem, can execute arbitrary code, and trust each ot
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Ring-Based Access Control
+### Ring-based access control
 
 **Four rings (adapted from Microsoft Agent Governance Toolkit):**
 
@@ -85,7 +85,7 @@ Crew v2 agents share a filesystem, can execute arbitrary code, and trust each ot
 - Elevation to Ring 0 requires human operator approval only.
 - Elevation is temporary (max 1 hour) unless explicitly renewed.
 
-### Prompt Injection Prevention
+### Prompt injection prevention
 
 **Input validation rules:**
 1. **External content sanitization**: All web content fetched by researcher is passed through a sanitization filter that strips instructions (e.g., "ignore previous", "you are now", "system:").
@@ -123,7 +123,7 @@ class AgentSandbox:
   - Open network connection to unauthorized address.
 - If any probe succeeds: sandbox is misconfigured, refuse to start.
 
-### Audit Logging
+### Audit logging
 
 **Log structure (adapted from Parallax):**
 ```python
@@ -160,7 +160,7 @@ class AuditEvent:
 | Circuit breaker | Per-agent state machine | Custom | Anomaly score ≥ 20 |
 | Kill switch | Immediate agent stop | Microsoft-style circuit breaker | Behavioral drift detected |
 
-## Metrics Catalog
+## Metrics catalog
 
 | Metric | Definition | How to Measure | Target | Warning |
 |--------|-----------|----------------|--------|---------|
@@ -185,7 +185,7 @@ class AuditEvent:
 
 ## [DEEP DIVE]: The Lethal Trifecta, Defense Effectiveness Data, MicroVM Sandboxing, and Externalized Enforcement (freebuff, 2026-09-13)
 
-### 1. Threat-model correction and sharpening: the Lethal Trifecta
+### 1. Threat-model correction and sharpening: the lethal trifecta
 
 Attribution correction: the "lethal trifecta" cited in the Key Findings [Tao An, 2025] originates with Simon Willison (June 2025): an AI agent is exploitable via prompt injection whenever it combines **(1) access to private data, (2) exposure to untrusted content, and (3) the ability to communicate externally** — and if all three hold, exfiltration is achievable and cannot be fixed by prompting alone; the only real fix is to remove at least one leg [Willison, 2025]. Engineering consequence for Crew v2 — audit every agent against the three legs and design so no agent holds all three:
 
@@ -220,7 +220,7 @@ Production confirmation: Anthropic's own containment for Claude with terminal ac
 
 Claude Code's deny rules were found to be **silently bypassed after ~50 subcommands** because the security check cost too many tokens (since fixed) [Adversa AI, 2026]. Lesson generalized: any guardrail implemented as model-followed instructions degrades under context pressure and cost optimization. Therefore: ring transitions, tool ACLs, and egress allowlists MUST be enforced by the runtime/router (code), never solely by SOUL text; SOUL rules are advisory context, the router is the policy enforcement point. This converts Layer 2 from "agents are told their ring" to "the router rejects out-of-ring tool calls" — which the spec's `validate_tool_call()` sketch already implies but should make normative.
 
-### 5. OWASP Top 10 for LLM Applications 2025 — map the five layers
+### 5. OWASP top 10 for LLM applications 2025 — map the five layers
 
 | OWASP 2025 | Crew v2 surface | Layer |
 |---|---|---|
@@ -288,7 +288,7 @@ bwrap \
 - **Network Exfiltration Blocked:** `--unshare-net` completely severs network egress for the engineer subprocess, neutralizing reverse shells, curl-based exfiltration, and unauthorized dependency downloads.
 - **Immutable System:** System binaries and libraries are mounted read-only (`--ro-bind`), preventing persistent malware or binary tampering.
 
-### 2. Capability-based delegation via cryptographically attenuated Macaroons
+### 2. Capability-based delegation via cryptographically attenuated macaroons
 
 Static ring numbers fail in multi-hop agent delegation where an agent must delegate a slice of its authority to an ad-hoc subagent. The CapMAS architecture adopts **Macaroons** (cookies with contextual caveats) as lightweight, decentralized bearer credentials [Birgisson et al., 2014; CapMAS, arXiv 2026]:
 
@@ -348,7 +348,7 @@ Before any tool call emitted by an agent exposed to untrusted data envelopes is 
 $$\text{Sim}(\text{ToolArguments}, \text{TaskSpecification}) \ge \tau \quad (\tau = 0.82)$$
 Any tool call attempting to touch files outside the task scope, exfiltrate data, or execute unrecognized shell commands is automatically intercepted and placed in quarantine [tldrsec, 2025].
 
-### 5. Quantitative Security Metrics Catalog
+### 5. Quantitative security metrics catalog
 
 | Metric | Target | Warning Threshold | How Measured |
 |---|---|---|---|

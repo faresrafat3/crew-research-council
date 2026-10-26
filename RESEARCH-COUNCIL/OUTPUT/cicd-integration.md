@@ -1,4 +1,4 @@
-# CI/CD Integration for AI Agent Testing
+# CI/CD integration for AI agent testing
 
 ## Executive summary
 Every engineer commit triggers unit + targeted mutation with JUnit coverage JSON mutation reports artifacts; tester verdict gates merges large tests async nightly. No native Actions dashboard so upload-artifact + reporters workaround [GitHub Community 2025], CTRF one-command flaky summaries [CTRF 2026], history flips [TestDino 2026], exit-2 mutation gate [Mutagen 2026]. Golden three-layer eval + break drills catch regressions.
@@ -20,34 +20,34 @@ In this model, the commit pipeline is blocking and fast (<10 min): `pytest -q` s
 
 ## Detailed analysis
 
-### 1. Blocking Commit Pipeline (fast-gate, <10 min)
+### 1. Blocking commit pipeline (fast-gate, <10 min)
 - **Runner:** `pytest -q` small-first: `tests/unit` then `tests/integration`, `-v --tb=short --strict-markers`, parallelized with `pytest-xdist --numprocesses=auto --dist=loadscope`, Hypothesis `ci` profile.
 - **Coverage JSON:** `--cov=src --cov-report=json:artifacts/cov.json --cov-branch --cov-fail-under=80` plus `term-missing` for PR annotation.
 - **Targeted mutation:** `mutmut run --paths-to-mutate=src --mutate-only-covered-lines=true` scoped to PR-touched lines; threshold 70% on PR gate, 80% on nightly full gate.
 - **Oracle / tautology / mock lints:** `crew.testing.lints --check-tautologies --check-oracle-violations --check-mock-ratio` fails builds with tautological asserts (`assert True`, `x == x`), oracle violations, or mock-ratio excess.
 - **Flake 20-run history:** `crew.testing.flake-check --history=artifacts/flake-history.json --max-rate=0.02 --db=ledger.db` blocks on flip-rate >2% over trailing 20 runs.
 
-### 2. Nightly Async Pipeline (large, nondeterministic)
+### 2. Nightly async pipeline (large, nondeterministic)
 - **Large E2E:** `pytest tests/e2e -m e2e --max-journeys=10`, capped to bound time/cost; full journeys replay nightly or on `workflow_dispatch`.
 - **Full mutation:** whole-`src` `mutmut run`, threshold 80%, 60-min timeout, 90-day retention for quarterly calibration.
 - **Live contracts:** recorded-by-default (`vcrpy`); live-contract subset runs nightly against sandbox with rotated test-only secrets.
 - **Golden eval (three-layer):** `crew.testing.golden-eval --golden-set=tests/golden/golden_set.json` checks (a) schema validity, (b) latency budget, (c) embedding cosine + LLM-judge rubric — catches semantic regressions point-equality misses.
 - **Break drills:** `crew.testing.break-drills --reqs=requirements/reqs.json` breaks each REQ and asserts the suite reddens; silent green = missing coverage, filed as gap ticket.
 
-### 3. Quarantine and Re-promotion Policy
+### 3. Quarantine and re-promotion policy
 - Quarantine is **advisory, never silent skip**: flaky test opens PR comment with history link, `quarantine` label, and owner assignment.
 - Quarantined tests move to nightly-only shard; commit gate no longer blocks on them.
 - **20-green re-promotion:** 20 consecutive nightly greens auto-re-promotes to blocking gate; any red resets the counter.
 - Same-commit flip without code diff triggers env-drift investigation (image pin, lockfile diff, clock mock), not code revert [Tenki 2026].
 
-### 4. Artifacts Contract
+### 4. Artifacts contract
 - `junit.xml` — JUnit for `dorny/test-reporter` PR rendering and CTRF conversion; 30-day retention.
 - `cov.json` — machine-readable coverage for trend analysis and `--cov-fail-under` enforcement; 30-day retention.
 - `mutation-report.json` — before/after targeted (PR) and full (nightly) reports for exit-2 gate audit; 30/90-day retention.
 - `flake-history.json` — 20-run trailing history + `ledger.db` for flip-rate computation and quarantine decisions; 90-day retention.
 - Additional: `property-results.xml` (14d), `e2e-results.xml` (14d), `golden-results.json` (90d), `drill-results.json` (90d).
 
-## Practical Implementation
+## Practical implementation
 
 | Concern | Commit (blocking) | Nightly (async) | Tooling |
 |---------|-------------------|-----------------|---------|
@@ -93,7 +93,7 @@ In this model, the commit pipeline is blocking and fast (<10 min): `pytest -q` s
 
 ## [DEEP DIVE]: Exact GitHub Actions Workflow, Parallelization, Artifact Retention, and Secrets
 
-### 1. Exact GitHub Actions Workflow Configuration
+### 1. Exact GitHub Actions workflow configuration
 
 **File: `.github/workflows/test-gate.yml`**
 
@@ -418,7 +418,7 @@ jobs:
           retention-days: 90
 ```
 
-### 2. Parallelization Strategy
+### 2. Parallelization strategy
 
 **Two-level parallelization** [Warpbuild, 2026; Qualflare, 2026]:
 
@@ -456,7 +456,7 @@ steps:
 - For I/O-bound suites: `-n 4` (hyperthreading helps)
 - For CPU-bound suites: `-n 2` (physical cores only)
 
-### 3. Artifact Retention Policy
+### 3. Artifact retention policy
 
 **Retention schedule** [GitHub Docs, 2025]:
 
@@ -485,7 +485,7 @@ steps:
 - Delete old artifacts: `gh run delete <run_id>` for failed runs
 - Compress before upload: `tar -czf artifacts.tar.gz artifacts/`
 
-### 4. Handling Secrets in Test Environments
+### 4. Handling secrets in test environments
 
 **Secret categories and handling:**
 
@@ -598,7 +598,7 @@ Pass 1 specified the workflow YAML; pass 2 hardened the supply chain. Neither ad
 
 ## [DEEP DIVE]: Antigravity — Zero-Daemon Hermetic Local CI Runner, in-toto SQLite Attestation & Content-Addressable Test Cache
 
-### 1. The Zero-Daemon Local Pre-Flight CI Problem
+### 1. The zero-daemon local pre-flight CI problem
 
 Relying exclusively on remote GitHub Actions runners for agent verification introduces prohibitive feedback loops: agent turn cycles stall for 3–8 minutes waiting for cloud VM provisioning, queue dispatch, and dependency downloads. Furthermore, remote-only CI violates the zero-daemon invariant (`MAP.md`) and leaves local development vulnerable to "works on my agent machine" regressions.
 
@@ -635,11 +635,11 @@ We formulate the **Local CI Pre-Flight Runner**: an ephemeral, daemonless test h
 
 ---
 
-### 2. Supply-Chain in-toto / SLSA Provenance Ledger in SQLite-WAL
+### 2. Supply-chain in-toto / SLSA provenance ledger in SQLite-WAL
 
 To prevent malicious or compromised subagents from tampering with local test outputs (e.g. forging a green `junit.xml` or fabricating 95% test coverage), all build and test artifacts must be bound to cryptographic in-toto statements.
 
-#### 2.1 SQLite Schema for Local CI Attestations
+#### 2.1 SQLite schema for local CI attestations
 
 ```sql
 -- Schema: Local CI Provenance & CAS Cache (ci_local_ledger.sql)
@@ -679,7 +679,7 @@ CREATE INDEX IF NOT EXISTS idx_ci_cache_target ON ci_test_cache(test_target);
 CREATE INDEX IF NOT EXISTS idx_ci_attest_sha ON ci_provenance_attestations(git_sha, task_id);
 ```
 
-#### 2.2 Complete Zero-Daemon Runner & in-toto Attestor
+#### 2.2 Complete zero-daemon runner & in-toto attestor
 
 ```python
 """Zero-daemon local hermetic CI pre-flight runner and in-toto attestation engine."""
@@ -837,7 +837,7 @@ class LocalPreflightRunner:
 
 ---
 
-### 3. Quantitative CI Pre-Flight Performance & Invariants
+### 3. Quantitative CI pre-flight performance & invariants
 
 | Dimension | Target Metric | Worst-Case Bound | Hard Enforcement |
 |---|---|---|---|

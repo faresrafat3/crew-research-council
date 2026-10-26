@@ -1,4 +1,4 @@
-# Implementation Roadmap
+# Implementation roadmap
 
 ## Executive summary
 Four phases climb TMMi levels without stalling delivery: Foundation (3-5 days) commits policy and SOUL gates; Mandatory Tests (1-2 weeks) enforces RED/GREEN evidence and fast CI; Quality Gates (2-3 weeks) adds property, mutation, oracle, and ledger gates; Continuous Improvement (ongoing) converts escapes into knowledge and calibration. Each phase names exact files, deltas, metrics, and risks so an operator can execute directly, following the staged TMMi climb [TMMi Foundation, 2016] with Test Certified-style graduation [KnowMBA, 2025].
@@ -155,7 +155,7 @@ Passes 1–2 specified *how* to phase and *how to deploy gates*. None specified 
 
 ## [DEEP DIVE]: Antigravity — Zero-Daemon Shadow-to-Blocking Pipeline, Canary Rollback Triggers & Automated Churn-Coupling Miner
 
-### 1. The Autonomous Gate Rollout Problem
+### 1. The autonomous gate rollout problem
 
 In multi-agent teams, abruptly activating hard blocking gates (such as mutation score floors or strict oracle AST linters) triggers immediate workflow gridlock:
 - Engineers spend excessive compute appealing false positives.
@@ -196,7 +196,7 @@ Under the zero-daemon invariant (`MAP.md`), we resolve this with the **Zero-Daem
 
 ---
 
-### 2. SQLite-WAL Schema for Gate Rollout & Migration Ledger
+### 2. SQLite-WAL schema for gate rollout & migration ledger
 
 ```sql
 -- Schema: Roadmap Gate Graduation & Canary Ledger (roadmap_migration.sql)
@@ -235,7 +235,7 @@ CREATE INDEX IF NOT EXISTS idx_roadmap_eval ON gate_evaluation_history(gate_name
 
 ---
 
-### 3. Automated Shadow-to-Blocking Promotion Engine Implementation
+### 3. Automated shadow-to-blocking promotion engine implementation
 
 ```python
 """Automated shadow-to-blocking promotion engine and canary tripwire."""
@@ -364,7 +364,7 @@ class GatePromotionEngine:
 
 ---
 
-### 4. Zero-Daemon Churn-Coupling Index (CCI) Miner
+### 4. Zero-daemon churn-coupling index (CCI) miner
 
 To automatically prioritize which modules require Phase 1/Phase 2 test suites before implementing complex features, we compute the **Churn-Coupling Index (CCI)** from git history directly:
 
@@ -420,7 +420,7 @@ def mine_churn_coupling(repo_root: str, max_commits: int = 100) -> List[Tuple[st
 
 ---
 
-### 5. Quantitative Invariants & Gate Transitions
+### 5. Quantitative invariants & gate transitions
 
 | Lifecycle Stage | Graduation Condition | Tripwire / Rollback Trigger | Minimum Window |
 |---|---|---|---|

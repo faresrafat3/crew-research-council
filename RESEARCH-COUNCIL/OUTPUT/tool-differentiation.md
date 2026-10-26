@@ -1,4 +1,4 @@
-# Tool Integration and Differentiation Strategy
+# Tool integration and differentiation strategy
 
 ## Executive summary
 Crew v2 agents share most tools — researcher has web_search, engineer has terminal, but differentiation is not systematic. Some tasks benefit from more specialized toolsets, and uncontrolled tool access creates security risks. Research (2025-2026) shows that tool differentiation improves outcomes when aligned with agent roles, but requires careful access control to prevent privilege escalation. This document specifies a capability-based tool assignment framework with tool result sharing patterns and differentiation measurement.
@@ -13,7 +13,7 @@ Crew v2 agents share most tools — researcher has web_search, engineer has term
 
 ## Detailed analysis
 
-### Current Failure Modes
+### Current failure modes
 
 1. **No systematic tool differentiation**: Tools assigned ad-hoc, not by role requirements.
 2. **No tool access control**: All agents can access all tools (security risk).
@@ -21,7 +21,7 @@ Crew v2 agents share most tools — researcher has web_search, engineer has term
 4. **No capability measurement**: No way to measure whether tool differentiation improves outcomes.
 5. **Tool overload**: Agents with too many tools suffer from choice paralysis.
 
-### Capability-Based Tool Assignment
+### Capability-based tool assignment
 
 **Principle**: Each agent gets exactly the tools its role requires — no more, no less.
 
@@ -49,7 +49,7 @@ Crew v2 agents share most tools — researcher has web_search, engineer has term
 | 5: Execute-full | Can run commands without sandbox | — (operator only) |
 | 6: Admin | Can modify agent configurations | firstmate (limited) |
 
-### Tool Access Control
+### Tool access control
 
 **Request-grant pattern (Microsoft Agent Governance Toolkit):**
 
@@ -76,7 +76,7 @@ class ToolGrant:
 4. Grant is scoped to task (default) or session (elevated).
 5. All grants are logged to audit trail.
 
-### Tool Result Sharing
+### Tool result sharing
 
 **Problem**: Researcher searches web → finds result. Engineer needs same result → searches again. Duplication wastes tokens and time.
 
@@ -101,7 +101,7 @@ engineer: web_search("pytest coverage best practices") → cache hit, return res
 
 **Estimated savings**: 30-50% reduction in duplicate tool calls.
 
-### Measuring Tool Differentiation Effectiveness
+### Measuring tool differentiation effectiveness
 
 **Metric: Tool Utilization Rate per Agent**
 
@@ -127,7 +127,7 @@ correlation = correlation(tool_usage_pattern, task_success)
 
 **Target**: Positive correlation (p < 0.05). If no correlation, tool assignment is random.
 
-### Preventing Tool Convergence
+### Preventing tool convergence
 
 **Problem**: Over time, agents start using the same tools regardless of role.
 
@@ -138,7 +138,7 @@ correlation = correlation(tool_usage_pattern, task_success)
 3. **Periodic review**: Monthly review of tool assignments. Remove unused tools, add missing tools.
 4. **Specialization bonus**: Agents are rewarded (via ledger) for using their primary tools effectively.
 
-### Tool Security
+### Tool security
 
 **Sandboxed execution (Parallax pattern):**
 
@@ -175,7 +175,7 @@ class ToolSandbox:
 | Security sandboxing | Per-agent tool sandbox | Parallax-style | All executions |
 | Periodic review | Monthly tool assignment audit | Custom | All agents |
 
-## Metrics Catalog
+## Metrics catalog
 
 | Metric | Definition | How to Measure | Target | Warning |
 |--------|-----------|----------------|--------|---------|
@@ -245,7 +245,7 @@ The spec's Tool Differentiation Index (1 - shared/total) measures *assigned* dif
 
 ## [DEEP DIVE]: Dynamic Toolset Tiering, Lazy Schema Loading, JetBrains Observation Masking, and Zero-Daemon SQLite-WAL Result Caching (Antigravity, 2026-09-14)
 
-### 1. Dynamic Toolset Tiering & Lazy Schema Loading (Speakeasy v2 Architecture)
+### 1. Dynamic toolset tiering & lazy schema loading (Speakeasy v2 architecture)
 
 In static multi-agent architectures, injecting full JSON schemas for 30–50 tools into every reasoning turn consumes 10–15 KB (~2,500–4,000 tokens) per turn, representing 60%–80% of total input prompt token expenditure [Scalekit, 2026; Speakeasy, 2025]. Beyond token cost, large schema contexts degrade tool selection accuracy down to ~13% on dense catalogs [tianpan.co, 2026; MLQ.ai, 2026].
 
@@ -261,7 +261,7 @@ Crew v2 implements **Dynamic Toolset Tiering** via a three-step meta-tool protoc
   - *Execution Phase:* Role-specific write and execute tools are active.
   - *Verification Phase:* Code mutation tools are locked; testing, diffing, and audit tools are exposed.
 
-### 2. JetBrains Observation Masking: Halving Context Overhead Without Hallucination Drift
+### 2. JetBrains observation masking: halving context overhead without hallucination drift
 
 A major architectural anti-pattern is using LLMs to periodically summarize past tool execution traces. Research from JetBrains and TUM (*The Complexity Trap*, arXiv:2508.21433 / NeurIPS 2025) proves that LLM-based context summarization introduces hallucination drift, loses critical stack traces, and increases latency. In contrast, **Deterministic Observation Masking** matches or exceeds raw agent solve rates while halving (~50%) total context token costs.
 
@@ -287,7 +287,7 @@ A major architectural anti-pattern is using LLMs to periodically summarize past 
      ```
   3. The agent retains full causal awareness without paying context-window penalties. If granular lines are required, the agent calls `read_artifact(uri, offset, lines)`.
 
-### 3. Deterministic SQLite-WAL Tool Result Cache with Environmental Fingerprinting
+### 3. Deterministic SQLite-WAL tool result cache with environmental fingerprinting
 
 To uphold the DSH zero-daemon invariant (`MAP.md`: no Redis or background services), the crew uses an embedded SQLite-WAL result cache with strict environmental fingerprinting:
 
@@ -316,7 +316,7 @@ CREATE INDEX IF NOT EXISTS idx_tool_cache_lookup ON tool_cache(tool_name, canoni
   - *Semi-Static Tier (TTL = 24 hours):* Architecture guides, design patterns, established library best practices.
   - *Volatile Tier (TTL = 15 minutes or no-cache):* Dependency vulnerability advisories, git remote tags, issue tracker statuses.
 
-### 4. Irrelevance Detection & Tool Call Preconditions (BFCL v4 Compliance)
+### 4. Irrelevance detection & tool call preconditions (BFCL v4 compliance)
 
 The Berkeley Function Calling Leaderboard (BFCL v4) identifies **hallucinatory / premature tool invocation** (calling external tools when the answer is already present in prompt context or when no tool call is justified) as a primary driver of agent failure [Patil et al., 2024; BFCL v4, 2026].
 
@@ -332,7 +332,7 @@ Action: INVOCATION_REQUIRED
 ```
 If `Context Sufficiency == PRESENT`, the runtime intercepts the turn and instructs the model to answer directly from context, eliminating unnecessary tool roundtrips.
 
-### 5. Measurable Tool Differentiation Metrics Catalog
+### 5. Measurable tool differentiation metrics catalog
 
 | Metric | Definition | How to Measure | Target | Warning Threshold |
 |---|---|---|---|---|

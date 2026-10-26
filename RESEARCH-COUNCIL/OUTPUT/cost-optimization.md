@@ -1,4 +1,4 @@
-# Cost Optimization and Token Economics
+# Cost optimization and token economics
 
 ## Executive summary
 Crew v2 uses one model for all tasks with no caching, no early stopping, and no cost tracking per agent or task — costs scale quadratically with task depth and model API spend is uncontrolled. Production token economics (2025-2026) require model tiering, prompt caching, context window management, and hard budget enforcement. Research shows 60-85% of AI spend is recoverable through disciplined optimization. This document specifies a three-tier routing system, caching architecture, and budget enforcement framework that can reduce costs by 51-87% while maintaining quality.
@@ -19,7 +19,7 @@ Crew v2 uses one model for all tasks with no caching, no early stopping, and no 
 
 ## Detailed analysis
 
-### Current Failure Modes
+### Current failure modes
 
 1. **No model tiering**: All tasks use the same model regardless of complexity.
 2. **No prompt caching**: System prompts re-sent every turn at full cost.
@@ -27,7 +27,7 @@ Crew v2 uses one model for all tasks with no caching, no early stopping, and no 
 4. **No cost tracking**: No per-agent, per-task, or per-failure cost visibility.
 5. **No budget enforcement**: No hard limits on token spend per task.
 
-### Three-Tier Model Routing
+### Three-tier model routing
 
 **Model tiers (verified 2026-09-13 against Anthropic pricing docs; older Opus pricing of $15/$75 no longer applies — Opus 4.6 lists at $5/$25):**
 
@@ -52,7 +52,7 @@ Note: tiering savings shrink as frontier prices fall (uniform-Opus baseline drop
 
 **Savings estimate**: 51-87% reduction vs uniform Opus [Zylos Research, 2026].
 
-### Prompt Caching Architecture
+### Prompt caching architecture
 
 **Cache layers (adapted from Zylos Research):**
 
@@ -71,7 +71,7 @@ Note: tiering savings shrink as frontier prices fall (uniform-Opus baseline drop
 
 **Cost impact**: 90% discount on cached input tokens. For a 10K-token system prompt sent 50 times: without caching = 500K tokens; with caching = 50K + 5K*49 = 295K (41% savings). With 90% discount on cached portion: 50K + 4.9K*49 = 290K tokens at 10% cost = equivalent to 54K full-price tokens (89% savings).
 
-### Context Window Management
+### Context window management
 
 **The quadratic cost problem:**
 - Token consumption grows roughly quadratically with task depth.
@@ -97,7 +97,7 @@ Note: tiering savings shrink as frontier prices fall (uniform-Opus baseline drop
    - JSON instead of prose.
    - Bullet points instead of paragraphs.
 
-### Budget Enforcement
+### Budget enforcement
 
 **Per-task budget (hard limit):**
 
@@ -127,7 +127,7 @@ class CostContext:
     failed: bool  # Cost per failure tracking
 ```
 
-### Early Stopping
+### Early stopping
 
 **Stop generation when:**
 - Confidence score > 0.95 (high confidence, no need for more tokens).
@@ -148,7 +148,7 @@ class CostContext:
 | Early stopping | Stop at high confidence | Confidence scorer | >0.95 confidence |
 | Output formatting | Structured JSON | Prompt engineering | All agents |
 
-## Metrics Catalog
+## Metrics catalog
 
 | Metric | Definition | How to Measure | Target | Warning |
 |--------|-----------|----------------|--------|---------|
@@ -214,7 +214,7 @@ Enforce budgets at *formation level* (SOLO/DUO/PIPELINE/FULL multipliers over a 
 
 ## [DEEP DIVE]: Hierarchical SQLite Cost Ledger, Cache-Anchor Preservation, RouteLLM Embeddings Routing, and Non-Fatal Budget Preemption (Antigravity, 2026-09-14)
 
-### 1. Hierarchical Cost Accounting Ledger in Zero-Daemon SQLite-WAL
+### 1. Hierarchical cost accounting ledger in zero-daemon SQLite-WAL
 
 To honor the zero-daemon invariant (`MAP.md`), cost attribution and token burn cannot rely on external billing collectors or hosted observability platforms. All accounting runs locally inside SQLite-WAL:
 
@@ -258,7 +258,7 @@ FROM task_tree;
 ```
 Enables instantaneous (<2ms) rollup of complete multi-agent tree costs down to the micro-cent.
 
-### 2. Cache-Anchor Preservation: Eliminating Cache-Write Surcharges
+### 2. Cache-anchor preservation: eliminating cache-write surcharges
 
 Anthropic prompt caching charges a **1.25x write surcharge** on initial cache creation, followed by a **90% discount (0.1x)** on subsequent hits. When agents use naive context compaction or summarization that rewrites the system prompt or early history, the cache prefix hash mutates, causing a complete cache bust and forcing the system to pay the 1.25x write surcharge every single turn [Anthropic, 2026; Flexera, 2026].
 
@@ -272,7 +272,7 @@ Anthropic prompt caching charges a **1.25x write surcharge** on initial cache cr
   - Compaction and JetBrains observation masking are strictly confined to Tier B.
 - **Economic Impact:** Guarantees a **100% cache hit rate** on the large static prefix (~8,000–14,000 tokens), converting what would be an $8\times$ prompt tax into steady 0.1x reads.
 
-### 3. RouteLLM Cost-Sensitive Predictive Routing (arXiv:2406.18665)
+### 3. RouteLLM cost-sensitive predictive routing (arXiv:2406.18665)
 
 Rather than static complexity categorizations or expensive multi-sample LLM cascades, Crew v2 incorporates **RouteLLM** (Ong et al., LMSYS / UC Berkeley, 2024):
 - A lightweight router model predicts whether a cheaper, faster model (e.g. Claude 3.5 Haiku / Gemini 2.0 Flash Lite) can resolve the specific prompt with equivalent quality to a frontier model (Claude 3.5 Sonnet / Opus).
@@ -281,7 +281,7 @@ Rather than static complexity categorizations or expensive multi-sample LLM casc
   If $s(x) < \theta_{\text{threshold}}$, route to Cheap Tier; else route to Frontier Tier.
 - **Empirical Savings:** LMSYS benchmarks demonstrate RouteLLM achieves **over 85% cost reduction** on conversational benchmarks and 35%–45% on reasoning tasks while preserving 95% of GPT-4-level quality [Ong et al., 2024].
 
-### 4. Hard Token Budget Enforcement with Non-Fatal Preemption
+### 4. Hard token budget enforcement with non-fatal preemption
 
 When runaway agents enter looping or deadlocked states, hard process termination causes catastrophic token waste (100% of tokens spent on the task yield zero return artifacts).
 
@@ -294,7 +294,7 @@ When runaway agents enter looping or deadlocked states, hard process termination
   - The agent is allocated a strictly capped 500-token emergency synthesis window to package all partial code diffs, logs, and findings into an artifact for handoff.
   - **Result:** Converts total task abandonment into partial artifact salvaging, reducing wasted failure token expenditure by >75%.
 
-### 5. Measurable Cost Optimization Metrics Catalog
+### 5. Measurable cost optimization metrics catalog
 
 | Metric | Definition | How to Measure | Target | Warning Threshold |
 |---|---|---|---|---|

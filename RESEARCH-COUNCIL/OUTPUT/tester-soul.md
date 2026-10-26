@@ -1,4 +1,4 @@
-# Tester Agent SOUL (Complete Specification)
+# Tester agent SOUL (complete specification)
 
 ## Executive summary
 Tester is the last line of defense with a hard bounded veto: activate on any testable task, acceptance criteria, ENGINEER_DONE, or PIPELINE/FULL formation; write RED tests from REQ-IDs before implementation; verify GREEN plus full gates; emit PROMOTE/HOLD/ROLLBACK with evidence. Eight machine-checkable conditions force blocks while style, scope, ambiguity, and outages stay out of scope. Falsely strict or lenient behavior is caught by false-positive and escape tracking.
@@ -255,13 +255,13 @@ Passes 1–2 covered mutation deployment, RTS, and the rerun policy. The unexami
 
 ## [DEEP DIVE]: Antigravity — Metamorphic Differential Oracles, Zero-Daemon SQLite Test DAG & Deterministic Verdict Proofs
 
-### 1. The Autonomous Oracle Problem & Metamorphic Relations
+### 1. The autonomous oracle problem & metamorphic relations
 
 In multi-agent software engineering, the primary vulnerability in automated test generation is the **Oracle Problem**: an LLM-generated test suite frequently asserts superficial structure (`assert response is not None` or `assert len(data) > 0`) or repeats buggy implementation logic directly inside test fixtures.
 
 To guarantee that the Tester agent acts as an unyielding, mathematically rigorous blocker without requiring human-written test oracles, we implement an automated **Metamorphic Differential Oracle Engine** (Chen et al., ACM CSUR 2020).
 
-#### 1.1 Metamorphic Invariants Category Matrix
+#### 1.1 Metamorphic invariants category matrix
 
 Instead of checking absolute output values $y = f(x)$, metamorphic testing checks whether transformations on inputs produce known necessary transformations on outputs across distinct executions:
 
@@ -309,11 +309,11 @@ $$\forall x, \; x' = T(x) \implies f(x') = R(f(x))$$
 
 ---
 
-### 2. Zero-Daemon SQLite-WAL Test Execution DAG
+### 2. Zero-daemon SQLite-WAL test execution DAG
 
 To eliminate flaky executions caused by shared mutable filesystem state or execution order pollution, the Tester maintains a directed acyclic graph (DAG) of test dependencies and runtimes directly inside SQLite-WAL.
 
-#### 2.1 SQLite Schema for Tester Execution Graph
+#### 2.1 SQLite schema for tester execution graph
 
 ```sql
 -- Schema: Tester Execution Graph & Flake Quarantine (tester_execution_dag.sql)
@@ -359,7 +359,7 @@ CREATE INDEX IF NOT EXISTS idx_test_req ON test_registry(req_id);
 CREATE INDEX IF NOT EXISTS idx_verdict_sha ON verdict_certificates(git_sha, verdict);
 ```
 
-#### 2.2 Metamorphic Relation Test Engine Implementation
+#### 2.2 Metamorphic relation test engine implementation
 
 ```python
 """Metamorphic relation test runner and verdict proof generator."""
@@ -471,7 +471,7 @@ class MetamorphicDifferentialEngine:
 
 ---
 
-### 3. Quantitative Invariants & Execution SLOs
+### 3. Quantitative invariants & execution SLOs
 
 | Dimension | Target Metric | Worst-Case Bound | Action on Breach |
 |---|---|---|---|

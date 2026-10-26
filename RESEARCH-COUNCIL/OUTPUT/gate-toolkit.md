@@ -1,4 +1,4 @@
-# Gate Toolkit — Executable Pass-2 Protocols
+# Gate toolkit — executable pass-2 protocols
 
 ## Executive summary
 

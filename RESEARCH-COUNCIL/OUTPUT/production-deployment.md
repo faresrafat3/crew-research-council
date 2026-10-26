@@ -1,4 +1,4 @@
-# Production Deployment and Monitoring
+# Production deployment and monitoring
 
 ## Executive summary
 Crew v2 runs on a single machine with no high availability, monitoring, or cost tracking — a single point of failure with no observability into agent behavior or system health. Production multi-agent systems require health checks, circuit breakers, rate limiting, cost monitoring, and agent drift detection. This document specifies a deployment architecture with MLflow-based observability, Datadog-style AI gateway controls, and the Agent Stability Index (ASI) for drift monitoring, adapted from production patterns at Google, Microsoft, and Datadog (2025-2026).
@@ -15,7 +15,7 @@ Crew v2 runs on a single machine with no high availability, monitoring, or cost 
 
 ## Detailed analysis
 
-### Current Failure Modes
+### Current failure modes
 
 1. **No high availability**: Single machine failure = total crew failure.
 2. **No health checks**: Operator doesn't know an agent is down until task fails.
@@ -24,7 +24,7 @@ Crew v2 runs on a single machine with no high availability, monitoring, or cost 
 5. **No circuit breakers**: One failing agent can cascade to entire crew.
 6. **No rate limiting**: LLM API rate limits cause silent failures.
 
-### Deployment Architecture
+### Deployment architecture
 
 **Three-tier architecture:**
 
@@ -50,7 +50,7 @@ Crew v2 runs on a single machine with no high availability, monitoring, or cost 
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Health Checks
+### Health checks
 
 **Per-agent health check protocol:**
 
@@ -76,7 +76,7 @@ class AgentHealth:
     circuit_breaker_state: str  # "closed", "open", "half_open"
 ```
 
-### Circuit Breakers
+### Circuit breakers
 
 **Per-agent circuit breaker (adapted from Microsoft + hamley241):**
 
@@ -95,7 +95,7 @@ class AgentHealth:
 | ≥ 5.0 | MEDIUM | Logs warning |
 | ≥ 2.0 | LOW | No action |
 
-### Rate Limiting
+### Rate limiting
 
 **Token bucket per agent (Datadog AI Gateway pattern):**
 
@@ -111,7 +111,7 @@ class AgentHealth:
 - Queue depth = 100%: reject with `buffer_full`.
 - Process time > 2x average: enter HALF_OPEN.
 
-### Cost Monitoring
+### Cost monitoring
 
 **Cost tracking dimensions (Datadog pattern):**
 
@@ -133,7 +133,7 @@ class AgentHealth:
 3. **Early stopping**: Stop generation if confidence > 0.95.
 4. **Context compaction**: Reduce prompt size at 70% context usage.
 
-### Agent Drift Monitoring
+### Agent drift monitoring
 
 **Agent Stability Index (ASI) — 12 dimensions [arXiv, 2601.04170]:**
 
@@ -187,7 +187,7 @@ mlflow.crewai.autolog()  # or mlflow.langchain.autolog()
 - Drift score > 5.0: Email operator.
 - Circuit breaker trips > 3/week: Investigation required.
 
-### High Availability
+### High availability
 
 **Single-machine HA (immediate):**
 - Process supervisor (systemd) auto-restarts crashed agents.
@@ -214,7 +214,7 @@ mlflow.crewai.autolog()  # or mlflow.langchain.autolog()
 | HA (immediate) | Process supervisor + health checks | systemd + custom | Auto-restart on crash |
 | HA (future) | Stateless agents + shared state | Redis + PostgreSQL | Multi-machine failover |
 
-## Metrics Catalog
+## Metrics catalog
 
 | Metric | Definition | How to Measure | Target | Warning |
 |--------|-----------|----------------|--------|---------|
@@ -303,7 +303,7 @@ Saturation → readiness is the load-bearing link: saturation signals set `ready
 
 ## [DEEP DIVE]: Zero-Daemon Process Supervision, SQLite-WAL Atomic Rate Limiting, Reasoning Entropy Circuit Breakers, and Online ASI Drift Tracking (Antigravity, 2026-09-14)
 
-### 1. Zero-Daemon Process Supervision & Heartbeat-Free Lease Recovery
+### 1. Zero-daemon process supervision & heartbeat-free lease recovery
 
 Architectural mandates (`MAP.md`: DSH zero-service invariant) explicitly forbid running background user systemd services, persistent Python daemon loops, or local Docker containers. The multi-agent system must run in user space with zero idle resource consumption.
 
@@ -328,7 +328,7 @@ Crew v2 implements **Lease-Based Ephemeral Worker Supervision**:
   ```
 - **Crash Recovery without Daemons:** If an expired lease is detected, the worker probes the operating system using POSIX `kill(pid, 0)`. If the target PID is dead (due to OOM, panic, or external signal termination), the worker atomically reclaims the lease, resets the task state to `RETRY_QUEUED` in the transactional outbox, and logs the incident to `runtime_crashes`. Crash recovery MTTR is **< 2.5s** with zero background daemons running.
 
-### 2. Embedded SQLite-WAL Atomic Rate Limiting (Token & Leaky Bucket)
+### 2. Embedded SQLite-WAL atomic rate limiting (token & leaky bucket)
 
 Separate API gateways (LiteLLM, Datadog Gateway) introduce unwanted network services and background processes. To prevent burst-exhaustion of upstream LLM tier quotas (e.g. Anthropic/Gemini RPM and TPM rate limits), rate limiting is implemented directly inside SQLite-WAL transactions.
 
@@ -353,7 +353,7 @@ Else:
 $$T_{\text{wait}} = \frac{\text{tokens}_{\text{requested}} - \text{tokens}_{\text{current}}}{\text{refill\_rate\_per\_sec}}$$
 The worker process sleeps for $T_{\text{wait}}$ (or fails fast if $T_{\text{wait}} > 10\text{s}$), achieving sub-millisecond coordination across concurrent processes with zero external infrastructure.
 
-### 3. Reasoning Entropy & Confidence Cliff Circuit Breakers
+### 3. Reasoning entropy & confidence cliff circuit breakers
 
 Standard API circuit breakers only monitor HTTP status codes (e.g. tripping on 500/503 errors). However, the most destructive multi-agent failures occur while the API returns HTTP 200 OK: an agent enters an **infinite confabulation loop**, **hallucinatory file thrashing**, or **reasoning degradation** [hamley241, 2025; LatentEval, 2026].
 
@@ -369,7 +369,7 @@ Standard API circuit breakers only monitor HTTP status codes (e.g. tripping on 5
 - The harness preempts model generation, halts turn execution, and records a snapshot artifact (`artifact://breakers/<task_id>.json`).
 - Prevents burning 20,000–80,000 tokens on hopeless loops, saving up to 88% of wasted failure-budget tokens.
 
-### 4. Online Agent Stability Index (ASI) Drift Tracking (arXiv:2601.04170)
+### 4. Online agent stability index (ASI) drift tracking (arXiv:2601.04170)
 
 Rath et al. (*Agent Drift: Quantifying Behavioral Degradation in Multi-Agent LLM Systems*, Jan 2026) demonstrated that multi-agent systems suffer 31.8%–53.2% behavioral drift across 500 interactions due to cumulative instruction rot.
 
@@ -386,7 +386,7 @@ $$\text{ASI}(t) = 1.0 - \frac{1}{12} \sum_{k=1}^{12} \text{Drift}_k(t)$$
 - **$0.70 \le \text{ASI} < 0.85$ (Degraded):** Triggers automatic observation masking and HippoRAG associative memory compaction.
 - **$\text{ASI} < 0.70$ (Critical Drift):** Triggers an automated SOUL reset: resets ephemeral context back to genesis prompt and flushes stale conversation buffers.
 
-### 5. Measurable Production Deployment Metrics Catalog
+### 5. Measurable production deployment metrics catalog
 
 | Metric | Definition | How to Measure | Target | Warning Threshold |
 |---|---|---|---|---|

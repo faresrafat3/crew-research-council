@@ -1,4 +1,4 @@
-# Self-Healing and Self-Improvement Mechanisms
+# Self-healing and self-improvement mechanisms
 
 ## Executive summary
 Crew v2 has coach and historian agents but no systematic self-improvement loop — escapes are tracked but not automatically converted to patches, and failures repeat across tasks. State-of-the-art self-healing systems (VIGIL 2025, ROAD 2025, Goal-Oriented Reliability 2025) use reflective runtimes that ingest behavioral logs, diagnose failures via structured protocols (Roses/Buds/Thorns), and propose prompt/code adaptations under guardrails. This document specifies a self-healing loop for Crew v2 with automated root cause analysis, self-patching with human approval, and graceful degradation patterns.
@@ -15,7 +15,7 @@ Crew v2 has coach and historian agents but no systematic self-improvement loop �
 
 ## Detailed analysis
 
-### Current Failure Mode
+### Current failure mode
 
 Crew v2's self-improvement gap:
 1. **No automated root cause analysis**: When a task fails, the operator manually reads logs.
@@ -24,7 +24,7 @@ Crew v2's self-improvement gap:
 4. **No graceful degradation**: When an agent fails, the task fails entirely.
 5. **No drift detection**: Agent personality and performance degrade silently.
 
-### Self-Healing Architecture
+### Self-healing architecture
 
 **Three-layer reflective runtime (adapted from VIGIL + ROAD):**
 
@@ -48,7 +48,7 @@ Crew v2's self-improvement gap:
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Ingestion Layer
+### Ingestion layer
 
 **Data sources:**
 1. **Behavioral logs**: Every agent message, tool call, and verdict.
@@ -74,7 +74,7 @@ class BehaviorEvent:
 - Events with importance < 0.1 are pruned weekly.
 - Max 1000 events per agent (FIFO eviction).
 
-### Diagnosis Layer
+### Diagnosis layer
 
 **RBT Diagnosis (Roses/Buds/Thorns):**
 
@@ -112,7 +112,7 @@ class BehaviorEvent:
 | Personality drift | Voice/style deviation | >30% change |
 | Goal alignment | Task spec vs outcome match | <80% match |
 
-### Adaptation Layer
+### Adaptation layer
 
 **Self-patching protocol (with human approval):**
 
@@ -144,7 +144,7 @@ class PatchProposal:
 - All patches are versioned and reversible.
 - Patches affecting >3 agents require operator approval.
 
-### Graceful Degradation
+### Graceful degradation
 
 **5-level degradation model (adapted from Zylos Research, 2026):**
 
@@ -161,7 +161,7 @@ class PatchProposal:
 - If agent fails twice: escalate to human.
 - If agent drifts: reset to last known good state (memory replay).
 
-### Regression Testing for Agent Behavior
+### Regression testing for agent behavior
 
 **Problem**: Agent behavior changes (SOUL patches, model updates) can cause regressions.
 
@@ -184,7 +184,7 @@ class RegressionTest:
 - Run targeted suite after every SOUL patch.
 - If any test fails: alert operator, propose rollback.
 
-### Implementation Stack
+### Implementation stack
 
 | Component | Tool | Justification |
 |-----------|------|---------------|
@@ -210,7 +210,7 @@ class RegressionTest:
 | Drift detection | ASI across 12 dimensions | Trend analysis | Weekly |
 | Kill switch | Immediate agent stop | Microsoft-style circuit breaker | Anomaly score ≥ 20 |
 
-## Metrics Catalog
+## Metrics catalog
 
 | Metric | Definition | How to Measure | Target | Warning |
 |--------|-----------|----------------|--------|---------|
@@ -371,7 +371,7 @@ The spec's step 7 ("run 5 past failure cases") is the weakest gate in the archit
 
 ## [DEEP DIVE]: Zero-Daemon Healing Substrate, TextGrad Prompt Loss Backpropagation, Lyapunov Convergence Stability, and Sandboxed Canary Replay (Antigravity, 2026-09-14)
 
-### 1. Zero-Daemon Self-Healing Substrate in SQLite-WAL
+### 1. Zero-daemon self-healing substrate in SQLite-WAL
 
 To satisfy the zero-daemon invariant (`MAP.md`), self-healing and dynamic topology reconfiguration must operate without external monitoring processes or persistent background daemons. In Crew v2, the self-healing state machine executes as atomic transactions directly inside SQLite-WAL:
 
@@ -409,7 +409,7 @@ When a worker agent triggers 3 consecutive gate failures or unhandled exceptions
 3. Directly rewrites the in-flight task DAG to bypass the faulty node without dropping the task.
 4. Total execution overhead: **< 12ms**, zero background daemons required.
 
-### 2. TextGrad: Automatic Differentiation via Text (Stanford / NeurIPS 2024)
+### 2. TextGrad: automatic differentiation via text (Stanford / NeurIPS 2024)
 
 Heuristic trial-and-error prompt patching suffers from high sample complexity and frequent regression loops. Crew v2 incorporates **TextGrad** (Yuksekgonul et al., Stanford / NeurIPS 2024, arXiv:2406.07496):
 - Formulates multi-agent execution as a computational graph where text prompts, tool descriptions, and code artifacts are **variables**, and verification gates are **loss functions** ($\mathcal{L}_{\text{gate}}$).
@@ -422,7 +422,7 @@ Heuristic trial-and-error prompt patching suffers from high sample complexity an
   $$\mathbf{P}_{t+1} = \text{TextOptimizer}\left(\mathbf{P}_t, \mathbf{V}_t, \eta\right)$$
   Yields **3.2x faster convergence** on complex reasoning task self-healing than standard zero-shot reflection.
 
-### 3. Lyapunov Convergence Stability: Preventing Circular Regression Traps
+### 3. Lyapunov convergence stability: preventing circular regression traps
 
 A severe threat in automated self-healing is **circular adaptation** (Patch A fixes Task 1 but breaks Task 2; Patch B fixes Task 2 but breaks Task 1). To ensure mathematical convergence, Crew v2 introduces a **Lyapunov Energy Function** $\mathcal{V}(\mathbf{P})$ over the evaluation suite:
 
@@ -436,7 +436,7 @@ A candidate patch $\mathbf{P}_{t+1}$ is strictly rejected if:
 $$\Delta \mathcal{V} = \mathcal{V}(\mathbf{P}_{t+1}) - \mathcal{V}(\mathbf{P}_t) \ge 0$$
 Guaranteeing that the total failure energy of the agent system decreases monotonically ($\frac{d\mathcal{V}}{dt} < 0$), mathematically ruling out infinite regression loops.
 
-### 4. Sandboxed Bubblewrap (`bwrap`) Canary Replay Engine
+### 4. Sandboxed Bubblewrap (`bwrap`) canary replay engine
 
 Before any prompt or code patch can touch production routes, it must pass hermetic validation in an ephemeral rootless `bwrap` sandbox:
 1. **Isolated Ephemeral Environment:** A temporary RAM disk mount (`scratch/canary_<patch_id>/`) is provisioned with the exact Git head SHA and frozen test fixtures.
@@ -446,7 +446,7 @@ Before any prompt or code patch can touch production routes, it must pass hermet
    - **Performance Invariance:** Must not increase token consumption by more than $+15\%$ over baseline.
 3. If any check fails, the candidate patch is marked `REJECTED` in `textgrad_prompt_patches` and logged as a negative exemplar in the CBR memory store.
 
-### 5. Self-Healing & Self-Improvement Metrics Catalog
+### 5. Self-healing & self-improvement metrics catalog
 
 | Metric | Definition | Measurement Method | Target | Warning Threshold |
 |---|---|---|---|---|

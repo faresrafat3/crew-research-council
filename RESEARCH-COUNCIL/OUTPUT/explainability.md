@@ -1,4 +1,4 @@
-# Explainability and Debugging for Agent Crews
+# Explainability and debugging for agent crews
 
 ## Executive summary
 Crew v2 has message history but no structured provenance — when something goes wrong, debugging requires reading hundreds of messages. Production multi-agent systems require decision provenance, replay debugging, and "why did agent X do Y" traceability. Research (2025-2026) shows debugging must shift from trace inspection to regression prevention, converting production failures into enforced quality gates. This document specifies a provenance framework with structured traces, time-travel debugging, and automated root cause analysis.
@@ -19,7 +19,7 @@ Crew v2 has message history but no structured provenance — when something goes
 
 ## Detailed analysis
 
-### Current Failure Modes
+### Current failure modes
 
 1. **No structured provenance**: Messages are flat, not a decision tree.
 2. **No replay capability**: Can't rewind to see what agent was thinking.
@@ -27,7 +27,7 @@ Crew v2 has message history but no structured provenance — when something goes
 4. **No decision attribution**: Can't trace which agent caused a downstream failure.
 5. **No eval integration**: Production failures not converted to regression tests.
 
-### Provenance Framework
+### Provenance framework
 
 **Structured trace (adapted from Braintrust):**
 
@@ -81,7 +81,7 @@ Trace: task-42 (FULL formation, 45s, $1.23)
     └── Output: 11 tests added
 ```
 
-### Decision Provenance
+### Decision provenance
 
 **"Why did agent X do Y?" traceability:**
 
@@ -112,7 +112,7 @@ decisions.trace(escape_id="esc-001")
 decisions.root_cause(task_id="task-42", failure_type="cascade")
 ```
 
-### Time-Travel Debugging
+### Time-travel debugging
 
 **LangGraph checkpoint pattern:**
 
@@ -139,7 +139,7 @@ replay_from(checkpoint_id="span-42-end", override={"model": "sonnet"})
 3. **Branch**: Explore "what if" scenarios (what if architect chose different design?).
 4. **Compare**: Side-by-side comparison of two execution paths.
 
-### Root Cause Analysis
+### Root cause analysis
 
 **Automated root cause detection:**
 
@@ -173,7 +173,7 @@ class RootCauseAnalyzer:
 | Cascading error | One failure triggers chain | Dependency graph analysis |
 | Silent degradation | Quality drops without hard failure | ASI trend analysis |
 
-### Trace-to-Eval Conversion (Braintrust Pattern)
+### Trace-to-eval conversion (Braintrust pattern)
 
 **Workflow:**
 1. **Capture**: Production failure → save full trace.
@@ -195,7 +195,7 @@ class EvalCase:
     threshold: float  # Minimum score to pass
 ```
 
-### Operator Dashboard
+### Operator dashboard
 
 **Debugging views:**
 
@@ -224,7 +224,7 @@ class EvalCase:
 | Operator dashboard | Trace tree + decision graph | React + WebSocket | Real-time |
 | Failure clustering | Group similar failures | Embedding similarity | Weekly |
 
-## Metrics Catalog
+## Metrics catalog
 
 | Metric | Definition | How to Measure | Target | Warning |
 |--------|-----------|----------------|--------|---------|
@@ -292,7 +292,7 @@ Full-fidelity traces capture prompts, tool payloads, and memory contents — i.e
 
 ## [DEEP DIVE]: Zero-Daemon Copy-on-Write State Checkpointing, Causal Graph Slicing, Shapley Fault Attribution, and Dual-Fidelity Explanation Engine (Antigravity, 2026-09-14)
 
-### 1. Zero-Daemon Copy-on-Write (CoW) Checkpoint Engine in SQLite-WAL
+### 1. Zero-daemon copy-on-write (CoW) checkpoint engine in SQLite-WAL
 
 To satisfy the zero-daemon invariant (`MAP.md`), time-travel debugging cannot depend on external daemonized snapshot services (e.g. Docker commit, external Redis dumps, or persistent background daemons). Crew v2 implements a lightweight Copy-on-Write (CoW) state checkpointing tree directly in SQLite-WAL:
 
@@ -329,7 +329,7 @@ CREATE INDEX IF NOT EXISTS idx_causal_flow ON trace_causal_edges(trace_id, targe
 2. **Interactive Time-Travel Rewind:** To branch from checkpoint $C_k$, the CLI executor rolls back the database to `memory_table_lsn`, restores modified files from the Merkle diff, and spawns an ephemeral worker branch.
 3. **Counterfactual Isolation:** Ephemeral child branches execute in rootless `bwrap` sandboxes with synthetic branch IDs (`trace-42_chk7_fork`), preventing dirty state leakage into the parent trace ledger.
 
-### 2. Dynamic Causal Slicing: Pruning Complex Multi-Agent Traces
+### 2. Dynamic causal slicing: pruning complex multi-agent traces
 
 In a multi-agent system executing 50–200 spans across 4 agents, identifying the root cause of an unhandled error or gate rejection by brute-force trace inspection is intractable ($O(2^N)$ combinations). Crew v2 implements **Dynamic Causal Trace Slicing** (adapted from Weiser's program slicing, 1981, and dynamic fault slicing):
 
@@ -340,7 +340,7 @@ $$\mathcal{S}_{\text{causal}}(v_{\text{fail}}) = \{ v \in V \mid \exists \text{ 
 - **Informational Pruning Filter:** Spans that generated conversational pleasantries, passive acknowledgments, or non-mutating tool lookups whose results were not consumed by subsequent reasoning steps have an `influence_weight == 0` and are pruned from the slice.
 - **Dimensionality Reduction:** Compresses raw 150-span execution graphs down to an active causal cone of **4–7 decision spans**, eliminating over 88% of irrelevant noise for human operators and automated analyzers.
 
-### 3. Dataflow-Aware Shapley Fault Localization
+### 3. Dataflow-aware Shapley fault localization
 
 Once the causal cone $\mathcal{S}_{\text{causal}}$ is isolated, the runtime computes Shapley value attributions (Shapley, 1953; Lundberg & Lee, 2017) to mathematically pinpoint the *exact* decision node responsible for the catastrophic divergence:
 
@@ -356,7 +356,7 @@ $$\phi(v_i) = \sum_{S \subseteq \mathcal{S}_{\text{causal}} \setminus \{v_i\}} \
 - Because $|\mathcal{S}_{\text{causal}}| \le 6$ following dynamic slicing, computing exact Shapley values requires at most $2^6 = 64$ fast offline trajectory evaluations (executed in parallel via deterministic mock tool replays in $< 1.8\text{s}$).
 - The node with $\max \phi(v_i)$ is labeled as the **Root Causal Driver (RCD)** with mathematical attribution confidence $> 90\%$.
 
-### 4. Dual-Fidelity Explanation Engine & Semantic Faithfulness
+### 4. Dual-fidelity explanation engine & semantic faithfulness
 
 Raw traces are incomprehensible to non-technical stakeholders, yet LLM-generated natural language summaries frequently suffer from **post-hoc rationalization** (inventing plausible-sounding justifications that bear no relation to the underlying token weights).
 
@@ -375,7 +375,7 @@ Before presenting an explanation to an operator or writing it to the post-mortem
 $$\text{Faithfulness}(\mathcal{E}) = \frac{|\text{Facts}(\mathcal{E}) \cap \text{Facts}(\text{RCD Proof})|}{|\text{Facts}(\mathcal{E})|}$$
 If $\text{Faithfulness}(\mathcal{E}) < 1.0$ (indicating hallucinated extraneous assertions), the explanation is rejected and regenerated with greedy temperature ($\tau = 0.0$).
 
-### 5. Explainability & Debugging Metrics Catalog
+### 5. Explainability & debugging metrics catalog
 
 | Metric | Definition | Measurement Method | Target | Warning Threshold |
 |---|---|---|---|---|

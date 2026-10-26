@@ -1,6 +1,6 @@
 ## [DEEP DIVE]: Industry Benchmarks, Team-Specific Targets, Visualization, and Leading Indicators
 
-### 1. Industry Benchmarks for Each Metric
+### 1. Industry benchmarks for each metric
 
 | Metric | Google [VT, 2022; Bell et al., 2018] | Microsoft [SQRBOK, 2025] | Stripe [KnowMBA, 2025] | Meta [ArXiv, 2025] | Crew v2 Target |
 |--------|------|----------|--------|------|----------------|
@@ -21,7 +21,7 @@
 - 80% coverage is reasonable; 100% is vanity producing low-value tests [PrecisionAI, 2026]
 - DeFlaker: 95.5% recall, 1.5% false alarms on 1,874 flakes [Bell et al., 2018]
 
-### 2. Setting Team-Specific Targets
+### 2. Setting team-specific targets
 
 **Target-setting methodology** [KnowMBA, 2025; TMMi Foundation, 2018]:
 
@@ -47,7 +47,7 @@
 - If FP rate > 5%: loosen and add lint rules.
 - If gate time > 10 min: slim suite or parallelize.
 
-### 3. Visualizing Test Quality Over Time
+### 3. Visualizing test quality over time
 
 **Dashboard layers** [GitHub Community, 2025; CTRF, 2026]:
 
@@ -89,7 +89,7 @@
 - Grafana: query ledger DB for real-time metrics
 - Simple: `coverage html` generates `htmlcov/index.html` per run
 
-### 4. Leading Indicators That Predict Test Effectiveness
+### 4. Leading indicators that predict test effectiveness
 
 **Leading indicators** (predict future quality, not just report past quality) [KnowMBA, 2025; ArXiv, 2025]:
 
@@ -181,7 +181,7 @@ SPC convention: establish the baseline (≥20 points) before rules fire; a chart
 
 ## [DEEP DIVE]: Zero-Daemon SQLite Metric Ledger, Composite Quality Index (CQI) Math, and Tabular CUSUM Quality Drift Detection (Antigravity, 2026-09-14)
 
-### 1. Zero-Daemon Quality Metric Ledger in SQLite-WAL
+### 1. Zero-daemon quality metric ledger in SQLite-WAL
 
 To satisfy the DSH zero-daemon invariant (`MAP.md`), telemetry collection cannot stream to external monitoring daemons (e.g. Prometheus, Datadog agent, or vector collectors). All 16 quality metrics are written atomically to SQLite-WAL as part of task finalization:
 
@@ -228,7 +228,7 @@ FROM quality_metric_ledger
 WHERE timestamp_ms >= :window_start_ms;
 ```
 
-### 2. Multi-Dimensional Composite Quality Index (CQI)
+### 2. Multi-dimensional composite quality index (CQI)
 
 A fundamental risk in multi-metric quality frameworks is **compensatory gaming** (e.g. an agent inflates easy diff coverage to 99% while assertions are vacuous and escapes spike). To prevent this, Crew v2 introduces the **Composite Quality Index (CQI)**, formulated as a weighted geometric mean:
 
@@ -245,7 +245,7 @@ Subject to $\sum_{i=1}^M w_i = 1.0$.
 **Non-Compensatory Invariant:**
 Because the geometric mean multiplies normalized dimensions, if any single critical metric breaches its floor ($M_k \le \text{Floor}_k$), $\text{CQI} \to 0$ immediately. A PR cannot trade off security or verification escapes for excess unit tests.
 
-### 3. Tabular CUSUM Drift Detection: Catching Subtle Shifts
+### 3. Tabular CUSUM drift detection: catching subtle shifts
 
 While Shewhart $3\sigma$ control charts catch catastrophic ruptures, they fail to detect subtle, persistent quality erosion ($0.5\sigma$ to $1.2\sigma$ drift caused by prompt degradation or model updates) [Page, 1954; Montgomery, 2009].
 
@@ -264,7 +264,7 @@ Where:
   The runner trips a soft circuit breaker, escalating to human review and scheduling an automated break drill.
 - **Measured Response:** CUSUM detects a $1\sigma$ negative shift in mutation scores within **8 tasks**, compared to 38 tasks required by traditional Shewhart charts.
 
-### 4. Quality Metrics Catalog & Operational Thresholds
+### 4. Quality metrics catalog & operational thresholds
 
 | Metric | Target | Floor (Breach = CQI 0) | Drift Detector | SLA to Remediate |
 |---|---|---|---|---|

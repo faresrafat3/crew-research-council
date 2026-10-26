@@ -1,4 +1,4 @@
-# Agent Embodiment and Personality Design
+# Agent embodiment and personality design
 
 ## Executive summary
 Crew v2 agents have SOULs with declared biases but in practice produce similar outputs — voice is not systematically tracked or enforced, and agents converge to the same personality. Research (2025-2026) shows that distinct agent personalities improve team performance through cognitive diversity, but require explicit design to prevent convergence. This document specifies a personality framework with voice dimensions, drift detection, and differentiation patterns, adapted from research on multi-agent personality design and CrewAI's cognitive memory patterns.
@@ -13,7 +13,7 @@ Crew v2 agents have SOULs with declared biases but in practice produce similar o
 
 ## Detailed analysis
 
-### Current Failure Modes
+### Current failure modes
 
 1. **Personality convergence**: All agents produce similar outputs regardless of role.
 2. **Voice drift**: Agent voice changes across sessions (soul erosion).
@@ -21,7 +21,7 @@ Crew v2 agents have SOULs with declared biases but in practice produce similar o
 4. **No differentiation enforcement**: No mechanism to ensure agents stay distinct.
 5. **Homogeneous debate**: Agents agree too quickly, no cognitive diversity.
 
-### Personality Framework
+### Personality framework
 
 **Five dimensions of agent personality (adapted from CrewAI + Persona Design Research):**
 
@@ -33,7 +33,7 @@ Crew v2 agents have SOULs with declared biases but in practice produce similar o
 | **Interaction Style** | How agents engage with others | "Tell me what's wrong" | "Let me show you what I found" |
 | **Biases & Blind Spots** | Known limitations and preferences | "I favor simplicity over completeness" | "I may over-research simple questions" |
 
-### Voice Specification Template
+### Voice specification template
 
 **Per-agent voice specification (in SOUL.md):**
 
@@ -72,7 +72,7 @@ Crew v2 agents have SOULs with declared biases but in practice produce similar o
 - "The risk here is..."
 ```
 
-### Personality Differentiation Patterns
+### Personality differentiation patterns
 
 **Pattern 1: Cognitive Diversity (DynaDebate)**
 - Assign different thinking styles to different agents.
@@ -99,7 +99,7 @@ Crew v2 agents have SOULs with declared biases but in practice produce similar o
 - Researcher: "You are a research scientist who values rigor over speed."
 - Anchoring prevents drift by providing consistent identity reference.
 
-### Voice Drift Detection
+### Voice drift detection
 
 **Measurement:**
 1. Collect agent outputs across sessions (last 10 tasks).
@@ -122,7 +122,7 @@ Crew v2 agents have SOULs with declared biases but in practice produce similar o
 3. **Peer review**: Other agents flag voice inconsistencies.
 4. **Self-monitoring**: Agent checks own output against voice spec before sending.
 
-### Preventing Personality Convergence
+### Preventing personality convergence
 
 **Explicit differentiation rules:**
 
@@ -147,7 +147,7 @@ Crew v2 agents have SOULs with declared biases but in practice produce similar o
 | Anti-convergence | Explicit differentiation rules | Prompt engineering | Similarity < 0.8 |
 | Periodic anchoring | Re-inject voice spec every 10 tasks | Cron | All agents |
 
-## Metrics Catalog
+## Metrics catalog
 
 | Metric | Definition | How to Measure | Target | Warning |
 |--------|-----------|----------------|--------|---------|
@@ -182,7 +182,7 @@ Shumailov et al. (Nature, 2024, ~1900 citations) showed models trained recursive
 1. **Convergence metrics must be tail-sensitive**: track pairwise similarity at the 90th percentile and the *distinct-perspective count* (see §3), not just the mean; means hide exactly the collapse that matters.
 2. **Quarantine human/external grounding**: memory writes from external sources (docs, human feedback, web) should be tagged and never fully replaced by intra-crew derived content — mirroring the collapse-prevention finding that access to true original data halts collapse [Shumailov et al., 2024]. Concretely: Tier-3 insight compaction must preserve ≥1 external evidence link per insight (memory-architecture corroboration already requires two *independent* sources — extend one of them to be external-grounded).
 
-### 3. Distinct-Perspective Count (DPC): a measurable diversity instrument
+### 3. Distinct-perspective count (DPC): a measurable diversity instrument
 
 Replace the fuzzy "≥2 distinct perspectives" with an instrument computable from the existing debate transcripts:
 
@@ -214,7 +214,7 @@ The existing findings (authorship disclosure increases self-voting; visible ongo
 
 ## [DEEP DIVE]: Zero-Daemon Stylometric Voice Vectors, Mahalanobis Drift Gating, In-Context Persona Re-Anchoring, and Sycophancy Probing (Antigravity, 2026-09-14)
 
-### 1. Zero-Daemon Stylometric & Semantic Voice Tracking in SQLite-WAL
+### 1. Zero-daemon stylometric & semantic voice tracking in SQLite-WAL
 
 To monitor persona fidelity without running heavy external embedding servers or background daemons (`MAP.md`), Crew v2 implements a dual-layer voice fingerprinting ledger inside SQLite-WAL:
 
@@ -256,7 +256,7 @@ On each agent generation turn, an in-process regex/tokenizer parser computes 5 d
 
 Combined with a lightweight local 384-dim semantic embedding, these features form a 6-dimensional composite voice vector $\mathbf{x} \in \mathbb{R}^6$.
 
-### 2. Multivariate Mahalanobis Distance Drift Gating
+### 2. Multivariate Mahalanobis distance drift gating
 
 Scalar cosine similarity fails to detect voice erosion because it ignores the natural variance and cross-correlations among stylometric dimensions (e.g. an engineer explaining a complex race condition naturally increases sentence length without eroding core identity). 
 
@@ -270,7 +270,7 @@ Where $\boldsymbol{\mu} \in \mathbb{R}^6$ is the mean feature vector and $\bolds
 - $2.0 < D_M(\mathbf{x}) \le 3.0$: **Mild Drift / Context Dilution** (flagged in trace ledger; background monitoring active).
 - $D_M(\mathbf{x}) > 3.0$: **Critical Persona Erosion** (exceeds 99.7% confidence bound; automated circuit breaker trips).
 
-### 3. In-Context Persona Re-Anchoring & Non-Destructive Buffer Flush
+### 3. In-context persona re-anchoring & non-destructive buffer flush
 
 When $D_M(\mathbf{x}) > 3.0$, terminating the entire multi-agent session causes catastrophic token discard. Crew v2 implements a two-tier rehabilitation protocol:
 
@@ -291,7 +291,7 @@ If $D_M(\mathbf{x}) > 3.0$ persists for 2 consecutive turns:
 2. The runtime re-instantiates the immutable Tier A cache anchor containing the pristine `SOUL.md` specification.
 3. A concise state delta summarizing current task artifacts is inserted, stripping intermediate linguistic pollution that caused the convergence.
 
-### 4. Anti-Sycophancy Functional Probing & Cognitive Orthogonality
+### 4. Anti-sycophancy functional probing & cognitive orthogonality
 
 A primary failure mode in multi-agent embodiment is **sycophancy collapse**: agents submissively agree with flawed peer proposals to minimize conversational friction [Sharma et al., 2023; Anthropic, 2025].
 
@@ -305,7 +305,7 @@ During background CI evaluations, the testing harness executes decoy injection:
 - The system feeds deliberately flawed code or false logical premises into the deliberation stream.
 - **Sycophancy Gate:** If the `critic` or `tester` persona responds with positive validation ("Looks great!", "LGTM", "I agree with your analysis") instead of raising a HOLD or citing the flaw, the agent fails the **Embodiment Integrity Gate** with a hard block.
 
-### 5. Agent Embodiment & Personality Metrics Catalog
+### 5. Agent embodiment & personality metrics catalog
 
 | Metric | Definition | Measurement Method | Target | Warning Threshold |
 |---|---|---|---|---|

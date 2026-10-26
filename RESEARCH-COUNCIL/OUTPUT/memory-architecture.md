@@ -1,4 +1,4 @@
-# Multi-Agent Memory and Knowledge Management
+# Multi-agent memory and knowledge management
 
 ## Executive summary
 Crew v2 has no systematic memory — each agent starts fresh, causing repeated research, lost context, and inability to learn from past failures. State-of-the-art multi-agent memory systems use hierarchical graph structures (G-Memory, 2025) or brain-inspired subsystems (BMAM, 2026) to enable cross-trial learning. This document proposes a four-tier memory architecture (per-task, per-agent, per-crew, cross-crew) with role-aware retrieval, rate-distortion compaction, and EWC-inspired catastrophic forgetting prevention, improving on Crew v2's current zero-memory baseline.
@@ -15,7 +15,7 @@ Crew v2 has no systematic memory — each agent starts fresh, causing repeated r
 
 ## Detailed analysis
 
-### The Memory Hierarchy Problem
+### The memory hierarchy problem
 
 Crew v2's memory failure mode is structural: agents have no persistent state across tasks. The librarian curates solved cases but retrieval is manual. firstmate tracks expertise in JSONL but it's not indexed for fast lookup. This causes:
 1. Repeated research: researcher re-searches topics already investigated.
@@ -23,7 +23,7 @@ Crew v2's memory failure mode is structural: agents have no persistent state acr
 3. No organizational learning: escapes are tracked but not converted to patches.
 4. Identity drift: agent personality erodes across sessions (BMAM's "soul erosion").
 
-### Four-Tier Memory Architecture (Crew v2 Adaptation)
+### Four-tier memory architecture (Crew v2 adaptation)
 
 Based on G-Memory's three tiers and adding cross-crew scope for organizational learning:
 
@@ -81,7 +81,7 @@ Based on G-Memory's three tiers and adding cross-crew scope for organizational l
 - Updated weekly via consolidation pipeline: cluster similar insights, merge evidence, prune outdated.
 - Read-only for individual crews; write access requires operator approval.
 
-### Memory Compaction (Rate-Distortion View)
+### Memory compaction (rate-distortion view)
 
 Per Colaco & Lahjouji (2026), the compaction operator C_θ: H → Z maximizes:
   I(Z; Y | Q) subject to rate(Z) ≤ B
@@ -109,7 +109,7 @@ Where:
 - Tier 2→3: weekly batch job (every Sunday 3 AM UTC).
 - Tier 3→4: monthly batch job (first of month).
 
-### Retrieval-Augmented Generation for Agents
+### Retrieval-augmented generation for agents
 
 **Retrieval pipeline (per BMAM [2026] + AMA [2026]):**
 
@@ -132,7 +132,7 @@ Where:
 - Tier 4: max 200 tokens of cross-crew knowledge.
 - Total: max 2000 tokens per retrieval event (well within context window).
 
-### Preventing Catastrophic Forgetting
+### Preventing catastrophic forgetting
 
 **Three mechanisms adapted from EWC [Huszár, 2018] and memory research:**
 
@@ -150,7 +150,7 @@ Where:
 - Tier 2 agent profiles must retain at least 50 entries per agent (even if low importance).
 - Tier 1 raw traces are retained for 7 days minimum (enables rollback and audit).
 
-### Memory Access Control
+### Memory access control
 
 | Tier | Read Access | Write Access | Audit |
 |------|-------------|--------------|-------|
@@ -159,7 +159,7 @@ Where:
 | 3 (Per-Crew) | All crew members | Auto (weekly) + operator | Full |
 | 4 (Cross-Crew) | All crews (read-only) | Operator only | Full |
 
-### Implementation Stack
+### Implementation stack
 
 | Component | Tool | Justification |
 |-----------|------|---------------|
@@ -183,7 +183,7 @@ Where:
 | Compaction reversibility | Retain raw Tier 1 for 7 days; link Tier 2→3 to sources | Cron + TTL | 7-day TTL on Tier 1 |
 | Selective forgetting | Judge detects contradictions; prioritize newest | AMA-style Judge | Overwrite on conflict |
 
-## Metrics Catalog
+## Metrics catalog
 
 | Metric | Definition | How to Measure | Target | Warning |
 |--------|-----------|----------------|--------|---------|
@@ -343,7 +343,7 @@ Standard RAG treats knowledge fragments as independent vectors, failing on multi
    Where damping factor $\alpha = 0.85$, and $W$ is the row-normalized transition matrix over active graph edges where `invalid_at IS NULL`.
 4. **Result:** Nodes with highest stationary probability $p$ surface memories that have zero lexical overlap with the query but share causal or contextual dependency. On multi-agent benchmarks, associative graph traversal yields **+7.2% to +10.8% higher accuracy** on multi-hop problem diagnostics compared to pure dense vector retrieval [HippoRAG 2, 2026; Xiang et al., 2026].
 
-### 3. Bilingual & cross-lingual semantic bridging (Arabic-English Memory Cohesion)
+### 3. Bilingual & cross-lingual semantic bridging (Arabic-English memory cohesion)
 
 In multi-agent systems where reasoning occurs in Arabic (natural human thought, domain synthesis) while execution, code, and formal documentation occur in English, memory fragmentation is a lethal failure mode: queries in one language fail to retrieve relevant traces recorded in the other [Hosn, 2026].
 
@@ -351,7 +351,7 @@ In multi-agent systems where reasoning occurs in Arabic (natural human thought, 
 - **Dual-Key Semantic Representation:** When an agent or operator logs an insight in Arabic (e.g. "مهندس الأكواد بينسى يكتب التيستات يوم الجمعة"), the ingestion pipeline extracts a parallel English semantic key (`"engineer skips writing tests on Friday"`) into `content` while retaining the original text in `content_ar`. Both keys are indexed in `memories_fts` and encoded into `memories_vec`.
 - **Measured Impact:** Cross-lingual retrieval recall on technical problem solving improves from **61.4%** (under standard English-centric embedding models) to **89.7%** (under BGE-M3 dual-key indexing), eliminating language-boundary context loss without incurring real-time translation latency.
 
-### 4. Runtime LLM self-routing architecture (Autonomous Scope Navigation)
+### 4. Runtime LLM self-routing architecture (autonomous scope navigation)
 
 Agents must not have their context windows saturated with global organizational history, nor should they be locked into isolated silos [Yu & Zhao, 2026]. The memory system exposes a unified self-routing tool interface that lets the LLM navigate the four-tier hierarchy at runtime:
 
@@ -410,7 +410,7 @@ Where:
 
 ## [DEEP DIVE]: Governed Shared Memory, Write-Path Engineering, ACE Playbooks, and Retrieval Economics (cline, 2026-09-13)
 
-# MEMORY — Multi-Agent Memory and Knowledge Management for Crew v2
+# MEMORY — Multi-agent memory and knowledge management for Crew v2
 
 > **Domain:** MEMORY | **Priority:** P1 | **Prompt:** INBOX #1 | **Agent:** cline (external)
 > **Status:** Complete | **Date:** 2026-09-13 | **Freshness:** [verified: 2026-09-13 — all sources checked live via exa + tinyfish web search on this date]
@@ -711,7 +711,7 @@ def recall(query, scope, budget_tokens=2000):
 - No cross-agent automatic memory propagation without policy approval (the leakage primitive failure) [2].
 - No synchronous conflict resolution in the hot path [21][2].
 
-### 12. Metrics and Targets
+### 12. Metrics and targets
 
 | Metric | Definition | How to measure | Target | Warning threshold |
 |---|---|---|---|---|
@@ -729,7 +729,7 @@ def recall(query, scope, budget_tokens=2000):
 | Poison-detection latency | injected false fact → detected | quarterly red-team | <7d | n/a |
 | TTL hygiene | % of store past-TTL | nightly job | <5% | >20% |
 
-### 13. Implementation Roadmap (4 phases)
+### 13. Implementation roadmap (4 phases)
 
 | Phase | Deliverables | Acceptance criteria | Risks |
 |---|---|---|---|
@@ -751,14 +751,14 @@ def recall(query, scope, budget_tokens=2000):
 | Paraphrase-only storage of high-stakes facts | unverifiable; poisoning-friendly | [22] |
 | Memory as afterthought in eval | memory quality decides agent quality | [24][10] |
 
-### 15. Questions for the Operator (QUESTIONS.md)
+### 15. Questions for the operator (QUESTIONS.md)
 
 1. Memory storage substrate: files (Anthropic pattern [17b]) or SQLite? We recommend files for L1 + SQLite for L2 indexes — confirm operator preference.
 2. Should tester/critic have **read** grants on agent private memory for verification, or should L1 be fully opaque? (Collaborative Memory supports filtered read views [12] — we recommend filtered views for tester only.)
 3. Who is the curator approving playbook deltas — coach, operator, or tester? (We recommend coach drafts / tester validates / operator approves.)
 
 
-### 11. Practical Recommendations — Crew v2 memory build-out
+### 11. Practical recommendations — Crew v2 memory build-out
 
 **Design principle (from all sources):** memory is a **write–manage–read loop** [3]; Crew v2 currently has no managed write path and no read path. Build in this order: (1) scopes + write gate, (2) retrieval, (3) forgetting, (4) playbook layer, (5) governance audits.
 

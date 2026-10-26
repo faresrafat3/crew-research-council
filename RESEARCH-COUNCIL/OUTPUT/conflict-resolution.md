@@ -1,4 +1,4 @@
-# Conflict Resolution and Decision Mechanisms
+# Conflict resolution and decision mechanisms
 
 ## Executive summary
 Crew v2 has an escalation ladder (tester → critic → human) but no systematic conflict resolution for other disagreements (architect vs. researcher, engineer vs. tester on non-blocking issues). Multi-agent systems require structured decision mechanisms: voting (majority, weighted, consensus), adjudication, and deadlock breaking. Research (2025-2026) shows majority voting is brittle under confabulation consensus, while structured debate with evidence-based adjudication outperforms simple voting. This document specifies a conflict resolution framework with RoundTable-inspired group decision-making, AGENTAUDITOR-style reasoning tree analysis, and DynaDebate-style dynamic path generation.
@@ -13,7 +13,7 @@ Crew v2 has an escalation ladder (tester → critic → human) but no systematic
 
 ## Detailed analysis
 
-### Current Failure Modes
+### Current failure modes
 
 1. **Tester-engineer deadlock**: Tester says HOLD, engineer says it's fine. Only resolution is human escalation.
 2. **No structured debate**: Agents don't systematically compare reasoning traces.
@@ -21,7 +21,7 @@ Crew v2 has an escalation ladder (tester → critic → human) but no systematic
 4. **No confidence weighting**: All agent opinions weighted equally.
 5. **Premature consensus**: Agents converge on answer without sufficient exploration.
 
-### Conflict Resolution Framework
+### Conflict resolution framework
 
 **Three-tier resolution (adapted from RoundTable + AGENTAUDITOR):**
 
@@ -43,7 +43,7 @@ Tier 3: ADJUDICATION
     If adjudicator confidence < 0.6: escalate to human
 ```
 
-### Voting Mechanisms
+### Voting mechanisms
 
 **Comparison (RoundTable + EmergentMind):**
 
@@ -68,7 +68,7 @@ def weighted_vote(positions, confidences):
     return weighted_sum / total_confidence if total_confidence > 0 else 0.5
 ```
 
-### Reasoning Tree Construction
+### Reasoning tree construction
 
 **AGENTAUDITOR pattern for Crew v2:**
 
@@ -94,7 +94,7 @@ CDP 2: API style
 Final: PostgreSQL + REST
 ```
 
-### Deadlock Breaking
+### Deadlock breaking
 
 **When agents disagree and no consensus emerges:**
 
@@ -108,7 +108,7 @@ Final: PostgreSQL + REST
 - If adjudicator confidence < 0.6 → deadlock.
 - If agents cycle through same arguments → deadlock.
 
-### Preventing Premature Consensus
+### Preventing premature consensus
 
 **Anti-herding measures (DynaDebate + Beyond the Strongest LLM):**
 
@@ -129,7 +129,7 @@ Final: PostgreSQL + REST
 | Adjudication | Critic or external model as tie-breaker | Custom | Split decisions |
 | Early stopping | Stop debate at consensus stabilization | Custom | 3 rounds max |
 
-## Metrics Catalog
+## Metrics catalog
 
 | Metric | Definition | How to Measure | Target | Warning |
 |--------|-----------|----------------|--------|---------|
@@ -196,7 +196,7 @@ A conflict about a decision class with a designated owner routes directly to Tie
 
 ## [DEEP DIVE]: Brier-Calibrated Weighted Voting, Sequential Consensus Early Stopping, Semantic Livelock Preemption, and SQLite CDP Adjudication (Antigravity, 2026-09-14)
 
-### 1. Calibrated Weighted Voting via Brier Scoring & ECE (Collaborative Calibration)
+### 1. Calibrated weighted voting via Brier scoring & ECE (collaborative calibration)
 
 In standard weighted voting $\sum (c_i \cdot p_i) / \sum c_i$, using raw LLM self-reported confidences $c_i \in [0, 1]$ introduces catastrophic distortion: contemporary language models exhibit chronic overconfidence, reporting confidence $>0.90$ even on hallucinated or contradictory premises [Yang et al., 2024; FutureAGI, 2026]. Uncalibrated weighting degrades deliberation into "the most overconfident model wins."
 
@@ -208,7 +208,7 @@ Crew v2 implements **Brier-Score Collaborative Calibration**:
   $$W_i = c_i \cdot \max\left(0.1, 1.0 - 2 \cdot \text{Brier}(i)\right) \cdot \left(1.0 - \text{ECE}_i\right)$$
 - **Consequence:** An agent with high self-confidence ($c=0.95$) but poor historical calibration ($\text{Brier} = 0.35, \text{ECE} = 0.25$) has its effective weight compressed to $0.95 \times 0.30 \times 0.75 = 0.21$, preventing overconfident agents from hijacking consensus [Khanmohammadi et al., ACL 2025].
 
-### 2. Sequential Consensus & Dynamic Early Stopping (Morandi et al., 2026)
+### 2. Sequential consensus & dynamic early stopping (Morandi et al., 2026)
 
 Fixed-round debates (e.g. running 3 full rounds regardless of convergence) burn substantial tokens on easy or polarized conflicts: empirical evaluations demonstrate that fixed recipes over-spend tokens by up to **60%** without accuracy gains [Morandi et al., arXiv:2605.19193, 2026].
 
@@ -219,7 +219,7 @@ Fixed-round debates (e.g. running 3 full rounds regardless of convergence) burn 
   1. *Early Stabilization ($D_{\text{JS}} \le 0.05$):* Belief distribution has converged. Debate halts immediately; compute final Brier-weighted vote. Saves 1–2 debate rounds ($>45\%$ token savings).
   2. *Entrenched Polarization ($D_{\text{JS}} > 0.30$ across rounds 1 and 2 with zero belief migration):* Agents are locked in irreconcilable priors. Continued debate only causes argumentative churn. The runtime preempts round 3 and triggers immediate Tier-3 Adjudication.
 
-### 3. Semantic Livelock Preemption & Free-MAD Orthogonal Extraction
+### 3. Semantic livelock preemption & Free-MAD orthogonal extraction
 
 A pervasive failure mode in multi-agent deliberation is **Semantic Livelock** (circular debate): Agent A rejects B's premise based on argument $X$; Agent B rephrases $X$ into $X'$ and rejects A's counter, returning to the initial standoff without injecting new evidence [Kaesberg et al., 2025; Cui et al., 2025].
 
@@ -237,7 +237,7 @@ A pervasive failure mode in multi-agent deliberation is **Semantic Livelock** (c
 - **Cycle Detection:** If the Jaccard similarity of extracted proposition hashes between round $t$ and round $t-2$ exceeds **0.85**, a Semantic Livelock is flagged.
 - **Resolution via Free-MAD (Consensus-Free MAD, arXiv:2509.11035):** Forced consensus degrades decision quality when genuine trade-offs exist. When a livelock is flagged, the runtime terminates debate without forcing a false consensus. Instead, it extracts the orthogonal trade-off branches into an explicit decision matrix (e.g., *Option A: Max throughput / higher memory; Option B: Low memory / higher latency*) and routes it directly to the designated Decision Class Owner (per the decision-rights matrix).
 
-### 4. AGENTAUDITOR Reasoning Tree CDP Localization in SQLite
+### 4. AGENTAUDITOR reasoning tree CDP localization in SQLite
 
 Full multi-turn debate transcripts often span 4,000–8,000 tokens. Feeding entire transcripts to Tier-3 adjudicators triggers position and verbosity biases [Zheng et al., 2023; AGENTAUDITOR, 2026]. Crew v2 isolates disputes into **Critical Divergence Points (CDPs)**:
 
@@ -262,7 +262,7 @@ CREATE TABLE IF NOT EXISTS debate_cdps (
 2. The Tier-3 Adjudicator evaluates each CDP independently in isolation, executing a dual-pass swap-consistency check (evaluating $(A, B)$ then $(B, A)$).
 3. Localized branch adjudication converts a fuzzy global debate into a discrete evidence verification check, reducing token overhead by **78%** and eliminating judge verbosity bias.
 
-### 5. Measurable Conflict Resolution Metrics Catalog
+### 5. Measurable conflict resolution metrics catalog
 
 | Metric | Definition | How to Measure | Target | Warning Threshold |
 |---|---|---|---|---|

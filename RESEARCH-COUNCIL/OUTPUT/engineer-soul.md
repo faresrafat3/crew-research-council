@@ -1,4 +1,4 @@
-# Engineer Agent SOUL Updates (Test Integration)
+# Engineer agent SOUL updates (test integration)
 
 ## Executive summary
 One iron-law rule ends zero-test shipments: no production code without a witnessed failing test first, and no DONE claim without RED reference plus GREEN log plus clean full suite. The engineer requests RED tests instead of inventing oracles, implements one requirement slice at a time, and answers HOLDs by fixing listed files without weakening assertions. Tests-first answers what code should do while tests-after merely rationalizes what was built [Hermes TDD Skill, 2026].
@@ -163,7 +163,7 @@ Pass 2 established that agents skip rules and gave the verifiable-instruction fi
 
 ## [DEEP DIVE]: Antigravity — Pre-Commit State Machine, In-Process AST Code Fences & Automated HOLD Remediation
 
-### 1. The Engineer Autonomy Failure Modes
+### 1. The engineer autonomy failure modes
 
 LLM software engineers exhibit three acute failure modes when given unconstrained code generation authority:
 1. **Process Jumping**: Writing code directly without verifying failing test requirements or running local assertions (bypassing TDD protocols).
@@ -208,7 +208,7 @@ Under the zero-daemon invariant (`MAP.md`), we enforce engineer discipline throu
 
 ---
 
-### 2. Zero-Daemon SQLite Pre-Commit State Machine Schema
+### 2. Zero-daemon SQLite pre-commit state machine schema
 
 ```sql
 -- Schema: Engineer Task State Machine & Fences (engineer_state_machine.sql)
@@ -246,7 +246,7 @@ CREATE INDEX IF NOT EXISTS idx_eng_state ON engineer_task_runs(current_state, co
 
 ---
 
-### 3. In-Process AST Code Fence & Import Resolver
+### 3. In-process AST code fence & import resolver
 
 Before any code diff is written to the git staging area, the Engineer runs the `ASTCodeFenceEnforcer`. This in-process verifier executes in $< 8\text{ ms}$ and blocks hallucinated APIs and high-cyclomatic complexity spaghetti before tests even run.
 
@@ -380,7 +380,7 @@ class ASTCodeFenceEnforcer(ast.NodeVisitor):
 
 ---
 
-### 4. Automated HOLD Recovery Protocol
+### 4. Automated HOLD recovery protocol
 
 When the Tester issues a `HOLD` verdict, the Engineer transitions into `HOLD_REMEDIATION`.
 The remediation loop enforces three mathematical constraints:
@@ -393,7 +393,7 @@ The remediation loop enforces three mathematical constraints:
 
 ---
 
-### 5. Quantitative Invariants & Execution Thresholds
+### 5. Quantitative invariants & execution thresholds
 
 | Invariant | Threshold / Target | Violation Action |
 |---|---|---|

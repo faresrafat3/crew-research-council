@@ -1,4 +1,4 @@
-# Human-in-the-Loop Integration
+# Human-in-the-loop integration
 
 ## Executive summary
 Crew v2 has human escalation but no structured interface — operators get raw logs, not a dashboard, and approval flows are ad-hoc. Production multi-agent systems require explicit approval gates, adjudication queues, and operator dashboards with full context. The EU AI Act (August 2026) mandates human oversight for high-risk agentic systems. This document specifies a HITL architecture with confidence-based routing, SLA-bound approval queues, and cryptographic payload locking, adapted from Sphinx, Aegis, and production patterns (2025-2026).
@@ -13,7 +13,7 @@ Crew v2 has human escalation but no structured interface — operators get raw l
 
 ## Detailed analysis
 
-### Current Failure Modes
+### Current failure modes
 
 1. **No structured approval flow**: Human escalation is ad-hoc, no SLA.
 2. **No operator dashboard**: Operators read raw logs, not a curated queue.
@@ -21,7 +21,7 @@ Crew v2 has human escalation but no structured interface — operators get raw l
 4. **No confidence routing**: All escalations treated equally, no prioritization.
 5. **No audit trail**: No immutable record of who approved what and when.
 
-### HITL Architecture
+### HITL architecture
 
 **Six-stage flow (adapted from Agent Native + Sphinx):**
 
@@ -50,7 +50,7 @@ Stage 6: EXECUTION
     Full sequence persisted to immutable audit log
 ```
 
-### Confidence-Based Routing
+### Confidence-based routing
 
 **Per-action-type thresholds (Agent Native):**
 
@@ -72,7 +72,7 @@ Stage 6: EXECUTION
 | High | >$50k | Dual approval required |
 | Critical | Irreversible | Named approver + dual verification |
 
-### Approval Queue Design
+### Approval queue design
 
 **SLA with auto-degradation (Sphinx pattern):**
 
@@ -95,7 +95,7 @@ Stage 6: EXECUTION
 - Shadow mode: run policies in shadow for 7-14 days before enforcement.
 - Routing by severity: low-risk to auto-approver, high-risk to named approvers.
 
-### Operator Dashboard
+### Operator dashboard
 
 **Governance KPIs (Sphinx):**
 
@@ -115,7 +115,7 @@ Stage 6: EXECUTION
 3. **Governance Metrics**: Real-time KPI dashboard.
 4. **Agent Health**: Per-agent escalation rate, error rate, drift score.
 
-### Cryptographic Payload Locking
+### Cryptographic payload locking
 
 **Problem**: Payload can mutate between approval and execution (agent modifies after approval).
 
@@ -130,7 +130,7 @@ Stage 6: EXECUTION
 - Token minted on approval, verified on execution.
 - Prevents replay attacks and ties approval to single retry.
 
-### EU AI Act Compliance
+### EU AI Act compliance
 
 **Requirements effective August 2, 2026:**
 - Human oversight as verifiable technical control (not just stated principle).
@@ -157,7 +157,7 @@ Stage 6: EXECUTION
 | Anti-fatigue | Debounce + batch + shadow mode | Aegis-style | 30-300s debounce |
 | EU AI Act compliance | Full audit trail + human oversight | All above | August 2026 deadline |
 
-## Metrics Catalog
+## Metrics catalog
 
 | Metric | Definition | How to Measure | Target | Warning |
 |--------|-----------|----------------|--------|---------|
@@ -235,7 +235,7 @@ This keeps human attention on the quadrant where Article 14's "decide not to use
 
 ## [DEEP DIVE]: Zero-Daemon CLI/IPC Interaction, TOCTOU Payload Cryptolocking, Little's Law Queue Backpressure, and Decoy Vigilance Audits (Antigravity, 2026-09-14)
 
-### 1. Zero-Daemon Local HITL Interface: SQLite-WAL Queue with IPC Terminal Signal Integration
+### 1. Zero-daemon local HITL interface: SQLite-WAL queue with IPC terminal signal integration
 
 Architectural constraints (`MAP.md`: DSH zero-service invariant) prohibit running background WebUI servers, Redis brokers, or continuous Node/Python daemons for operator interaction. Crew v2 implements a zero-daemon local human oversight plane anchored directly in SQLite-WAL:
 
@@ -269,7 +269,7 @@ CREATE INDEX IF NOT EXISTS idx_approval_queue_pending ON approval_queue(status, 
   The terminal process suspends turn execution, consumes operator input directly from `stdin`, and logs the decision receipt.
 - **Asynchronous Batch Mode (Autonomous Execution):** In autonomous headless runs, requests populate `approval_queue`. The human operator inspects, approves, or rejects requests via CLI commands (`agy queue list`, `agy approve <id>`, `agy reject <id> --reason "..."`), operating on the shared SQLite database with zero background daemons.
 
-### 2. Cryptographic Payload Locking: Defeating TOCTOU Parameter Mutation Attacks
+### 2. Cryptographic payload locking: defeating TOCTOU parameter mutation attacks
 
 In autonomous multi-agent environments, Time-of-Check to Time-of-Use (TOCTOU) exploits occur when an agent seeks human approval for an action $A(p)$, but between human authorization and tool dispatch, the agent context shifts (or prompt injection alters arguments) mutating $p \to p'$ (e.g. human approves `deploy.sh --target staging`, but tool executes with `--target prod`) [Agent Native, 2026; Invariant Labs, 2025].
 
@@ -282,7 +282,7 @@ In autonomous multi-agent environments, Time-of-Check to Time-of-Use (TOCTOU) ex
    $$H_{\text{actual}} = \text{SHA256}\left(\text{CanonicalJSON}(\text{actual\_tool}, \text{actual\_args})\right)$$
 4. **Enforcement:** The sandbox executes the tool **if and only if** $H_{\text{actual}} == H_{\text{payload}}$ AND $\text{Verify}_{K_{\text{op\_pub}}}(\sigma_{\text{op}}) == \text{True}$. Any argument mutation—even a single altered flag or path—invalidates the signature, immediately triggering an unrecoverable `SECURITY_TOCTOU_ABORT` and freezing the agent turn.
 
-### 3. Queue Pressure-Aware Admission Control via Little's Law (Weir Model)
+### 3. Queue pressure-aware admission control via Little's Law (Weir model)
 
 When autonomous agent loops spawn tasks faster than human operators can review them, approval queues balloon. As queue depth expands, human operators experience severe approval fatigue, shifting into reflexive rubber-stamping (the "93% approval rate trap" [ResilientCyber, 2026; Agentmelt, 2026]).
 
@@ -295,7 +295,7 @@ where $L_q$ represents pending approval queue depth, $\lambda_{\text{agents}}$ i
 - **State ELEVATED ($4 < L_q \le 8$):** Non-critical subagent spawning is throttled by 50%; debounce windows expand from 30s to 120s to collapse near-duplicate requests.
 - **State CRITICAL ($L_q > 8$):** Hard admission control. The harness blocks all new agent turn dispatches via a SQLite task semaphore until $L_q \le 3$. Agents transition to low-power wait states, guaranteeing that human reviewers are never overwhelmed with high-cardinality backlogs.
 
-### 4. Decoy Vigilance Audits & Automated Adversarial Steel-Manning
+### 4. Decoy vigilance audits & automated adversarial steel-manning
 
 To satisfy EU AI Act Article 14's explicit mandate that human oversight must prevent automation bias rather than passively rubber-stamp it:
 - **Synthetic Decoy Injection:** The harness randomly injects synthetically flawed actions (~5% of all review requests) drawn from the golden regression suite (e.g. subtly inverted logic flags, deprecated library versions, or misconfigured permission masks).
@@ -306,7 +306,7 @@ To satisfy EU AI Act Article 14's explicit mandate that human oversight must pre
   1. *Underlying Fragility:* Identifies the single most fragile assumption in the proposed action.
   2. *Worst-Case Blast Radius:* Highlights the irreversible consequence if the change contains a latent regression.
 
-### 5. Measurable Human-in-the-Loop Governance Metrics Catalog
+### 5. Measurable human-in-the-loop governance metrics catalog
 
 | Metric | Definition | How to Measure | Target | Warning Threshold |
 |---|---|---|---|---|

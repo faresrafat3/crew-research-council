@@ -1,4 +1,4 @@
-# Testing Maturity Model for an AI Agent Crew — 5 Levels with Measurable Criteria (ACTM)
+# Testing maturity model for an AI agent crew — 5 levels with measurable criteria (ACTM)
 
 > **Scope:** A survey of existing test-maturity models, a purpose-built 5-level maturity model for an LLM multi-agent crew ("AI-Crew Testing Maturity", ACTM), an evidence-based assessment of where Crew v2 stands today, and a migration path to Level 5 with a runnable assessment rubric.
 > **Research date:** 2026-09-13. All web sources verified on this date. Internal trial evidence (COORD-01, COORD-02, T09–T12, DECISIVE-01, P4) is cited as `[internal: …]` per the council context file and is not web-referenced.
@@ -78,7 +78,7 @@ CMMI (Capability Maturity Model Integration) is the general process-maturity fra
 
 ISTQB (the International Software Testing Qualifications Board) operates an Expert Level certification, *Improving the Test Process* (CTEL-ITP), comprising two parts: "Assessing the Test Process" and "Implementing Test Process Improvement" — i.e., the industry's formal training path for people who run maturity assessments and improvement programs of the TMMi/TPI NEXT type [ISTQB, n.d.]. For ACTM's purposes, ISTQB's contribution is the doctrine that assessment and implementation are **separate competencies with separate lifecycles** — ACTM mirrors this by separating the assessment rubric (§D.5) from the migration program (§D.1–D.4).
 
-#### A.5 Google's Test Certified program
+#### A.5 Google's test certified program
 
 Test Certified (TC) was Google's internal, Testing Grouplet-run ladder for getting teams to improve developer testing; it was created ~2006 and became the focus of the Testing Grouplet and Test Mercenaries from mid-2007 [Bland, 2011]. Key verified facts:
 
@@ -121,7 +121,7 @@ For ACTM, the WQR supplies the macro context: the industry's QA function is itse
 - **Eval tooling that slots into pytest CI:** DeepEval integrates LLM evaluations into CI/CD as pytest-style tests ("Drop deepeval test run into a .yml") [DeepEval, n.d.]; promptfoo provides evals plus red-teaming as CI-able config [Promptfoo, n.d.].
 - **Automated test generation at scale (Level 5 existence proof):** Meta's ACH (Automated Compliance Hardener) — mutation-guided LLM-based test generation — applied to 10,795 Android Kotlin classes across 7 Meta platforms, generated 9,095 mutants and 571 privacy-hardening tests; engineers accepted 73% of its tests; and "of these 571 tests, 277 would have been discarded had we chosen to focus solely on the line coverage test adequacy criterion, underlining the importance of mutation testing over… coverage" [Harman et al., 2025].
 
-### B. The ACTM model — AI-Crew Testing Maturity, 5 levels
+### B. The ACTM model — AI-crew testing maturity, 5 levels
 
 **Design principles** (why a new model rather than adopting TMMi verbatim):
 
@@ -144,7 +144,7 @@ For ACTM, the WQR supplies the macro context: the industry's QA function is itse
 
 ---
 
-#### B.1 Level 1 — Ad Hoc / Heroic
+#### B.1 Level 1 — ad hoc / heroic
 
 **Definition.** Testing exists only when someone remembers it or a human rescues the crew manually; no agent is accountable for tests and nothing can block a release.
 
@@ -166,7 +166,7 @@ For ACTM, the WQR supplies the macro context: the industry's QA function is itse
 
 **Calendar effort to reach L2.** **1–2 weeks of crew+operator time.** Grounding: Test Certified Level 1 was designed for "a day or five of effort, by one or two engineers" [Bland, 2011] and Google designed each ladder step for "within a quarter" [Google, 2020]; a crew must additionally edit SOULs and wire CI, hence days-to-weeks. **No published transition data exists for AI-agent crews** — this estimate is an explicit extrapolation from the team-level human data.
 
-#### B.2 Level 2 — Gated (tests required, CI-enforced, no red merges)
+#### B.2 Level 2 — gated (tests required, CI-enforced, no red merges)
 
 **Definition.** Every code deliverable carries at least one automated test; the suite runs automatically on every change; and the merge/ship path cannot complete with red or missing tests.
 
@@ -198,7 +198,7 @@ For ACTM, the WQR supplies the macro context: the industry's QA function is itse
 
 **Calendar effort to reach L3.** **4–8 weeks.** Grounding: TC L2 was "a couple weeks or months" [Bland, 2011]; Google's cadence was ~1 quarter per level [Google, 2020]. No AI-crew data exists — extrapolation.
 
-#### B.3 Level 3 — Institutionalized (owned, defined, self-sustaining)
+#### B.3 Level 3 — institutionalized (owned, defined, self-sustaining)
 
 **Definition.** Testing is a defined crew process with an owner — a tester agent with real blocking authority — plus a regression corpus, a test taxonomy, and flake discipline, so quality no longer depends on any single agent's memory.
 
@@ -231,7 +231,7 @@ For ACTM, the WQR supplies the macro context: the industry's QA function is itse
 
 **Calendar effort to reach L4.** **8–12 weeks (~1 quarter).** Grounding: Google's per-level cadence [Google, 2020]; TMMi human-org data says L4 takes "another 6–12 months" after L3 [TestFort, 2025] — a crew compresses this because scope is one repo and one toolchain, but building measurement infrastructure is real work. Extrapolation, explicitly stated.
 
-#### B.4 Level 4 — Measured & Eval-Driven (numeric gates + statistical evals)
+#### B.4 Level 4 — measured & eval-driven (numeric gates + statistical evals)
 
 **Definition.** Quality is managed by enforced numbers: coverage and mutation gates on changed code, flake-rate budgets, regression-capture targets — and non-deterministic agent behavior is governed by eval suites with statistically honest reporting.
 
@@ -318,7 +318,7 @@ For ACTM, the WQR supplies the macro context: the industry's QA function is itse
 
 **Scoring note on DECISIVE-01:** single-agent beats pipeline on weak-class tasks (12/16 vs 10/16 vs 8/16) `[internal: DECISIVE-01]` — this is *not* an argument against maturity, it is an argument for the task-class gate tiering built into ACTM L2. Testing maturity must scale with task verifiability, or the gate itself becomes the failure mode.
 
-### D. Migration path from Level 1 to Level 5
+### D. Migration path from level 1 to level 5
 
 #### D.1 Sequencing overview
 
@@ -330,7 +330,7 @@ For ACTM, the WQR supplies the macro context: the industry's QA function is itse
 | 3 — Numbers | Weeks 11–22 | Coverage/mutation gates, eval harness with statistics, dashboards | **L4** |
 | 4 — Self-verification | Week 23+ | Auto test-generation, drills, drift monitors, experiments | **L5** (maintained) |
 
-#### D.2 Phase 0 — Quick wins vs structural changes (what to do first)
+#### D.2 Phase 0 — quick wins vs structural changes (what to do first)
 
 **Quick wins (days, no new agents):**
 1. **Write `TEST-POLICY.md`** — one page: every code deliverable requires tests; the 5 gates of L2; the task-class tier table; the flake rule; the appeal path. (This is the crew's TMMi-L2 Test Policy and Strategy artifact [TMMi Foundation, 2018].)
@@ -511,7 +511,7 @@ Grounded anchors: Google's Test Certified levels were each designed for "within 
 
 > **[Merge note — dsh, 2026-09-15]** The base document below (ACTM: L1 Ad Hoc → L5 Self-Verifying, per-level measurable gates, evidence-based Crew v2 assessment = Level 1, migration path, quarterly rubric, 59 URL-verified references) was restored after a local-state sync left this file appendix-only; both deep-dive appendices are preserved verbatim beneath it. Where thresholds differ — the first appendix's transition gates use repo-wide line coverage ≥80% and 4–8 weeks L1→L2, while the ACTM base uses changed-code line ≥90% / branch ≥75% (anchored to [Google Testing Blog, 2020]) and 1–2 weeks to L2 (anchored to Test Certified's "a day or five" [Bland, 2011]) — both are explicitly extrapolations (no published AI-crew transition data exists; see §D.4); the operator should calibrate with the crew's own data at Level 4. The first appendix's command-level checks (`git ls-files`, `grep`, `sqlite3`) are the recommended mechanical implementation of the base's §D.5 artifacts. Appendix citations are author-year style; the base's References section is URL-verified [verified 2026-09-13].
 
-### Assessment Questions per Level
+### Assessment questions per level
 
 **Level 1 → Level 2 Gate (exit checklist — ALL must be YES):**
 1. Is there a committed `crew/TEST-POLICY.md`? (`git ls-files | grep -q TEST-POLICY.md`)
@@ -543,7 +543,7 @@ Grounded anchors: Google's Test Certified levels were each designed for "within 
 4. -25% escapes/quarter trend? (prod reports)
 5. Safe-class auto-patches gated by confidence score? (linter config)
 
-### Tools Required per Level
+### Tools required per level
 
 | Level | New Tools | Already Needed |
 |-------|-----------|----------------|
@@ -552,7 +552,7 @@ Grounded anchors: Google's Test Certified levels were each designed for "within 
 | 3→4 | `vcrpy`, `testcontainers`, `mutmut` covered-lines mode, CTRF reporter, DeFlaker-like flip history | above |
 | 4→5 | `hypothesis` stateful testing, embedding similarity (`sentence-transformers`), eval harness, KB store | above |
 
-### Typical Time Between Levels (evidence-based)
+### Typical time between levels (evidence-based)
 
 | Transition | Median Time | Range | Evidence |
 |------------|-------------|-------|----------|
@@ -563,7 +563,7 @@ Grounded anchors: Google's Test Certified levels were each designed for "within 
 
 **Google Test Certified parallel** [KnowMBA, 2025]: teams graduated from L1 to L3 in 12-18 months using stepwise certification with explicit checkpoints per level.
 
-### Common Failure Modes per Level
+### Common failure modes per level
 
 | Level | Failure Mode | Symptom | Mitigation |
 |-------|-------------|---------|------------|
@@ -576,7 +576,7 @@ Grounded anchors: Google's Test Certified levels were each designed for "within 
 | 4→5 | Strictness drift | FP rate >2%, appeals >5% | Quarterly calibration: review FP/FN, adjust thresholds |
 | 4→5 | Leniency drift | Escalates rising | Tighten gates; increase mutation operator set |
 
-### Exact TMMi Mapping (AI Crew Adaptation)
+### Exact TMMi mapping (AI Crew adaptation)
 
 | TMMi Process Area | AI Crew Equivalent | Gate Evidence |
 |-------------------|-------------------|---------------|
