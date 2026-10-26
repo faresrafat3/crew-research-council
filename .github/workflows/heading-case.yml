@@ -1,0 +1,16 @@
+name: heading-case
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check RESEARCH-COUNCIL/OUTPUT headings are sentence case
+        run: python3 tools/check_heading_case.py
