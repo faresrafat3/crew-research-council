@@ -1,16 +1,16 @@
-# crew-research-council — blackboard + veto pipeline
+# crew-research-council, blackboard + veto pipeline
 
 A hermes-native research council: the board is the **only** shared state.
-Chat threads are Q&A only — no decision lives in chat.
+Chat threads are Q&A only, no decision lives in chat.
 
 ## Contract
 
 Global harness contract: `~/AGENTS.md` (permissions, single-source configs,
-tools index). This file adds repo identity only — never contradicts it.
+tools index). This file adds repo identity only, never contradicts it.
 
 ## Commands
 
-No build step — this is a process/repository of record. The runtime is
+No build step, this is a process/repository of record. The runtime is
 hermes itself (project config in `.hermes/`):
 
 ```
@@ -20,8 +20,8 @@ git status        # must be clean before claiming any decision landed
 
 ## Map
 
-- `BLACKBOARD.md` — the board; the only place a decision becomes real
-- `VOICES-LIVE-16.md` — voice registry (register/rhythm/lexicon/forms per bot)
+- `BLACKBOARD.md`, the board; the only place a decision becomes real
+- `VOICES-LIVE-16.md`, voice registry (register/rhythm/lexicon/forms per bot)
 - `crew/` `experiments/` · `ARENA.md` · `bets-ledger.md` · `ENTITY.md`
 
 ## Rules
