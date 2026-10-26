@@ -2,7 +2,15 @@ name: heading-case
 
 on:
   push:
+    paths:
+      - "RESEARCH-COUNCIL/OUTPUT/**"
+      - "tools/check_heading_case.py"
+      - ".github/workflows/heading-case.yml"
   pull_request:
+    paths:
+      - "RESEARCH-COUNCIL/OUTPUT/**"
+      - "tools/check_heading_case.py"
+      - ".github/workflows/heading-case.yml"
 
 permissions:
   contents: read
