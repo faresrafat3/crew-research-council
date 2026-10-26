@@ -16,6 +16,9 @@ hermes itself (project config in `.hermes/`):
 ```
 hermes            # enter the council runtime from this directory
 git status        # must be clean before claiming any decision landed
+
+# gate (runs in .githooks/pre-commit, `git config core.hooksPath .githooks`)
+python3 tools/check_heading_case.py   # OUTPUT/ headings must be sentence case
 ```
 
 ## Map
@@ -23,6 +26,7 @@ git status        # must be clean before claiming any decision landed
 - `BLACKBOARD.md`, the board; the only place a decision becomes real
 - `VOICES-LIVE-16.md`, voice registry (register/rhythm/lexicon/forms per bot)
 - `crew/` `experiments/` · `ARENA.md` · `bets-ledger.md` · `ENTITY.md`
+- `tools/check_heading_case.py`, the heading gate; `.githooks/pre-commit` runs it
 
 ## Rules
 
