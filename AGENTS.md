@@ -18,7 +18,7 @@ hermes            # enter the council runtime from this directory
 git status        # must be clean before claiming any decision landed
 
 # gate (runs in .githooks/pre-commit, `git config core.hooksPath .githooks`)
-python3 tools/check_heading_case.py   # OUTPUT/ headings must be sentence case
+python3 tools/check_docs.py   # OUTPUT headings sentence case; READMEs clean; refs resolve
 ```
 
 ## Map
@@ -26,7 +26,7 @@ python3 tools/check_heading_case.py   # OUTPUT/ headings must be sentence case
 - `BLACKBOARD.md`, the board; the only place a decision becomes real
 - `VOICES-LIVE-16.md`, voice registry (register/rhythm/lexicon/forms per bot)
 - `crew/` `experiments/` · `ARENA.md` · `bets-ledger.md` · `ENTITY.md`
-- `tools/check_heading_case.py`, the heading gate; `.githooks/pre-commit` runs it
+- `tools/check_docs.py`, the docs gate; `.githooks/pre-commit` runs it
 
 ## Rules
 

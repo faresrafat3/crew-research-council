@@ -1,0 +1,26 @@
+name: docs-gate
+
+on:
+  push:
+    paths:
+      - "RESEARCH-COUNCIL/OUTPUT/**"
+      - "RESEARCH-COUNCIL/README.md"
+      - "tools/check_docs.py"
+      - ".github/workflows/docs-gate.yml"
+  pull_request:
+    paths:
+      - "RESEARCH-COUNCIL/OUTPUT/**"
+      - "RESEARCH-COUNCIL/README.md"
+      - "tools/check_docs.py"
+      - ".github/workflows/docs-gate.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the docs gate (headings, README prose, refs)
+        run: python3 tools/check_docs.py

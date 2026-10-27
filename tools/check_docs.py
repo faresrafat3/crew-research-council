@@ -1,18 +1,26 @@
 #!/usr/bin/env python3
-"""Gate: headings in RESEARCH-COUNCIL/OUTPUT must be sentence case.
+"""Gate: docs style for the research tree.
 
-Fails (exit 1) when a heading outside a fenced code block carries Title
-Case words. Acronyms, tool names, and proper nouns are allowed; the
-[DEEP DIVE] marker headings are skipped because STATUS.md greps for that
-literal.
+Three rules, one command — the pre-commit hook and CI both run this:
 
-Usage: python3 tools/check_heading_case.py [directory]
+1. Headings in RESEARCH-COUNCIL/OUTPUT/*.md are sentence case. Acronyms,
+   tool names and proper nouns are allowed; [DEEP DIVE] marker headings are
+   skipped because STATUS.md greps for that literal.
+2. The two READMEs (RESEARCH-COUNCIL/README.md and its OUTPUT/README.md)
+   carry no prose em dash, no bold and no emoji — outside fenced blocks and
+   code spans.
+3. Backticked .md references in those READMEs resolve, relative to the file
+   or under RESEARCH-COUNCIL/OUTPUT/.
+
+Usage: python3 tools/check_docs.py [output-directory]
 """
 
 import glob
 import os
 import re
 import sys
+
+# Rule 1: heading case. ------------------------------------------------------
 
 # Multi-token names whose capitalisation is part of the name.
 PROTECTED_PHRASES = (
@@ -132,13 +140,73 @@ def violations(body):
     return bad
 
 
+# Rules 2 and 3: the cleaned READMEs. ----------------------------------------
+
+RC = "RESEARCH-COUNCIL"
+OUTPUT = os.path.join(RC, "OUTPUT")
+CLEAN_READMES = (os.path.join(RC, "README.md"), os.path.join(OUTPUT, "README.md"))
+
+EMOJI = re.compile("[\U0001F000-\U0001FAFF\u2600-\u27BF]")
+REF = re.compile(r"`([^`\n]+\.md)`")
+
+
+def prose_issues(path):
+    """Em dash, bold and emoji found outside fenced blocks and code spans."""
+    issues = []
+    fenced = False
+    with open(path, encoding="utf-8") as handle:
+        for lineno, line in enumerate(handle, 1):
+            if FENCE.match(line):
+                fenced = not fenced
+                continue
+            if fenced:
+                continue
+            stripped = CODE_SPAN.sub("code", line)
+            excerpt = line.strip()[:70]
+            if "—" in stripped:
+                issues.append((lineno, "em dash", excerpt))
+            if "**" in stripped:
+                issues.append((lineno, "bold", excerpt))
+            if EMOJI.search(stripped):
+                issues.append((lineno, "emoji", excerpt))
+    return issues
+
+
+def ref_check(path):
+    """(resolved count, issues): backticked .md references with no target file."""
+    issues = []
+    resolved = 0
+    base = os.path.dirname(path)
+    fenced = False
+    with open(path, encoding="utf-8") as handle:
+        for lineno, line in enumerate(handle, 1):
+            if FENCE.match(line):
+                fenced = not fenced
+                continue
+            if fenced:
+                continue
+            for ref in REF.findall(line):
+                if any(ch in ref for ch in "<>* "):
+                    continue
+                candidates = (
+                    os.path.normpath(os.path.join(base, ref)),
+                    os.path.normpath(os.path.join(OUTPUT, ref)),
+                )
+                if any(os.path.exists(candidate) for candidate in candidates):
+                    resolved += 1
+                else:
+                    issues.append((lineno, "ref", ref))
+    return resolved, issues
+
+
 def main(argv):
-    root = argv[1] if len(argv) > 1 else "RESEARCH-COUNCIL/OUTPUT"
+    root = argv[1] if len(argv) > 1 else OUTPUT
     paths = sorted(glob.glob(os.path.join(root, "*.md")))
     if not paths:
         print(f"no markdown files under {root}", file=sys.stderr)
         return 2
-    checked = 0
+
+    headings = 0
     failures = []
     for path in paths:
         fenced = False
@@ -153,18 +221,38 @@ def main(argv):
                 if not match:
                     continue
                 body = match.group(2)
-                checked += 1
+                headings += 1
                 if "[DEEP DIVE" in body:
                     continue
                 bad = violations(body)
                 if bad:
-                    failures.append(f"{path}:{lineno}: {', '.join(bad)} | {body}")
+                    failures.append(
+                        f"{path}:{lineno}: heading case | {', '.join(bad)} | {body}"
+                    )
+
+    readmes = 0
+    refs = 0
+    for path in CLEAN_READMES:
+        if not os.path.exists(path):
+            failures.append(f"{path}: missing | the cleaned README is gone")
+            continue
+        readmes += 1
+        for lineno, rule, detail in prose_issues(path):
+            failures.append(f"{path}:{lineno}: {rule} | {detail}")
+        resolved, issues = ref_check(path)
+        refs += resolved
+        for lineno, rule, detail in issues:
+            failures.append(f"{path}:{lineno}: {rule} | {detail}")
+
     if failures:
-        print(f"Title Case headings in {root} ({len(failures)}):", file=sys.stderr)
+        print(f"docs gate: {len(failures)} problems", file=sys.stderr)
         for failure in failures:
             print(f"  {failure}", file=sys.stderr)
         return 1
-    print(f"heading case ok: {checked} headings checked in {len(paths)} files")
+    print(
+        f"docs gate ok: {headings} headings in {len(paths)} files; "
+        f"{readmes} READMEs clean; {refs} refs resolve"
+    )
     return 0
 
 
