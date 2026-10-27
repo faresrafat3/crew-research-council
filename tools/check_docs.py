@@ -98,6 +98,19 @@ HEADING = re.compile(r"^(#{1,6})\s+(.*\S)\s*$")
 CODE_SPAN = re.compile(r"`[^`]*`")
 
 
+def unfenced_lines(path):
+    """Yield (lineno, line) for lines outside fenced code blocks."""
+    fenced = False
+    with open(path, encoding="utf-8") as handle:
+        for lineno, line in enumerate(handle, 1):
+            if FENCE.match(line):
+                fenced = not fenced
+                continue
+            if fenced:
+                continue
+            yield lineno, line
+
+
 def is_allowed_capital(part):
     """True when a capitalised word-part is an acronym, code, or number."""
     if re.search(r"\d", part):
@@ -153,22 +166,15 @@ REF = re.compile(r"`([^`\n]+\.md)`")
 def prose_issues(path):
     """Em dash, bold and emoji found outside fenced blocks and code spans."""
     issues = []
-    fenced = False
-    with open(path, encoding="utf-8") as handle:
-        for lineno, line in enumerate(handle, 1):
-            if FENCE.match(line):
-                fenced = not fenced
-                continue
-            if fenced:
-                continue
-            stripped = CODE_SPAN.sub("code", line)
-            excerpt = line.strip()[:70]
-            if "—" in stripped:
-                issues.append((lineno, "em dash", excerpt))
-            if "**" in stripped:
-                issues.append((lineno, "bold", excerpt))
-            if EMOJI.search(stripped):
-                issues.append((lineno, "emoji", excerpt))
+    for lineno, line in unfenced_lines(path):
+        stripped = CODE_SPAN.sub("code", line)
+        excerpt = line.strip()[:70]
+        if "—" in stripped:
+            issues.append((lineno, "em dash", excerpt))
+        if "**" in stripped:
+            issues.append((lineno, "bold", excerpt))
+        if EMOJI.search(stripped):
+            issues.append((lineno, "emoji", excerpt))
     return issues
 
 
@@ -177,25 +183,18 @@ def ref_check(path):
     issues = []
     resolved = 0
     base = os.path.dirname(path)
-    fenced = False
-    with open(path, encoding="utf-8") as handle:
-        for lineno, line in enumerate(handle, 1):
-            if FENCE.match(line):
-                fenced = not fenced
+    for lineno, line in unfenced_lines(path):
+        for ref in REF.findall(line):
+            if any(ch in ref for ch in "<>* "):
                 continue
-            if fenced:
-                continue
-            for ref in REF.findall(line):
-                if any(ch in ref for ch in "<>* "):
-                    continue
-                candidates = (
-                    os.path.normpath(os.path.join(base, ref)),
-                    os.path.normpath(os.path.join(OUTPUT, ref)),
-                )
-                if any(os.path.exists(candidate) for candidate in candidates):
-                    resolved += 1
-                else:
-                    issues.append((lineno, "ref", ref))
+            candidates = (
+                os.path.normpath(os.path.join(base, ref)),
+                os.path.normpath(os.path.join(OUTPUT, ref)),
+            )
+            if any(os.path.exists(candidate) for candidate in candidates):
+                resolved += 1
+            else:
+                issues.append((lineno, "ref", ref))
     return resolved, issues
 
 
@@ -209,26 +208,19 @@ def main(argv):
     headings = 0
     failures = []
     for path in paths:
-        fenced = False
-        with open(path, encoding="utf-8") as handle:
-            for lineno, line in enumerate(handle, 1):
-                if FENCE.match(line):
-                    fenced = not fenced
-                    continue
-                if fenced:
-                    continue
-                match = HEADING.match(line.rstrip("\n"))
-                if not match:
-                    continue
-                body = match.group(2)
-                headings += 1
-                if "[DEEP DIVE" in body:
-                    continue
-                bad = violations(body)
-                if bad:
-                    failures.append(
-                        f"{path}:{lineno}: heading case | {', '.join(bad)} | {body}"
-                    )
+        for lineno, line in unfenced_lines(path):
+            match = HEADING.match(line.rstrip("\n"))
+            if not match:
+                continue
+            body = match.group(2)
+            headings += 1
+            if "[DEEP DIVE" in body:
+                continue
+            bad = violations(body)
+            if bad:
+                failures.append(
+                    f"{path}:{lineno}: heading case | {', '.join(bad)} | {body}"
+                )
 
     readmes = 0
     refs = 0
