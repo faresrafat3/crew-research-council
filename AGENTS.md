@@ -19,6 +19,7 @@ git status        # must be clean before claiming any decision landed
 
 # gate (runs in .githooks/pre-commit, `git config core.hooksPath .githooks`)
 python3 tools/check_docs.py   # OUTPUT headings sentence case; READMEs clean; refs resolve
+python3 -m unittest discover -s tests/unit   # witness tests for both tools
 ```
 
 ## Map
@@ -26,7 +27,9 @@ python3 tools/check_docs.py   # OUTPUT headings sentence case; READMEs clean; re
 - `BLACKBOARD.md`, the board; the only place a decision becomes real
 - `VOICES-LIVE-16.md`, voice registry (register/rhythm/lexicon/forms per bot)
 - `crew/` `experiments/` · `ARENA.md` · `bets-ledger.md` · `ENTITY.md`
-- `tools/check_docs.py`, the docs gate; `.githooks/pre-commit` runs it
+- `tools/check_docs.py`, the docs gate; `tools/gen_leaderboard.py`, the generated
+  board numbers; `tests/unit/`, witness tests that each input is read once;
+  `.githooks/pre-commit` runs the gate and the tests
 
 ## Rules
 

@@ -102,6 +102,31 @@ class GateReadCost(unittest.TestCase):
 class GateVerdicts(unittest.TestCase):
     """The gate still reports the same three rules, in the same order."""
 
+    def test_missing_cleaned_readme_fails_the_gate(self):
+        gate = load_gate()
+        scratch = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, scratch)
+        with REAL_OPEN(os.path.join(scratch, "other.md"), "w", encoding="utf-8") as fh:
+            fh.write("# Fine\n")
+        gate.CLEAN_READMES = (
+            os.path.join(scratch, "README.md"),
+            os.path.join(scratch, "OUTPUT-README.md"),
+        )
+        gate.OUTPUT = scratch
+
+        code, _, err = run_gate(gate, ["check_docs.py", scratch])
+        self.assertEqual(code, 1)
+        self.assertEqual(err.count("missing | the cleaned README is gone"), 2, msg=err)
+
+    def test_empty_tree_exits_two(self):
+        gate = load_gate()
+        scratch = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, scratch)
+
+        code, _, err = run_gate(gate, ["check_docs.py", scratch])
+        self.assertEqual(code, 2)
+        self.assertIn(f"no markdown files under {scratch}", err)
+
     def test_repo_tree_passes_with_the_known_summary(self):
         gate = load_gate()
         code, out, err = run_gate(gate, ["check_docs.py"])

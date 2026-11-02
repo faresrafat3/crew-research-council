@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Pre-commit gate: docs style (OUTPUT headings, README prose, refs).
+# Pre-commit gate: docs style (OUTPUT headings, README prose, refs), then the
+# witness tests for the two tools that read the tree.
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
 python3 tools/check_docs.py
+python3 -m unittest discover -s tests/unit
