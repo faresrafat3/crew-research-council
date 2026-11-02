@@ -6,7 +6,6 @@ numbers are never hand-edited.
 Usage: python3 tools/gen_leaderboard.py
 """
 import re, sys, os, hashlib
-
 RUNS = os.path.expanduser("~/.hermes/crew/experiment/runs")
 R02 = os.path.join(RUNS, "2026-09-22-router-round-02")
 R03 = os.path.join(RUNS, "2026-09-22-router-round-03")
@@ -21,16 +20,37 @@ FIX03 = os.path.join(R03, "tasks/expanded-missions.json")
 FIX04 = os.path.join(R04, "tasks/expanded-missions.json")
 FIX04F = os.path.join(R04, "tasks/real-missions.json")
 
+# One read per input: the report hashes the frozen fixtures twice and scans
+# round-04 for both SUMMARY rows and the RULING line, so keep both caches.
+_DIGESTS = {}
+_LINES = {}
+
 
 def sha(path):
-    return hashlib.sha256(open(path, "rb").read()).hexdigest()
+    """sha256 of one fixture; hashed once per run, not once per mention."""
+    if path not in _DIGESTS:
+        with open(path, "rb") as handle:
+            _DIGESTS[path] = hashlib.sha256(handle.read()).hexdigest()
+    return _DIGESTS[path]
+
+
+def lines_of(path):
+    """Every line of one log; read once per run, handle closed on the way out.
+
+    `round-04-trial.txt` answers both the SUMMARY scan and the RULING scan, and
+    the frozen fixtures are hashed twice by the report — one read each.
+    """
+    if path not in _LINES:
+        with open(path, encoding="utf-8") as handle:
+            _LINES[path] = handle.readlines()
+    return _LINES[path]
 
 
 def summaries(log):
     if not os.path.exists(log):
         sys.exit(f"FAIL-LOUD: measurement log missing: {log}")
     rows = []
-    for line in open(log):
+    for line in lines_of(log):
         m = re.match(r"seed=(\d+) (SUMMARY .*)", line)
         if m:
             rows.append((int(m.group(1)), m.group(2)))
@@ -62,7 +82,7 @@ def pick(rows, formation, seed=None, n=None, mode=None):
 def postcut_verdict():
     if not os.path.exists(POSTCUT):
         sys.exit(f"FAIL-LOUD: post-cut verification missing: {POSTCUT}")
-    for line in open(POSTCUT):
+    for line in lines_of(POSTCUT):
         if line.startswith("RESULT:"):
             return line.strip().split(":", 1)[1].strip()
     sys.exit("FAIL-LOUD: post-cut log has no RESULT line")
@@ -71,7 +91,7 @@ def postcut_verdict():
 def ruling04():
     if not os.path.exists(LOG04):
         sys.exit(f"FAIL-LOUD: measurement log missing: {LOG04}")
-    for line in open(LOG04):
+    for line in lines_of(LOG04):
         if "RULING:" in line:
             return line.split("RULING:", 1)[1].strip()
     sys.exit("FAIL-LOUD: round-04 log has no RULING line")

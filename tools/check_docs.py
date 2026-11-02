@@ -12,6 +12,10 @@ Three rules, one command — the pre-commit hook and CI both run this:
 3. Backticked .md references in those READMEs resolve, relative to the file
    or under RESEARCH-COUNCIL/OUTPUT/.
 
+One fence-aware reader serves all three rules, and each file is read once per
+run: OUTPUT/README.md answers to every rule, so its unfenced lines are held in
+memory and re-scanned instead of the file being reopened.
+
 Usage: python3 tools/check_docs.py [output-directory]
 """
 
@@ -163,10 +167,15 @@ EMOJI = re.compile("[\U0001F000-\U0001FAFF\u2600-\u27BF]")
 REF = re.compile(r"`([^`\n]+\.md)`")
 
 
-def prose_issues(path):
+def read_lines(path):
+    """Every unfenced line of one file, read from disk exactly once."""
+    return list(unfenced_lines(path))
+
+
+def prose_issues(lines):
     """Em dash, bold and emoji found outside fenced blocks and code spans."""
     issues = []
-    for lineno, line in unfenced_lines(path):
+    for lineno, line in lines:
         stripped = CODE_SPAN.sub("code", line)
         excerpt = line.strip()[:70]
         if "—" in stripped:
@@ -178,12 +187,12 @@ def prose_issues(path):
     return issues
 
 
-def ref_check(path):
+def ref_check(path, lines):
     """(resolved count, issues): backticked .md references with no target file."""
     issues = []
     resolved = 0
     base = os.path.dirname(path)
-    for lineno, line in unfenced_lines(path):
+    for lineno, line in lines:
         for ref in REF.findall(line):
             if any(ch in ref for ch in "<>* "):
                 continue
@@ -205,10 +214,20 @@ def main(argv):
         print(f"no markdown files under {root}", file=sys.stderr)
         return 2
 
+    # One read per file. The heading rule, the prose rules and the ref rule all
+    # run on these cached unfenced lines, so no file is opened twice in a run
+    # (OUTPUT/README.md answers to all three rules).
+    lines_by_path = {}
+    for path in paths + list(CLEAN_READMES):
+        key = os.path.normpath(path)
+        if key in lines_by_path or not os.path.exists(path):
+            continue
+        lines_by_path[key] = read_lines(path)
+
     headings = 0
     failures = []
     for path in paths:
-        for lineno, line in unfenced_lines(path):
+        for lineno, line in lines_by_path[os.path.normpath(path)]:
             match = HEADING.match(line.rstrip("\n"))
             if not match:
                 continue
@@ -229,9 +248,10 @@ def main(argv):
             failures.append(f"{path}: missing | the cleaned README is gone")
             continue
         readmes += 1
-        for lineno, rule, detail in prose_issues(path):
+        lines = lines_by_path[os.path.normpath(path)]
+        for lineno, rule, detail in prose_issues(lines):
             failures.append(f"{path}:{lineno}: {rule} | {detail}")
-        resolved, issues = ref_check(path)
+        resolved, issues = ref_check(path, lines)
         refs += resolved
         for lineno, rule, detail in issues:
             failures.append(f"{path}:{lineno}: {rule} | {detail}")
