@@ -359,3 +359,8 @@ a `> leaderboard.md` redirect to keep (`0 bytes on failure`, pinned by
   predate these fixes; M10-M13, M15, M16 remain prose; M9's global `open` patch
   is untouched. No frozen paper was edited and no ruling re-scored.
 
+**Correction on the record:** commit `c80b49e` is titled "close seven implicit
+state transitions". The audited count is six machines changed (M1, M3, M5, M6,
+M7, M8), M2 already witnessed before this session, M4 declared and pinned. The
+frozen commit title stays as written; this note is the correction.
+

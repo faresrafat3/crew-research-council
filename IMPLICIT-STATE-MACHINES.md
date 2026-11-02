@@ -2,11 +2,12 @@
 
 Verdict first: the tree ran on sixteen state machines and declared none of
 them. Eight lived in the two Python tools, one in the test harness, seven in the
-process documents. On 2026-11-02 seven of the eight code transitions were
-closed in code with witnessed tests, one (M4) was declared and pinned because
-the protected corpus depends on it, and the seven document machines are still
-prose. `tools/probe_state_machines.py` records the state of every code row and
-exits 1 if one reopens; `bash tools/gate.sh` runs it beside the gate.
+process documents. On 2026-11-02 six of those eight code machines were changed
+and witnessed (M1, M3, M5, M6, M7, M8), M2 was already witnessed and left alone,
+M4 was declared and pinned because the protected corpus depends on it, and the
+seven document machines are still prose. `tools/probe_state_machines.py` records
+the state of every code row and exits 1 if one reopens; `bash tools/gate.sh` runs
+it beside the gate.
 
 Two of them were leaking wrong answers: the leaderboard's row selector could
 print the wrong arm's numbers, and the docs gate's fence reader dropped out of a
@@ -359,8 +360,9 @@ bash tools/gate.sh
 
 M1, M4, M6, M7 and M8 were first reproduced against scratch directories and logs
 inside the process, then closed with a failing test written before the change
-(`TEST-POLICY.md` §3): 14 new tests, of which 10 failed against the old code.
-M5 was reproduced by generating twice around an in-place log edit. M10-M16 were
+(`TEST-POLICY.md` §3): 15 new tests, of which 11 failed against the pre-fix code
+(10 in the first batch, and the atomic-output test on its own). M5 was
+reproduced by generating twice around an in-place log edit. M10-M16 were
 established by reading the files named in each entry and by the greps quoted
 there.
 
