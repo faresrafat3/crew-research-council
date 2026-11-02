@@ -31,8 +31,10 @@ python3 tools/gen_leaderboard.py --check     # CURRENT / STALE / SKIP
 - `crew/` `experiments/` · `ARENA.md` · `bets-ledger.md` · `ENTITY.md`
 - `tools/check_docs.py`, the docs gate; `tools/gen_leaderboard.py`, the generated
   board numbers and their freshness check; `tools/gate.sh`, the one definition
-  of "verified"; `tests/unit/`, witness tests that each input is read once;
-  `.githooks/pre-commit` and CI both call `tools/gate.sh`
+  of "verified"; `tools/ci-gate.patch`, the CI half of the gate, recorded until a
+  token with `workflows` permission applies it; `tests/unit/`, witness tests that
+  each input is read once; `.githooks/pre-commit` and CI both call
+  `tools/gate.sh`
 
 ## Rules
 

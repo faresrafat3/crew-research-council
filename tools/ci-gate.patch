@@ -1,0 +1,50 @@
+# The CI half of the gate, recorded and not applied.
+#
+# .github/workflows/docs-gate.yml still runs `tools/check_docs.py` alone: the
+# GitHub App that pushes here is refused write access to `.github/workflows/**`
+# without the `workflows` permission, from both `git push` and the Contents API.
+# Apply this with a token that holds that permission, then delete the file:
+#
+#     git apply tools/ci-gate.patch && git rm tools/ci-gate.patch
+#
+# tests/unit/test_ci_patch.py fails if this stops applying while the workflow
+# still runs the docs gate alone, so the recorded state cannot rot silently.
+
+diff --git a/.github/workflows/docs-gate.yml b/.github/workflows/docs-gate.yml
+index db6f43c..4f5d8ed 100644
+--- a/.github/workflows/docs-gate.yml
++++ b/.github/workflows/docs-gate.yml
+@@ -3,15 +3,19 @@ name: docs-gate
+ on:
+   push:
+     paths:
+-      - "RESEARCH-COUNCIL/OUTPUT/**"
+-      - "RESEARCH-COUNCIL/README.md"
+-      - "tools/check_docs.py"
++      - "RESEARCH-COUNCIL/**"
++      - "tools/**"
++      - "tests/**"
++      - ".githooks/**"
++      - "leaderboard.md"
+       - ".github/workflows/docs-gate.yml"
+   pull_request:
+     paths:
+-      - "RESEARCH-COUNCIL/OUTPUT/**"
+-      - "RESEARCH-COUNCIL/README.md"
+-      - "tools/check_docs.py"
++      - "RESEARCH-COUNCIL/**"
++      - "tools/**"
++      - "tests/**"
++      - ".githooks/**"
++      - "leaderboard.md"
+       - ".github/workflows/docs-gate.yml"
+ 
+ permissions:
+@@ -22,5 +26,5 @@ jobs:
+     runs-on: ubuntu-latest
+     steps:
+       - uses: actions/checkout@v7
+-      - name: Check the docs gate (headings, README prose, refs)
+-        run: python3 tools/check_docs.py
++      - name: Run the gate (docs style, witness tests, board freshness)
++        run: bash tools/gate.sh

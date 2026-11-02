@@ -312,3 +312,36 @@ claim).
   predate these fixes; the process machines (mission pipeline, board protocol,
   trial lifecycle) are still prose; no frozen paper and no ruling was touched.
 
+---
+## APPEND 2026-11-02 (b) — one definition of "verified", and a board freshness verdict
+
+- `tools/gate.sh` is now the one definition: docs style, the witness tests, and
+  the generated board's freshness. `.githooks/pre-commit` calls it, so the hook
+  no longer carries its own copy of the check list.
+- `python3 tools/gen_leaderboard.py --check` gives the board a state for the
+  first time: CURRENT when the file matches a fresh render, STALE (exit 1, with
+  the regenerate command) when it differs or is missing, SKIP when the run tree
+  under `~/.hermes` is absent. It never prints the report, and `rendered()` is
+  the single render path `main()` writes from.
+- The CI half of M14 is **still open, now measured**: run `41440280125` ran the
+  step "Check the docs gate (headings, README prose, refs)" and never invoked
+  `unittest` (0 occurrences in its log); commit `dd69602` (this gate) has **0**
+  check runs at all, because the path filter matches neither `tools/**` nor
+  `tests/**` nor `.githooks/**`.
+- Closing it needs one permission this identity does not hold. Both channels
+  were tried once and both answered `403 ... without 'workflows' permission`:
+  `git push` of the workflow change, and a Contents API PUT of the same file.
+  The change is recorded as `tools/ci-gate.patch`; `git apply
+  tools/ci-gate.patch` then `git rm` it closes the half in one command.
+- `tests/unit/test_ci_patch.py` pins the two legal states: the workflow runs
+  `tools/gate.sh`, or the recorded patch still applies. Verified by mutation: a
+  one-line drift in the workflow fails the test; the applied-and-deleted state
+  passes with one skip.
+- Evidence: `bash tools/gate.sh` -> `docs gate ok: 776 headings in 25 files; 2
+  READMEs clean; 32 refs resolve`, `Ran 35 tests ... OK`, `leaderboard: SKIP (no
+  run tree ...)`, exit 0.
+- **Not claimed:** CI does not run the gate yet; `leaderboard.md` was not
+  regenerated (no run tree here), so its numbers still predate the row fixes;
+  the process machines (mission pipeline, board protocol, trial lifecycle) stay
+  prose.
+
