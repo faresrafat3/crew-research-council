@@ -336,11 +336,13 @@ parsed fields, `unfenced_lines` given a tracked opening marker,
 `seeds_stable` returning `(values, stable)`, the read caches cleared per
 `main()`, the gate's three verdicts named `OK`/`PROBLEMS`/`NO_INPUT`.
 
-**M14 closed:** `tools/gate.sh` is now the one definition of "verified"
-(check_docs, witness tests, probes); `.githooks/pre-commit` and
-`.github/workflows/docs-gate.yml` both call it, and the workflow triggers on
-`tools/**`, `tests/**`, `.githooks/**` — the witness tests run in CI for the
-first time.
+**M14 half-closed:** `tools/gate.sh` is now the one definition of "verified"
+(check_docs, witness tests, probes) and `.githooks/pre-commit` calls it. The CI
+half did **not** land: the push token is refused write access to
+`.github/workflows/**` ("without `workflows` permission"), so `docs-gate.yml`
+still runs `tools/check_docs.py` alone. The exact three-line patch is recorded in
+`IMPLICIT-STATE-MACHINES.md` under M14; apply it with a token that holds that
+permission and the witness tests run on every push.
 
 **Evidence:** `bash tools/gate.sh` -> docs gate ok (776 headings / 25 files / 2
 READMEs clean / 32 refs), `Ran 26 tests ... OK`, `8 probes, 0 regression(s)`.

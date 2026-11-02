@@ -293,16 +293,35 @@ is not editable, so the rule is named in a docstring and pinned by
 | M8 seed verdict | `0.0` or `"VARIES"` return | `(values, stable: bool)` | `LeaderboardFreshness` |
 | M9 harness patch | `try/finally` only | unchanged, one module per test | `load_gate`, `load_tool` |
 | M10-M16 process | prose | prose, except M14 (below) | none |
-| M14 verified state | hook and CI disagree | both call `tools/gate.sh` | the script itself |
+| M14 verified state | hook and CI disagree | hook calls `tools/gate.sh`; CI half blocked, patch recorded | the script itself |
 
 `tools/gate.sh` is the one definition of "verified": docs gate, witness tests,
-state-machine probes. `.githooks/pre-commit` and
-`.github/workflows/docs-gate.yml` both call it, and the workflow now triggers on
-`tools/**`, `tests/**` and `.githooks/**` instead of `tools/check_docs.py`
-alone, so the witness tests finally run in CI.
+state-machine probes. `.githooks/pre-commit` now calls it, so the local half has
+a single definition. The CI half could not be landed from this session: the
+GitHub App that pushes here is refused write access to `.github/workflows/**`
+("refusing to allow a GitHub App to create or update workflow ... without
+`workflows` permission"), so `docs-gate.yml` still runs `tools/check_docs.py`
+alone and the witness tests still do not run in CI. The patch is one file, and
+it is exactly this:
+
+```
+on.push.paths      and  on.pull_request.paths:
+-  - "tools/check_docs.py"            ->  - "tools/**"
+                                    ->  - "tests/**"
+                                    ->  - ".githooks/**"
+steps:
+-  name: Check the docs gate ...   ->  name: Run the gate ...
+-  run: python3 tools/check_docs.py ->  run: bash tools/gate.sh
+```
+
+Apply it with a token that holds `workflows` permission, and M14 is closed on
+both halves.
 
 ## What is still open
 
+- M14's CI half: `docs-gate.yml` still runs `tools/check_docs.py` alone because
+  the push token here cannot write workflow files. Apply the three-line patch in
+  the M14 note above and the witness tests start running on every push.
 - M15 leaderboard freshness: `leaderboard.md` still carries no proof it matches
   the logs, and it was **not** regenerated on 2026-11-02 because
   `~/.hermes/crew/experiment/runs` is absent. The numbers in it predate these
@@ -347,22 +366,26 @@ with the state recorded above.
 ## Resume here
 
 State: seven code transitions are closed and witnessed, M4 is declared and
-pinned, and the gate runs the tests and the probes in one definition. Nothing in
-this file is an outstanding decision; what follows is work, not judgement.
+pinned, the hook runs one gate script, and the CI half of M14 waits on a token
+that may write workflow files. Nothing in this file is an outstanding decision;
+what follows is work, not judgement.
 
 Order, if the thread is picked up again:
 
-1. M15: regenerate `leaderboard.md` once a `~/.hermes/crew/experiment/runs`
+1. M14: apply the `docs-gate.yml` patch recorded above with a token that holds
+   `workflows` permission. Until then CI keeps running the docs gate without the
+   witness tests, which is the state this audit complained about.
+2. M15: regenerate `leaderboard.md` once a `~/.hermes/crew/experiment/runs`
    tree exists, and add the regeneration diff to CI. Until then its numbers are
    older than these fixes: do not cite them.
-2. M9: give the harness one fixture that owns the `builtins.open` patch and the
+3. M9: give the harness one fixture that owns the `builtins.open` patch and the
    module-constant rebinding, so safety stops depending on "each test loads a
    fresh module".
-3. M10-M13, M16: a board linter is the smallest enforceable slice. Start with
+4. M10-M13, M16: a board linter is the smallest enforceable slice. Start with
    the one contradiction that already exists: `BLACKBOARD.md:3` calls
    `CREW-EVIDENCE` the ACTIVE mission while `:82` records ROUTER-V2 as
    CLOSED-GREEN and all eleven slots read `_none_`.
-4. Everything else in the "still open" list is prose by choice; leave it until
+5. Everything else in the "still open" list is prose by choice; leave it until
    a violation actually costs something.
 
 Rules for whoever resumes: a probe row that flips is a regression, so fix the
