@@ -35,5 +35,5 @@ python3 -m unittest discover -s tests/unit   # witness tests for both tools
 
 - decisions are written to the board, never left in chat
 - a bot speaks in its own register (VOICES is binding)
-- artifacts English, chat with the Owner in Arabic; push everything
-  (origin: faresrafat3/crew-research-council)
+- artifacts English, chat with the Owner in Arabic; push everything straight to
+  `main` (origin: faresrafat3/crew-research-council), no long-lived side branches
