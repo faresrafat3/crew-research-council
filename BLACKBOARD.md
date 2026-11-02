@@ -345,3 +345,23 @@ claim).
   the process machines (mission pipeline, board protocol, trial lifecycle) stay
   prose.
 
+---
+## APPEND 2026-11-02 (c) — the harness stops trusting `try/finally`
+
+- M9 closed. Both test modules patched the process-global `builtins.open` with a
+  hand-written `try/finally` in four places, restored the `REAL_OPEN` captured
+  at import, and nothing asserted the patch was gone once a test ended. One
+  `patched_open(counter)` context manager now owns the patch, and a `tearDown`
+  in each fixture detects a leak, restores the real `open`, and fails the test
+  that leaked it, so one failure cannot corrupt the counters of the next.
+- The guard is itself witnessed. `HarnessGuard` runs a deliberately leaky test
+  and requires exactly one failure plus a restored `open`. Mutation-checked:
+  removing the `assertFalse` makes both witnesses fail (`0 != 1 : []`);
+  restored, both pass.
+- Evidence: `bash tools/gate.sh` -> `docs gate ok: 776 headings in 25 files; 2
+  READMEs clean; 32 refs resolve`, `Ran 37 tests ... OK`, `leaderboard: SKIP`,
+  exit 0.
+- **Not claimed:** CI still runs the docs gate alone (`tools/ci-gate.patch`
+  waits on a `workflows` permission this identity does not hold);
+  `leaderboard.md` still predates the row fixes.
+

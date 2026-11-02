@@ -47,6 +47,20 @@ class ReadCounter:
         return self.paths.count(os.path.abspath(path))
 
 
+@contextlib.contextmanager
+def patched_open(counter):
+    """`builtins.open`, patched for one block and always restored.
+
+    The patch is process-global; if a test body raises, the real open still comes
+    back on the way out, so one failure cannot make every later test count wrong.
+    """
+    builtins.open = counter
+    try:
+        yield counter
+    finally:
+        builtins.open = REAL_OPEN
+
+
 def run_gate(module, argv):
     """Run the gate with cwd at the repo root; return (code, stdout, stderr)."""
     out, err = io.StringIO(), io.StringIO()
@@ -63,14 +77,17 @@ def run_gate(module, argv):
 class GateReadCost(unittest.TestCase):
     """One pass per file: no README may be opened twice in a single run."""
 
+    def tearDown(self):
+        leaked = builtins.open is not REAL_OPEN
+        builtins.open = REAL_OPEN
+        self.assertFalse(leaked,
+                         msg="a test left builtins.open patched for the next one")
+
     def test_each_cleaned_readme_is_read_exactly_once(self):
         gate = load_gate()
         counter = ReadCounter()
-        builtins.open = counter
-        try:
+        with patched_open(counter):
             code, out, err = run_gate(gate, ["check_docs.py"])
-        finally:
-            builtins.open = REAL_OPEN
 
         self.assertEqual(code, 0, msg=f"gate failed: {out}{err}")
         for readme in gate.CLEAN_READMES:
@@ -84,11 +101,8 @@ class GateReadCost(unittest.TestCase):
     def test_no_output_file_is_read_twice(self):
         gate = load_gate()
         counter = ReadCounter()
-        builtins.open = counter
-        try:
+        with patched_open(counter):
             code, _, err = run_gate(gate, ["check_docs.py"])
-        finally:
-            builtins.open = REAL_OPEN
 
         self.assertEqual(code, 0, msg=err)
         repeated = {
@@ -101,6 +115,12 @@ class GateReadCost(unittest.TestCase):
 
 class GateVerdicts(unittest.TestCase):
     """The gate still reports the same three rules, in the same order."""
+
+    def tearDown(self):
+        leaked = builtins.open is not REAL_OPEN
+        builtins.open = REAL_OPEN
+        self.assertFalse(leaked,
+                         msg="a test left builtins.open patched for the next one")
 
     def test_missing_cleaned_readme_fails_the_gate(self):
         gate = load_gate()
@@ -168,11 +188,8 @@ class GateVerdicts(unittest.TestCase):
         gate.CLEAN_READMES = (readme,)
         gate.OUTPUT = scratch
         counter = ReadCounter()
-        builtins.open = counter
-        try:
+        with patched_open(counter):
             code, _, err = run_gate(gate, ["check_docs.py", scratch])
-        finally:
-            builtins.open = REAL_OPEN
 
         self.assertEqual(code, 1)
         self.assertEqual(counter.count(readme), 1, msg="README opened twice")
@@ -231,6 +248,22 @@ class GateFences(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("Also Not A Heading", err)
         self.assertNotIn("Not A Heading Here", err)
+
+
+class HarnessGuard(unittest.TestCase):
+    """The patch guard must fail when a test leaks it, or it is decoration."""
+
+    def test_a_leaked_patch_fails_the_guard_and_is_cleaned_up(self):
+        class Leaky(GateReadCost):
+            def test_leaks_the_patch(self):
+                builtins.open = ReadCounter()
+
+        result = unittest.TestResult()
+        Leaky("test_leaks_the_patch").run(result)
+        self.assertEqual(len(result.failures), 1, msg=str(result.failures))
+        self.assertIn("left builtins.open patched", result.failures[0][1])
+        self.assertIs(builtins.open, REAL_OPEN,
+                      msg="the guard detected the leak but did not clean it up")
 
 
 if __name__ == "__main__":

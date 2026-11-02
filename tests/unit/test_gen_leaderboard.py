@@ -89,8 +89,24 @@ LOG04 = "\n".join(
 
 
 
+@contextlib.contextmanager
+def patched_open(counter):
+    """`builtins.open`, patched for one block and always restored."""
+    builtins.open = counter
+    try:
+        yield counter
+    finally:
+        builtins.open = REAL_OPEN
+
+
 class LeaderboardFixture(unittest.TestCase):
     """Shared synthetic run tree, laid out exactly like ~/.hermes/crew."""
+
+    def tearDown(self):
+        leaked = builtins.open is not REAL_OPEN
+        builtins.open = REAL_OPEN
+        self.assertFalse(leaked,
+                         msg="a test left builtins.open patched for the next one")
 
     def setUp(self):
         self.runs = tempfile.mkdtemp()
@@ -145,12 +161,9 @@ class LeaderboardFixture(unittest.TestCase):
     def run_tool_counting(self):
         counter = ReadCounter()
         out = io.StringIO()
-        builtins.open = counter
-        try:
+        with patched_open(counter):
             with contextlib.redirect_stdout(out):
                 self.tool.main()
-        finally:
-            builtins.open = REAL_OPEN
         return out.getvalue(), counter
 
 
@@ -372,6 +385,22 @@ class LeaderboardFreshness(LeaderboardFixture):
                 self.tool.main(["--check"])
         self.assertEqual(caught.exception.code, 0)
         self.assertIn("SKIP", out.getvalue())
+
+
+class HarnessGuard(unittest.TestCase):
+    """The patch guard must fail when a test leaks it, or it is decoration."""
+
+    def test_a_leaked_patch_fails_the_guard_and_is_cleaned_up(self):
+        class Leaky(LeaderboardFixture):
+            def test_leaks_the_patch(self):
+                builtins.open = ReadCounter()
+
+        result = unittest.TestResult()
+        Leaky("test_leaks_the_patch").run(result)
+        self.assertEqual(len(result.failures), 1, msg=str(result.failures))
+        self.assertIn("left builtins.open patched", result.failures[0][1])
+        self.assertIs(builtins.open, REAL_OPEN,
+                      msg="the guard detected the leak but did not clean it up")
 
 
 if __name__ == "__main__":
