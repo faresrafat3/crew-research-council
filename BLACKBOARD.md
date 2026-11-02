@@ -278,3 +278,29 @@ claim).
 - **Not claimed:** nothing about R02–R05 (still `UNVERIFIABLE`), no number
   changed, no ruling re-scored.
 
+---
+
+## APPEND 2026-11-02 — implicit-state-machine inventory of the tree (operator session)
+
+- `IMPLICIT-STATE-MACHINES.md` — 16 state machines the repository runs without
+  declaring them: M1–M8 in `tools/check_docs.py` and `tools/gen_leaderboard.py`,
+  M9 in the unit-test harness, M10–M16 in the process documents (pipeline
+  states, board write protocol, mission status, trial lifecycle, the two
+  definitions of "commit verified", leaderboard freshness, write-path class).
+  Each entry names its states, where the state lives, and what enforces it.
+- Two leaks reproduced, not inferred. `tools/gen_leaderboard.py:67-79` matches a
+  formation as a substring, so `formation=routed` also matches
+  `formation=routed-thresholds`; with the thresholds row first, `pick` returns
+  cost 250 instead of 260. `tools/check_docs.py:100-112` flips one bool on either
+  fence marker, so a ```` ``` ```` line inside a `~~~` block closes it and the
+  block's headings are graded as prose.
+- Also verified: an indented log parses 2 of 4 rows; a duplicated arm row
+  reports the oldest; a dropped field publishes as `holes None vs 2`; two
+  `gen_leaderboard.main()` calls in one process emit byte-identical reports after
+  the log changed on disk; `core.hooksPath` is unset, so the hook half of M14 is
+  opt-in and CI runs the gate without the witness tests.
+- **Not claimed:** no tool or test changed, no gate semantics changed, no number
+  in `leaderboard.md` regenerated or re-scored. `TEST-POLICY.md` §3 needs a
+  witnessed failing test first, and fixing M6 changes what the board reports, so
+  the fix order in the artifact waits on the Owner's call.
+
