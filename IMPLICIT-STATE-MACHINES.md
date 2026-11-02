@@ -317,6 +317,12 @@ steps:
 Apply it with a token that holds `workflows` permission, and M14 is closed on
 both halves.
 
+One more consequence, closed while proving the above: the report used to print
+row by row, so a row that failed late left a truncated board on stdout and
+therefore in any `> leaderboard.md` redirect. `main()` now renders into a
+buffer and writes it only after every row reads cleanly
+(`test_a_broken_row_prints_no_partial_board`: 0 bytes on failure).
+
 ## What is still open
 
 - M14's CI half: `docs-gate.yml` still runs `tools/check_docs.py` alone because
@@ -347,7 +353,7 @@ being implicit.
 ```
 bash tools/gate.sh
   docs gate ok: 776 headings in 25 files; 2 READMEs clean; 32 refs resolve
-  Ran 26 tests ... OK
+  Ran 27 tests ... OK
   8 probes, 0 regression(s).
 ```
 

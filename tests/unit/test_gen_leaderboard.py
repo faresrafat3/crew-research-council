@@ -295,6 +295,17 @@ class LeaderboardRefusals(LeaderboardFixture):
         self.assertIn("FAIL-LOUD", str(caught.exception.code))
         self.assertIn("disagree", str(caught.exception.code))
 
+    def test_a_broken_row_prints_no_partial_board(self):
+        with REAL_OPEN(self.tool.LOG04, "w", encoding="utf-8") as handle:
+            handle.write(LOG04.replace("resolved=12 verifier_calls=0", "resolved=12"))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            with self.assertRaises(SystemExit) as caught:
+                self.tool.main()
+        self.assertIn("FAIL-LOUD", str(caught.exception.code))
+        self.assertEqual(out.getvalue(), "",
+                         msg="a failed report left part of the board on stdout")
+
 
 if __name__ == "__main__":
     unittest.main()

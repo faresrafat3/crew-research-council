@@ -16,7 +16,12 @@ The row contract, so a reader never has to infer it from the code:
 
 Usage: python3 tools/gen_leaderboard.py
 """
-import re, sys, os, hashlib
+import contextlib
+import hashlib
+import io
+import os
+import re
+import sys
 RUNS = os.path.expanduser("~/.hermes/crew/experiment/runs")
 R02 = os.path.join(RUNS, "2026-09-22-router-round-02")
 R03 = os.path.join(RUNS, "2026-09-22-router-round-03")
@@ -312,13 +317,21 @@ def report():
 
 
 def main():
-    """Print one report; the read caches live for exactly this call."""
+    """Print one report; the read caches live for exactly this call.
+
+    The board is rendered into a buffer and written only once every row reads
+    cleanly, so a failed report cannot leave half a leaderboard behind for a
+    `> leaderboard.md` redirect to keep.
+    """
     _DIGESTS.clear()
     _LINES.clear()
+    buffer = io.StringIO()
     try:
-        report()
+        with contextlib.redirect_stdout(buffer):
+            report()
     except MeasurementError as failure:
         sys.exit(f"FAIL-LOUD: {failure}")
+    sys.stdout.write(buffer.getvalue())
 
 
 if __name__ == "__main__":

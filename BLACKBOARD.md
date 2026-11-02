@@ -345,9 +345,14 @@ still runs `tools/check_docs.py` alone. The exact three-line patch is recorded i
 permission and the witness tests run on every push.
 
 **Evidence:** `bash tools/gate.sh` -> docs gate ok (776 headings / 25 files / 2
-READMEs clean / 32 refs), `Ran 26 tests ... OK`, `8 probes, 0 regression(s)`.
+READMEs clean / 32 refs), `Ran 27 tests ... OK`, `8 probes, 0 regression(s)`.
 `tools/probe_state_machines.py` records every row and exits 1 if a closed
 transition reopens.
+
+The report is also atomic now: it renders into a buffer and is written only if
+every row reads cleanly, so a failed report leaves no truncated board behind for
+a `> leaderboard.md` redirect to keep (`0 bytes on failure`, pinned by
+`test_a_broken_row_prints_no_partial_board`).
 
 - **Not claimed:** `leaderboard.md` was **not** regenerated (no
   `~/.hermes/crew/experiment/runs` tree in this environment), so its numbers
