@@ -299,6 +299,13 @@ claim).
   `gen_leaderboard.main()` calls in one process emit byte-identical reports after
   the log changed on disk; `core.hooksPath` is unset, so the hook half of M14 is
   opt-in and CI runs the gate without the witness tests.
+- `tools/probe_state_machines.py` — the evidence, committed rather than left in a
+  scratch directory: eight probes, one per live leak, printing REPRODUCED while
+  the transition still happens and FIXED once a tool refuses it. All eight read
+  REPRODUCED as of this append.
+- `IMPLICIT-STATE-MACHINES.md` §Resume here carries the three Owner decisions
+  owed before a fix (duplicate-row rule, missing-field rule, fence policy), the
+  fix order with line targets, and the landing command for `main`.
 - **Not claimed:** no tool or test changed, no gate semantics changed, no number
   in `leaderboard.md` regenerated or re-scored. `TEST-POLICY.md` §3 needs a
   witnessed failing test first, and fixing M6 changes what the board reports, so
