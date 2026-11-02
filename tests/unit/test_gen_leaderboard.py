@@ -204,5 +204,97 @@ class LeaderboardReadCost(LeaderboardFixture):
         self.assertEqual(len(first), 64)
 
 
+class LeaderboardSelection(unittest.TestCase):
+    """Row identity: field equality, no substring, no silent first match."""
+
+    ROUTED = ("SUMMARY formation=routed verify_mode=pre n=46 passed=46 "
+              "grave_errors=0 total_cost=260 resolved=22 verifier_calls=8 "
+              "verifier_tasks=4 hole_deliveries=1 unverified_deliveries=0")
+    THRESHOLDS = ("SUMMARY formation=routed-thresholds verify_mode=pre n=46 "
+                  "passed=46 grave_errors=0 total_cost=250 resolved=23 "
+                  "verifier_calls=8 verifier_tasks=4 hole_deliveries=0 "
+                  "unverified_deliveries=0")
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.root)
+        self.tool = load_tool()
+
+    def log(self, *rows):
+        """One scratch log holding these rows, in this order."""
+        path = os.path.join(self.root, "log.txt")
+        with REAL_OPEN(path, "w", encoding="utf-8") as handle:
+            handle.write("\n".join(rows) + "\n")
+        return path
+
+    def test_a_longer_formation_name_does_not_answer_a_short_one(self):
+        rows = self.tool.summaries(self.log(self.THRESHOLDS, self.ROUTED))
+        chosen = self.tool.pick(rows, "routed", None, 46)
+        self.assertEqual(self.tool.field(chosen, "total_cost"), 260)
+
+    def test_two_rows_for_one_key_that_disagree_are_fatal(self):
+        rerun = self.ROUTED.replace("total_cost=260", "total_cost=999")
+        with self.assertRaises(self.tool.MeasurementError) as caught:
+            self.tool.summaries(self.log(self.ROUTED, rerun))
+        self.assertIn("disagree", str(caught.exception))
+
+    def test_an_identical_re_append_collapses(self):
+        rows = self.tool.summaries(self.log(self.ROUTED, self.ROUTED))
+        self.assertEqual(len(rows), 1)
+
+    def test_an_indented_row_is_still_a_row(self):
+        rows = self.tool.summaries(self.log(
+            "SUMMARY formation=a n=46 total_cost=1",
+            "  SUMMARY formation=b n=46 total_cost=2",
+            "seed=3 SUMMARY formation=c n=46 total_cost=3",
+            "  seed=4 SUMMARY formation=d n=46 total_cost=4",
+        ))
+        self.assertEqual(len(rows), 4)
+
+    def test_a_missing_measurement_is_fatal_not_None(self):
+        rows = self.tool.summaries(self.log(
+            "SUMMARY formation=routed verify_mode=final n=46 total_cost=310"))
+        with self.assertRaises(self.tool.MeasurementError):
+            self.tool.field(rows[0][1], "hole_deliveries")
+
+    def test_an_open_ended_seed_reads_the_lowest_seed(self):
+        rows = self.tool.summaries(self.log(
+            "seed=2 SUMMARY formation=routed verify_mode=pre n=46 total_cost=280",
+            "seed=3 SUMMARY formation=routed verify_mode=pre n=46 total_cost=310",
+        ))
+        self.assertEqual(self.tool.field(self.tool.pick(rows, "routed", None, 46),
+                                         "total_cost"), 280)
+
+
+class LeaderboardFreshness(LeaderboardFixture):
+    """A second report in one process reads the log again, not a cache."""
+
+    def test_a_second_report_sees_the_log_as_it_is_now(self):
+        first = self.run_tool()
+        with REAL_OPEN(self.tool.LOG04, "w", encoding="utf-8") as handle:
+            handle.write(LOG04.replace("total_cost=300", "total_cost=999"))
+        second = self.run_tool()
+        self.assertNotEqual(first, second, msg="the second report reused cached rows")
+        self.assertIn("999", second)
+
+    def test_seed_stability_is_a_verdict_not_a_return_type(self):
+        vals, stable = self.tool.seeds_stable(
+            self.tool.summaries(self.tool.LOG04), "pre")
+        self.assertEqual(vals, [300, 300, 300, 300, 300])
+        self.assertIs(stable, True)
+
+
+class LeaderboardRefusals(LeaderboardFixture):
+    """A contradiction in the log stops the report with a reason, not a number."""
+
+    def test_a_contradiction_fails_loud_and_names_the_rows(self):
+        with REAL_OPEN(self.tool.LOG03, "w", encoding="utf-8") as handle:
+            handle.write(LOG03 + LOG03.replace("total_cost=260", "total_cost=900"))
+        with self.assertRaises(SystemExit) as caught:
+            self.run_tool()
+        self.assertIn("FAIL-LOUD", str(caught.exception.code))
+        self.assertIn("disagree", str(caught.exception.code))
+
+
 if __name__ == "__main__":
     unittest.main()

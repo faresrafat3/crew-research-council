@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Pre-commit gate: docs style (OUTPUT headings, README prose, refs), then the
-# witness tests for the two tools that read the tree.
+# Pre-commit gate: docs style (OUTPUT headings, README prose, refs), the
+# witness tests for the two tools, and the state-machine probes. One call into
+# tools/gate.sh so this hook and CI run the same definition of "verified".
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
-python3 tools/check_docs.py
-python3 -m unittest discover -s tests/unit
+bash tools/gate.sh

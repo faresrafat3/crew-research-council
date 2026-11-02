@@ -3,6 +3,17 @@
 measurement logs — read-time generated counts (CONSTITUTION §1); this file's
 numbers are never hand-edited.
 
+The row contract, so a reader never has to infer it from the code:
+
+- a row is identified by its fields, never by a substring of the line;
+- two rows that share (formation, verify_mode, seed, n) and disagree are a
+  hard error (`MeasurementError`), because a report cannot say which
+  measurement is the real one;
+- identical re-appends collapse;
+- an unpinned seed reads the lowest seed in the log; the sweep itself is
+  reported by `seeds_stable`, so a varying sweep shows as `VARIES`;
+- a field the row does not carry is fatal, not a printed `None`.
+
 Usage: python3 tools/gen_leaderboard.py
 """
 import re, sys, os, hashlib
@@ -22,8 +33,34 @@ FIX04F = os.path.join(R04, "tasks/real-missions.json")
 
 # One read per input: the report hashes the frozen fixtures twice and scans
 # round-04 for both SUMMARY rows and the RULING line, so keep both caches.
+# `main()` empties them at entry: a cache lives for exactly one report, so a
+# second report in the same process cannot read the first report's bytes.
 _DIGESTS = {}
 _LINES = {}
+
+
+class MeasurementError(Exception):
+    """A row that cannot be read as the measurement it claims to carry."""
+
+
+def _brief(row):
+    """One row, short enough to name in an error message."""
+    keys = ("formation", "verify_mode", "n", "total_cost", "passed", "resolved")
+    return " ".join(f"{key}={row[key]}" for key in keys if key in row)
+
+
+def _fields(text):
+    """The key=value tokens of one row; a field repeated inside it is fatal."""
+    found = {}
+    for token in text.split():
+        key, separator, value = token.partition("=")
+        if not separator:
+            continue
+        if key in found:
+            raise MeasurementError(f"field {key} appears twice: {' '.join(text.split())}")
+        found[key] = value
+    return found
+
 
 
 def sha(path):
@@ -46,37 +83,88 @@ def lines_of(path):
     return _LINES[path]
 
 
+SEEDED = re.compile(r"^seed=(\d+)\s+(SUMMARY\b.*)$")
+PLAIN = re.compile(r"^SUMMARY\b.*$")
+
+
 def summaries(log):
+    """[(seed, fields)] for one log: every SUMMARY row, indentation irrelevant.
+
+    Rows are identified by their fields, never by a substring: `formation=routed`
+    does not answer for `formation=routed-thresholds`. Identical re-appends
+    collapse; two rows that share (formation, verify_mode, seed, n) and disagree
+    are fatal, because the report has no way to say which measurement is real.
+    """
     if not os.path.exists(log):
         sys.exit(f"FAIL-LOUD: measurement log missing: {log}")
     rows = []
-    for line in lines_of(log):
-        m = re.match(r"seed=(\d+) (SUMMARY .*)", line)
-        if m:
-            rows.append((int(m.group(1)), m.group(2)))
-        elif line.startswith("SUMMARY"):
-            rows.append((None, line.strip()))
+    seen = {}
+    for lineno, line in enumerate(lines_of(log), 1):
+        stripped = line.strip()
+        seeded = SEEDED.match(stripped)
+        if seeded:
+            seed, body = int(seeded.group(1)), seeded.group(2)
+        elif PLAIN.match(stripped):
+            seed, body = None, stripped
+        else:
+            continue
+        fields = _fields(body)
+        key = (fields.get("formation"), fields.get("verify_mode"), seed,
+               fields.get("n"))
+        previous = seen.get(key)
+        if previous is not None:
+            if previous != fields:
+                raise MeasurementError(
+                    f"{log}:{lineno}: two rows for {key} disagree: "
+                    f"{_brief(previous)} vs {_brief(fields)}"
+                )
+            continue
+        seen[key] = fields
+        rows.append((seed, fields))
     return rows
 
 
-def field(s, name):
-    m = re.search(rf"{name}=(\d+)", s)
-    return int(m.group(1)) if m else None
+def field(row, name):
+    """One integer field of a parsed row; a missing field is fatal, not None."""
+    if name not in row:
+        raise MeasurementError(f"row has no {name}: {_brief(row)}")
+    if not re.fullmatch(r"\d+", row[name]):
+        raise MeasurementError(f"{name} is not a number: {row[name]}")
+    return int(row[name])
 
 
 def pick(rows, formation, seed=None, n=None, mode=None):
+    """The one row for one arm, chosen by field equality.
+
+    An open seed means "the lowest seed in the log", because a seed sweep is
+    reported by `seeds_stable`, not here; that keeps the choice deterministic
+    instead of order-dependent. Two matching rows that disagree are fatal.
+    """
     if n is None:
         sys.exit("FAIL-LOUD: task count required")
-    for sd, s in rows:
-        if f"formation={formation}" not in s:
-            continue
-        if mode is not None and f"verify_mode={mode}" not in s:
-            continue
-        if seed is not None and sd != seed:
-            continue
-        if field(s, "n") == n:
-            return s
-    sys.exit(f"FAIL-LOUD: no SUMMARY for {formation} seed={seed} n={n} mode={mode}")
+    wanted = {"formation": formation, "n": str(n)}
+    if mode is not None:
+        wanted["verify_mode"] = mode
+    matches = [
+        (row_seed, row)
+        for row_seed, row in rows
+        if all(row.get(key) == value for key, value in wanted.items())
+        and (seed is None or row_seed == seed)
+    ]
+    if seed is None and any(row_seed is not None for row_seed, _ in matches):
+        lowest = min(row_seed for row_seed, _ in matches if row_seed is not None)
+        matches = [(row_seed, row) for row_seed, row in matches
+                   if row_seed == lowest]
+    if not matches:
+        sys.exit(f"FAIL-LOUD: no SUMMARY for {formation} seed={seed} n={n} mode={mode}")
+    distinct = {tuple(sorted(row.items())): row for _, row in matches}
+    if len(distinct) > 1:
+        first, second = list(distinct.values())[:2]
+        raise MeasurementError(
+            f"{formation} seed={seed} n={n} mode={mode} matches "
+            f"{len(matches)} rows that disagree: {_brief(first)} vs {_brief(second)}"
+        )
+    return matches[0][1]
 
 
 def postcut_verdict():
@@ -98,17 +186,18 @@ def ruling04():
 
 
 def seeds_stable(rows, mode, n=46):
-    """Return (values, sd_text) for one verification mode across the sweep."""
-    vals = sorted(field(s, "total_cost") for sd, s in rows
-                  if sd is not None and f"verify_mode={mode}" in s
-                  and field(s, "n") == n)
+    """Return (values, stable) for one verification mode across the sweep."""
+    vals = sorted(field(row, "total_cost") for row_seed, row in rows
+                  if row_seed is not None
+                  and row.get("verify_mode") == mode
+                  and field(row, "n") == n)
     if not vals:
         sys.exit(f"FAIL-LOUD: no seed-sweep rows for mode={mode}")
-    sd = 0.0 if len(set(vals)) == 1 else "VARIES"
-    return vals, sd
+    return vals, len(set(vals)) == 1
 
 
-def main():
+def report():
+    """Print the whole board once, from the logs on disk."""
     rows02, rows03, rows04 = (summaries(LOG02), summaries(LOG03),
                               summaries(LOG04))
     champ20 = pick(rows02, "solo", 7, 20)
@@ -164,9 +253,10 @@ def main():
           f"`eval --formation solo --hold-on-vague` |")
     for mode, label in (("pre", "shipped"), ("final", "candidate"),
                         ("off", "ablation")):
-        vals, sd = seeds_stable(rows04, mode)
+        vals, stable = seeds_stable(rows04, mode)
+        verdict = "0.0" if stable else "VARIES"
         print(f"| seed stability ({label} `{mode}`) | sd=0 across 5 seeds "
-              f"| {vals} sd={sd} | `tools/run_trial_r04.py` |")
+              f"| {vals} sd={verdict} | `tools/run_trial_r04.py` |")
     print(f"| determinism (all 3 modes) | double runs byte-identical "
           f"| PASS | same |")
     print(f"| champion promotion bar | cost <= 88 on the frozen 20 "
@@ -219,6 +309,16 @@ def main():
           f"cost={field(routed20,'total_cost')} -> FAIL (bar failed honestly; "
           f"R03 re-tried the class table and cut it; R04 priced the verifier) "
           f"| same |")
+
+
+def main():
+    """Print one report; the read caches live for exactly this call."""
+    _DIGESTS.clear()
+    _LINES.clear()
+    try:
+        report()
+    except MeasurementError as failure:
+        sys.exit(f"FAIL-LOUD: {failure}")
 
 
 if __name__ == "__main__":

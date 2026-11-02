@@ -17,9 +17,12 @@ hermes itself (project config in `.hermes/`):
 hermes            # enter the council runtime from this directory
 git status        # must be clean before claiming any decision landed
 
-# gate (runs in .githooks/pre-commit, `git config core.hooksPath .githooks`)
+# gate (runs in .githooks/pre-commit and in CI; both call tools/gate.sh)
 python3 tools/check_docs.py   # OUTPUT headings sentence case; READMEs clean; refs resolve
 python3 -m unittest discover -s tests/unit   # witness tests for both tools
+python3 tools/probe_state_machines.py   # state-machines closed/open, exit 1 on drift
+
+bash tools/gate.sh   # the same three, in the order the hook and CI run them
 ```
 
 ## Map

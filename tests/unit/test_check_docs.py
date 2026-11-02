@@ -188,5 +188,79 @@ class GateVerdicts(unittest.TestCase):
         self.assertTrue(re.search(r"docs gate: 3 problems", err), msg=err)
 
 
+class GateFenceReader(unittest.TestCase):
+    """A fence closes only on its own marker, so a sample cannot flip the state."""
+
+    def scratch(self, body):
+        path = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, path)
+        with REAL_OPEN(os.path.join(path, "a.md"), "w", encoding="utf-8") as fh:
+            fh.write(body)
+        return path
+
+    def test_a_backtick_fence_inside_a_tilde_block_is_content(self):
+        gate = load_gate()
+        path = self.scratch(
+            "# Fine\n"
+            "\n"
+            "~~~text\n"
+            "```python\n"
+            "# Not A Heading\n"
+            "```\n"
+            "~~~\n"
+            "\n"
+            "# Bad Heading Here\n"
+        )
+        code, _, err = run_gate(gate, ["check_docs.py", path])
+        self.assertEqual(code, 1)
+        self.assertNotIn("a.md:5:", err, msg="a line inside ~~~ was graded as prose")
+        self.assertIn("a.md:9:", err)
+
+    def test_a_tilde_block_closes_on_a_tilde(self):
+        gate = load_gate()
+        path = self.scratch(
+            "# Fine\n"
+            "\n"
+            "~~~\n"
+            "# Still Code\n"
+            "~~~\n"
+            "# Bad Heading Here\n"
+        )
+        code, _, err = run_gate(gate, ["check_docs.py", path])
+        self.assertEqual(code, 1)
+        self.assertNotIn("a.md:4:", err)
+        self.assertIn("a.md:6:", err)
+
+    def test_a_longer_backtick_fence_is_not_closed_by_a_shorter_one(self):
+        gate = load_gate()
+        path = self.scratch(
+            "# Fine\n"
+            "\n"
+            "````\n"
+            "```\n"
+            "# Still Code\n"
+            "````\n"
+        )
+        code, _, err = run_gate(gate, ["check_docs.py", path])
+        self.assertEqual(code, 0, msg=err)
+
+
+class HeadingConvention(unittest.TestCase):
+    """Declared rule: each em-dash segment is its own phrase.
+
+    Two protected headings in RESEARCH-COUNCIL/OUTPUT depend on this
+    (memory-architecture.md:413, testing-maturity-model.md:267), and that corpus
+    is not editable, so the exemption is named here rather than removed.
+    """
+
+    def test_each_dash_segment_exempts_its_first_word(self):
+        gate = load_gate()
+        self.assertEqual(gate.violations("A thing \u2014 Two Words"), ["Words"])
+
+    def test_the_heading_itself_exempts_only_its_first_word(self):
+        gate = load_gate()
+        self.assertEqual(gate.violations("Two Words Here"), ["Words", "Here"])
+
+
 if __name__ == "__main__":
     unittest.main()

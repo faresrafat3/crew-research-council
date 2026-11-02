@@ -1,11 +1,17 @@
 # IMPLICIT-STATE-MACHINES — every state machine the tree carries without declaring it (2026-11-02)
 
-Verdict first: the tree runs on sixteen state machines and declares none of
-them. Eight live in the two Python tools, one in the test harness, seven in the
-process documents. Two of them are leaking wrong answers today: the
-leaderboard's row selector can print the wrong arm's numbers, and the docs
-gate's fence reader drops out of a `~~~` block the moment it sees a ```` ``` ````
-line. Both are reproduced below with the command that shows them.
+Verdict first: the tree ran on sixteen state machines and declared none of
+them. Eight lived in the two Python tools, one in the test harness, seven in the
+process documents. On 2026-11-02 seven of the eight code transitions were
+closed in code with witnessed tests, one (M4) was declared and pinned because
+the protected corpus depends on it, and the seven document machines are still
+prose. `tools/probe_state_machines.py` records the state of every code row and
+exits 1 if one reopens; `bash tools/gate.sh` runs it beside the gate.
+
+Two of them were leaking wrong answers: the leaderboard's row selector could
+print the wrong arm's numbers, and the docs gate's fence reader dropped out of a
+`~~~` block the moment it saw a ```` ``` ```` line. Both are reproduced below
+with the command that showed them, and both are closed.
 
 Definition used here: an implicit state machine is any place where distinct
 behaviour is selected by a variable's value, a sentinel, a position in a list,
@@ -35,6 +41,11 @@ plus a checked transition, or a test that pins the illegal ones.
 | M16 | Write-path class | protected, safe, undefined | table, `PROTECTED.md:7-29` | nothing |
 
 ## Code machines
+
+Each entry records the machine as the audit found it on 2026-11-02, before the
+change; "What closed, machine by machine" below says what replaced it and which
+witness test holds it. The `Enforced by` column of the inventory is also the
+state at audit time, not after.
 
 ### M1 — the fence reader is a two-state toggle that ignores delimiter identity
 
@@ -229,41 +240,79 @@ A path in neither list has no defined state, and `tools/` and `tests/` are in
 neither although `AGENTS.md:30-31` treats them as owned surfaces. No check
 compares a diff against the table, so the classification is advice.
 
-## Leaks that fire today, ranked
+## Leaks found, ranked (state after the 2026-11-02 fixes)
 
-1. M6 substring identity: the leaderboard can print the `routed-thresholds`
-   arm as `routed`. Silent, wrong numbers, no exit.
-2. M6 first-match selection: a re-run appended to a log is ignored in favour of
-   the older row. Silent, wrong numbers.
-3. M6 absent field: a missing measurement is published as `None` beside real
-   numbers instead of failing.
-4. M1 delimiter identity: any `~~~` block that shows a ```` ``` ```` example
-   produces false heading violations, which the author then "fixes" by rewording
-   prose.
-5. M6 column-0 recognition: an indented log loses rows, which then surfaces as
-   M7's generic fail-loud or, worse, as a different row being selected.
-6. M10-M16: the process rules are unenforced, so a violation is only ever found
-   by a reader who happens to check.
+1. ~~M6 substring identity: the leaderboard can print the `routed-thresholds`
+   arm as `routed`.~~ Closed: `pick` compares parsed fields for equality.
+2. ~~M6 first-match selection: a re-run appended to a log is ignored in favour of
+   the older row.~~ Closed: contradictory duplicates are fatal, identical ones
+   collapse, and an unpinned seed reads the lowest seed.
+3. ~~M6 absent field: a missing measurement is published as `None`.~~ Closed:
+   `field()` raises `MeasurementError`, `main()` turns it into `FAIL-LOUD`.
+4. M1 delimiter identity: a `~~~` block that shows a ```` ``` ```` example
+   produced false heading violations. Closed: the reader tracks its opening
+   marker and length.
+5. ~~M6 column-0 recognition: an indented log loses rows.~~ Closed: the row is
+   recognised by its fields, not by its indentation.
+6. M10-M16: the process rules are still unenforced, so a violation is only ever
+   found by a reader who happens to check. M14 is the exception and is closed.
 
-## Fix order
+## The three decisions, and what they changed
 
-1. M6: parse the row into a dict of `key=value` pairs once, compare fields for
-   equality, select the last row per `(formation, seed, n, mode)`, and make
-   `field()` raise on a missing key. One function replaces the substring and
-   sentinel logic.
-2. M1: remember the opening marker (or a depth counter) and only close on a
-   matching one.
-3. M3 and M7: return a named verdict object instead of an integer or a
-   `SystemExit` message, and let `main` be the only place that maps it to an
-   exit status.
-4. M5: key the caches to a run object created per `main()` call, or clear them
-   at entry, so "once per run" is a lifetime rather than a wish.
-5. M8: return `(values, stable: bool)` and let the caller format.
-6. M14: one script that both the hook and CI call, with the same path filter,
-   and a CI step that runs it on every push.
-7. M10-M13, M15, M16: promote the smallest enforceable slice first — a board
-   linter that rejects a mission status in prose that contradicts its slots, and
-   a regeneration diff for `leaderboard.md`.
+Taken by the operator on 2026-11-02, because each one changes a contract rather
+than a line:
+
+1. Duplicate rows: two rows that share `(formation, verify_mode, seed, n)` and
+   disagree are a hard error; byte-identical re-appends collapse. A report
+   cannot say which of two contradictory measurements is the real one, so it
+   refuses instead of choosing.
+2. Missing field: fatal. `field()` raises `MeasurementError`; `main()` maps it
+   to `FAIL-LOUD`. A printed `None` reads as a measurement, which is worse than
+   a stopped report.
+3. Fence policy: strict delimiter matching, CommonMark-style. A block closes
+   only on a fence of the same character that is at least as long as the one
+   that opened it.
+
+One more, taken because the protected corpus forced it: the em-dash heading
+exemption (M4) stays. Two `RESEARCH-COUNCIL/OUTPUT` headings depend on it
+(`memory-architecture.md:413`, `testing-maturity-model.md:267`) and that corpus
+is not editable, so the rule is named in a docstring and pinned by
+`tests/unit/test_check_docs.py::HeadingConvention` instead of being removed.
+
+## What closed, machine by machine
+
+| Machine | Before | Now | Witness |
+|---------|--------|-----|---------|
+| M1 fence | one bool, either marker | opening marker and length tracked | `GateFenceReader` |
+| M2 read-once cache | path presence | unchanged, already witnessed | `GateReadCost` |
+| M3 verdicts | bare 0/1/2 | `OK`/`PROBLEMS`/`NO_INPUT` names | `GateVerdicts` |
+| M4 heading | per-segment exemption, undeclared | same rule, declared and pinned | `HeadingConvention` |
+| M5 caches | process lifetime | cleared at each `main()` | `LeaderboardFreshness` |
+| M6 rows | substring, first match, `None` | field equality, fatal contradictions | `LeaderboardSelection`, `LeaderboardRefusals` |
+| M7 fail-loud | `sys.exit` inside loops | `MeasurementError`, mapped once in `main()` | `LeaderboardRefusals` |
+| M8 seed verdict | `0.0` or `"VARIES"` return | `(values, stable: bool)` | `LeaderboardFreshness` |
+| M9 harness patch | `try/finally` only | unchanged, one module per test | `load_gate`, `load_tool` |
+| M10-M16 process | prose | prose, except M14 (below) | none |
+| M14 verified state | hook and CI disagree | both call `tools/gate.sh` | the script itself |
+
+`tools/gate.sh` is the one definition of "verified": docs gate, witness tests,
+state-machine probes. `.githooks/pre-commit` and
+`.github/workflows/docs-gate.yml` both call it, and the workflow now triggers on
+`tools/**`, `tests/**` and `.githooks/**` instead of `tools/check_docs.py`
+alone, so the witness tests finally run in CI.
+
+## What is still open
+
+- M15 leaderboard freshness: `leaderboard.md` still carries no proof it matches
+  the logs, and it was **not** regenerated on 2026-11-02 because
+  `~/.hermes/crew/experiment/runs` is absent. The numbers in it predate these
+  fixes and should be regenerated before anyone cites them again.
+- M10-M13, M16: the pipeline, the board protocol, mission status and the
+  write-path class are still prose. A board linter is the first slice worth
+  building; do not start with the pipeline.
+- M9: the harness still patches a global `open` and rebinds module constants;
+  it is safe only because each test loads a fresh module. A `subTest`-based
+  fixture that owns the patch would remove the last of that.
 
 ## What is already explicit, and should stay that way
 
@@ -277,60 +326,54 @@ being implicit.
 ## How this was checked
 
 ```
-python3 tools/check_docs.py                  -> docs gate ok: 776 headings in 25 files; 2 READMEs clean; 32 refs resolve
-python3 -m unittest discover -s tests/unit   -> Ran 12 tests ... OK
+bash tools/gate.sh
+  docs gate ok: 776 headings in 25 files; 2 READMEs clean; 32 refs resolve
+  Ran 26 tests ... OK
+  8 probes, 0 regression(s).
 ```
 
-M1, M4, M6, M7 and M8 were reproduced against scratch directories and logs
-inside the process; M5 was reproduced by generating twice around an in-place log
-edit. M10-M16 were established by reading the files named in each entry and by
-the greps quoted there. No production code was changed, because `TEST-POLICY.md`
-§3 requires a witnessed failing test before any tool changes, and the fixes
-above need the Owner's call on intended behaviour (a wrong-arm report and a hard
-failure are different contracts).
+M1, M4, M6, M7 and M8 were first reproduced against scratch directories and logs
+inside the process, then closed with a failing test written before the change
+(`TEST-POLICY.md` §3): 14 new tests, of which 10 failed against the old code.
+M5 was reproduced by generating twice around an in-place log edit. M10-M16 were
+established by reading the files named in each entry and by the greps quoted
+there.
 
 The probes are committed as `tools/probe_state_machines.py` so the evidence
-outlives this session: `python3 tools/probe_state_machines.py` prints one row
-per machine, `REPRODUCED` while the leak is live and `FIXED` once a tool refuses
-the transition. At the time of writing all eight rows read REPRODUCED.
+outlives the session: one row per machine, `CLOSED` when the tool refuses the
+transition, `OPEN` when it is kept on purpose, and exit 1 if a row disagrees
+with the state recorded above.
 
 ## Resume here
 
-State: the inventory is complete. `tools/check_docs.py`,
-`tools/gen_leaderboard.py` and `tests/unit/` are untouched, so the gate and the
-suite are green and every leak in this file is still live.
+State: seven code transitions are closed and witnessed, M4 is declared and
+pinned, and the gate runs the tests and the probes in one definition. Nothing in
+this file is an outstanding decision; what follows is work, not judgement.
 
-Three decisions are owed before any fix lands, because each changes a contract
-rather than a line:
+Order, if the thread is picked up again:
 
-1. M6 row identity: a duplicate `(formation, seed, n, mode)` in a log should be
-   either a fail-loud error or last-one-wins (a re-run supersedes). Today it is
-   first-one-wins, which is the option nobody chose.
-2. M6 field identity: a missing field should either fail the report or print a
-   loud marker such as `MISSING`. Today it prints `None`, which reads as a
-   measured value.
-3. M1 fence policy: strict delimiter matching (a `~~~` block closes only on
-   `~~~`) or CommonMark-style depth counting. Strict is the smaller change and
-   closes the reproduced false positive.
+1. M15: regenerate `leaderboard.md` once a `~/.hermes/crew/experiment/runs`
+   tree exists, and add the regeneration diff to CI. Until then its numbers are
+   older than these fixes: do not cite them.
+2. M9: give the harness one fixture that owns the `builtins.open` patch and the
+   module-constant rebinding, so safety stops depending on "each test loads a
+   fresh module".
+3. M10-M13, M16: a board linter is the smallest enforceable slice. Start with
+   the one contradiction that already exists: `BLACKBOARD.md:3` calls
+   `CREW-EVIDENCE` the ACTIVE mission while `:82` records ROUTER-V2 as
+   CLOSED-GREEN and all eleven slots read `_none_`.
+4. Everything else in the "still open" list is prose by choice; leave it until
+   a violation actually costs something.
 
-Work order once those are decided, each step still starting from a witnessed
-failing test (`TEST-POLICY.md` §3); `tools/probe_state_machines.py` is the RED
-witness for step 1 and 2 today:
+Rules for whoever resumes: a probe row that flips is a regression, so fix the
+tool rather than the expectation, and update `tests/unit/` in the same commit as
+the tool. Do not hand-edit `leaderboard.md`, do not rewrite anything under
+`RESEARCH-COUNCIL/**` (`PROTECTED.md:11`), and keep the §3 order: failing test,
+then change.
 
-1. `tools/gen_leaderboard.py:67-79` — parse each row once into a dict of
-   `key=value` pairs, compare with field equality, select by the rule from
-   decision 1. This closes three of the six leaks.
-2. `tools/gen_leaderboard.py:62-64` — `field()` raises instead of returning
-   `None`, and `main` maps that to its FAIL-LOUD path.
-3. `tools/check_docs.py:105-115` — remember the opening marker.
-4. `tools/check_docs.py:210-268` — one verdict object, mapped to 0/1/2 at a
-   single exit point.
-5. `tools/gen_leaderboard.py:25-46` — caches owned by a run object passed into
-   `main()`, so "once per run" has a lifetime.
-6. `.githooks/pre-commit` and `.github/workflows/docs-gate.yml` — one script,
-   one path filter, and the witness tests in CI. Cheapest of the set and the
-   only one with no product decision attached.
-7. M10-M16 stay prose until someone wants a board linter; do not start there.
+Where this work sits: branch `cline/t60wwm9y` on origin. `AGENTS.md:39-40` asks
+for everything on `main`, so land it with `git checkout main && git merge
+--no-ff cline/t60wwm9y && git push origin main` once the Owner has read it.
 
 When a fix makes a probe row print `FIXED`, the witness is gone: add the
 replacement unit test under `tests/unit/` in the same commit, otherwise the

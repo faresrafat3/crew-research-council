@@ -97,20 +97,41 @@ LABEL = re.compile(
     r"^(?:\d+(?:\.\d+)*\.?|[A-Za-z](?:\.\d+)+|[A-Za-z]\d+\.?|[A-Za-z]\.)\s+"
 )
 WORD = re.compile(r"[A-Za-z][A-Za-z0-9'’_]*")
-FENCE = re.compile(r"^\s*(?:```|~~~)")
+FENCE = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
 HEADING = re.compile(r"^(#{1,6})\s+(.*\S)\s*$")
 CODE_SPAN = re.compile(r"`[^`]*`")
 
+# The three verdicts of a run, named so a caller never compares bare integers.
+OK = 0
+PROBLEMS = 1
+NO_INPUT = 2
+
 
 def unfenced_lines(path):
-    """Yield (lineno, line) for lines outside fenced code blocks."""
-    fenced = False
+    """Yield (lineno, line) for lines outside fenced code blocks.
+
+    A block closes only on a fence of the same character that is at least as
+    long as the one that opened it, so a ``` sample inside a ~~~ block stays
+    content instead of flipping the reader back to prose.
+    """
+    fence = None
     with open(path, encoding="utf-8") as handle:
         for lineno, line in enumerate(handle, 1):
-            if FENCE.match(line):
-                fenced = not fenced
+            match = FENCE.match(line)
+            if match:
+                marker = match.group(1)
+                if fence is None:
+                    fence = marker
+                    continue
+                closes = (
+                    marker[0] == fence[0]
+                    and len(marker) >= len(fence)
+                    and not match.group(2).strip()
+                )
+                if closes:
+                    fence = None
                 continue
-            if fenced:
+            if fence is not None:
                 continue
             yield lineno, line
 
@@ -212,7 +233,7 @@ def main(argv):
     paths = sorted(glob.glob(os.path.join(root, "*.md")))
     if not paths:
         print(f"no markdown files under {root}", file=sys.stderr)
-        return 2
+        return NO_INPUT
 
     # One read per file. The heading rule, the prose rules and the ref rule all
     # run on these cached unfenced lines, so no file is opened twice in a run
@@ -260,12 +281,12 @@ def main(argv):
         print(f"docs gate: {len(failures)} problems", file=sys.stderr)
         for failure in failures:
             print(f"  {failure}", file=sys.stderr)
-        return 1
+        return PROBLEMS
     print(
         f"docs gate ok: {headings} headings in {len(paths)} files; "
         f"{readmes} READMEs clean; {refs} refs resolve"
     )
-    return 0
+    return OK
 
 
 if __name__ == "__main__":

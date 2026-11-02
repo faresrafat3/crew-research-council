@@ -311,3 +311,44 @@ claim).
   witnessed failing test first, and fixing M6 changes what the board reports, so
   the fix order in the artifact waits on the Owner's call.
 
+---
+
+## APPEND 2026-11-02 (b) — the three decisions taken and the code transitions closed (operator session)
+
+The Owner delegated the three open decisions on 2026-11-02, so they are recorded
+here with what each one changed:
+
+- **duplicate rows** — two rows sharing `(formation, verify_mode, seed, n)` that
+  disagree are fatal; identical re-appends collapse. A report cannot say which
+  of two contradictory measurements is real.
+- **missing field** — fatal. `field()` raises `MeasurementError`, `main()`
+  maps it to `FAIL-LOUD`. A printed `None` reads as a value.
+- **fence policy** — strict, CommonMark-style: a block closes only on a fence of
+  the same character at least as long as the one that opened it.
+- **em-dash headings (M4)** — kept, not fixed: two protected headings depend on
+  the per-segment exemption (`OUTPUT/memory-architecture.md:413`,
+  `OUTPUT/testing-maturity-model.md:267`) and that corpus is not editable. The
+  rule is now declared in the docstring and pinned by `HeadingConvention`.
+
+What landed, each after a failing test (14 new tests, 10 red against the old
+code): `summaries`/`field`/`pick` in `tools/gen_leaderboard.py` rewritten around
+parsed fields, `unfenced_lines` given a tracked opening marker,
+`seeds_stable` returning `(values, stable)`, the read caches cleared per
+`main()`, the gate's three verdicts named `OK`/`PROBLEMS`/`NO_INPUT`.
+
+**M14 closed:** `tools/gate.sh` is now the one definition of "verified"
+(check_docs, witness tests, probes); `.githooks/pre-commit` and
+`.github/workflows/docs-gate.yml` both call it, and the workflow triggers on
+`tools/**`, `tests/**`, `.githooks/**` — the witness tests run in CI for the
+first time.
+
+**Evidence:** `bash tools/gate.sh` -> docs gate ok (776 headings / 25 files / 2
+READMEs clean / 32 refs), `Ran 26 tests ... OK`, `8 probes, 0 regression(s)`.
+`tools/probe_state_machines.py` records every row and exits 1 if a closed
+transition reopens.
+
+- **Not claimed:** `leaderboard.md` was **not** regenerated (no
+  `~/.hermes/crew/experiment/runs` tree in this environment), so its numbers
+  predate these fixes; M10-M13, M15, M16 remain prose; M9's global `open` patch
+  is untouched. No frozen paper was edited and no ruling re-scored.
+
