@@ -3,9 +3,22 @@
 measurement logs — read-time generated counts (CONSTITUTION §1); this file's
 numbers are never hand-edited.
 
+The row contract, so a reader never has to infer it from the code:
+
+- a row is identified by its fields (`formation`, `verify_mode`, `seed`, `n`),
+  never by a substring of the line, so `routed` never matches
+  `routed-thresholds`;
+- every field the report quotes must be present: a missing measurement is
+  fatal, never published as `None` beside real numbers;
+- two rows that share that identity and disagree are fatal
+  (`MeasurementError`), because the report cannot say which one is the real
+  measurement; identical re-appends collapse to one row;
+- an open seed reads the lowest seed in the log, so selection never depends on
+  line order; the sweep itself is reported by `seeds_stable`.
+
 Usage: python3 tools/gen_leaderboard.py
 """
-import re, sys, os, hashlib
+import contextlib, io, re, sys, os, hashlib
 RUNS = os.path.expanduser("~/.hermes/crew/experiment/runs")
 R02 = os.path.join(RUNS, "2026-09-22-router-round-02")
 R03 = os.path.join(RUNS, "2026-09-22-router-round-03")
@@ -22,8 +35,33 @@ FIX04F = os.path.join(R04, "tasks/real-missions.json")
 
 # One read per input: the report hashes the frozen fixtures twice and scans
 # round-04 for both SUMMARY rows and the RULING line, so keep both caches.
+# `main()` empties them at entry: a cache lives for exactly one report, so a
+# second report in the same process cannot read the first report's bytes.
 _DIGESTS = {}
 _LINES = {}
+
+
+class MeasurementError(Exception):
+    """A row that cannot be read as the measurement it claims to carry."""
+
+
+def _brief(row):
+    """One row, short enough to name in an error message."""
+    keys = ("formation", "verify_mode", "n", "total_cost", "passed", "resolved")
+    return " ".join(f"{key}={row[key]}" for key in keys if key in row)
+
+
+def _fields(text):
+    """The key=value tokens of one row; a key repeated inside it is fatal."""
+    found = {}
+    for token in text.split():
+        key, separator, value = token.partition("=")
+        if not separator:
+            continue
+        if key in found and found[key] != value:
+            raise MeasurementError(f"row carries {key}= twice: {text.strip()}")
+        found[key] = value
+    return found
 
 
 def sha(path):
@@ -46,37 +84,74 @@ def lines_of(path):
     return _LINES[path]
 
 
+ROW = re.compile(r"^(?:seed=(\d+)\s+)?SUMMARY\b(.*)$")
+
+
 def summaries(log):
+    """Every SUMMARY row of one log, parsed into (seed, fields) once."""
     if not os.path.exists(log):
         sys.exit(f"FAIL-LOUD: measurement log missing: {log}")
     rows = []
+    seen = {}
     for line in lines_of(log):
-        m = re.match(r"seed=(\d+) (SUMMARY .*)", line)
-        if m:
-            rows.append((int(m.group(1)), m.group(2)))
-        elif line.startswith("SUMMARY"):
-            rows.append((None, line.strip()))
+        match = ROW.match(line.lstrip())
+        if not match:
+            continue
+        seed = int(match.group(1)) if match.group(1) is not None else None
+        row = _fields(match.group(2))
+        for required in ("formation", "n"):
+            if required not in row:
+                raise MeasurementError(f"row has no {required}: {line.strip()}")
+        identity = (row["formation"], row.get("verify_mode"), seed, row["n"])
+        if identity in seen:
+            if seen[identity] != row:
+                raise MeasurementError(
+                    f"{identity[0]} mode={identity[1]} seed={seed} "
+                    f"n={identity[3]} rows disagree: "
+                    f"{_brief(seen[identity])} vs {_brief(row)}"
+                )
+            continue
+        seen[identity] = row
+        rows.append((seed, row))
     return rows
 
 
-def field(s, name):
-    m = re.search(rf"{name}=(\d+)", s)
-    return int(m.group(1)) if m else None
+def field(row, name):
+    """One integer measurement; absence is fatal, not a printed `None`."""
+    value = row.get(name)
+    if value is None:
+        raise MeasurementError(f"row has no {name}: {_brief(row)}")
+    if not re.fullmatch(r"-?\d+", value):
+        raise MeasurementError(f"row field is not a count: {name}={value}")
+    return int(value)
 
 
 def pick(rows, formation, seed=None, n=None, mode=None):
+    """The one row for this arm, matched on field equality.
+
+    `routed` must not select `routed-thresholds`. An open seed means "the lowest
+    seed in the log", because a seed sweep is reported by `seeds_stable`; that
+    keeps the choice deterministic instead of order-dependent.
+    """
     if n is None:
         sys.exit("FAIL-LOUD: task count required")
-    for sd, s in rows:
-        if f"formation={formation}" not in s:
-            continue
-        if mode is not None and f"verify_mode={mode}" not in s:
-            continue
-        if seed is not None and sd != seed:
-            continue
-        if field(s, "n") == n:
-            return s
-    sys.exit(f"FAIL-LOUD: no SUMMARY for {formation} seed={seed} n={n} mode={mode}")
+    matches = [
+        (row_seed, row)
+        for row_seed, row in rows
+        if row["formation"] == formation
+        and (mode is None or row.get("verify_mode") == mode)
+        and (seed is None or row_seed == seed)
+        and field(row, "n") == n
+    ]
+    if seed is None:
+        seeds = [row_seed for row_seed, _ in matches if row_seed is not None]
+        if seeds:
+            lowest = min(seeds)
+            matches = [(row_seed, row) for row_seed, row in matches
+                       if row_seed == lowest]
+    if not matches:
+        sys.exit(f"FAIL-LOUD: no SUMMARY for {formation} seed={seed} n={n} mode={mode}")
+    return matches[0][1]
 
 
 def postcut_verdict():
@@ -98,17 +173,18 @@ def ruling04():
 
 
 def seeds_stable(rows, mode, n=46):
-    """Return (values, sd_text) for one verification mode across the sweep."""
-    vals = sorted(field(s, "total_cost") for sd, s in rows
-                  if sd is not None and f"verify_mode={mode}" in s
-                  and field(s, "n") == n)
+    """Return (values, stable) for one verification mode across the sweep."""
+    vals = sorted(field(row, "total_cost") for row_seed, row in rows
+                  if row_seed is not None
+                  and row.get("verify_mode") == mode
+                  and field(row, "n") == n)
     if not vals:
         sys.exit(f"FAIL-LOUD: no seed-sweep rows for mode={mode}")
-    sd = 0.0 if len(set(vals)) == 1 else "VARIES"
-    return vals, sd
+    return vals, len(set(vals)) == 1
 
 
-def main():
+def report():
+    """Print the whole board once, from the logs on disk."""
     rows02, rows03, rows04 = (summaries(LOG02), summaries(LOG03),
                               summaries(LOG04))
     champ20 = pick(rows02, "solo", 7, 20)
@@ -164,9 +240,10 @@ def main():
           f"`eval --formation solo --hold-on-vague` |")
     for mode, label in (("pre", "shipped"), ("final", "candidate"),
                         ("off", "ablation")):
-        vals, sd = seeds_stable(rows04, mode)
+        vals, stable = seeds_stable(rows04, mode)
+        verdict = "0.0" if stable else "VARIES"
         print(f"| seed stability ({label} `{mode}`) | sd=0 across 5 seeds "
-              f"| {vals} sd={sd} | `tools/run_trial_r04.py` |")
+              f"| {vals} sd={verdict} | `tools/run_trial_r04.py` |")
     print(f"| determinism (all 3 modes) | double runs byte-identical "
           f"| PASS | same |")
     print(f"| champion promotion bar | cost <= 88 on the frozen 20 "
@@ -219,6 +296,24 @@ def main():
           f"cost={field(routed20,'total_cost')} -> FAIL (bar failed honestly; "
           f"R03 re-tried the class table and cut it; R04 priced the verifier) "
           f"| same |")
+
+
+def main():
+    """Print one report; the read caches live for exactly this call.
+
+    The board is rendered into a buffer and written only once every row has been
+    read, so a refused report cannot leave half a leaderboard behind for a
+    `> leaderboard.md` redirect to keep.
+    """
+    _DIGESTS.clear()
+    _LINES.clear()
+    buffer = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buffer):
+            report()
+    except MeasurementError as failure:
+        sys.exit(f"FAIL-LOUD: {failure}")
+    sys.stdout.write(buffer.getvalue())
 
 
 if __name__ == "__main__":

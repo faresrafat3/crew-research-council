@@ -97,22 +97,34 @@ LABEL = re.compile(
     r"^(?:\d+(?:\.\d+)*\.?|[A-Za-z](?:\.\d+)+|[A-Za-z]\d+\.?|[A-Za-z]\.)\s+"
 )
 WORD = re.compile(r"[A-Za-z][A-Za-z0-9'’_]*")
-FENCE = re.compile(r"^\s*(?:```|~~~)")
+FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
 HEADING = re.compile(r"^(#{1,6})\s+(.*\S)\s*$")
 CODE_SPAN = re.compile(r"`[^`]*`")
 
+# The gate's three verdicts, named once. CI only reads "not OK".
+OK, PROBLEMS, NO_INPUT = 0, 1, 2
+
 
 def unfenced_lines(path):
-    """Yield (lineno, line) for lines outside fenced code blocks."""
-    fenced = False
+    """Yield (lineno, line) for lines outside fenced code blocks.
+
+    The reader remembers which marker opened the block and how long it was, so a
+    ``` sample shown inside a ~~~ block is content instead of a close, and a
+    four-backtick block is not closed by a three-backtick line.
+    """
+    fence = None
     with open(path, encoding="utf-8") as handle:
         for lineno, line in enumerate(handle, 1):
-            if FENCE.match(line):
-                fenced = not fenced
+            match = FENCE.match(line)
+            if fence is None:
+                if match:
+                    fence = (match.group(1)[0], len(match.group(1)))
+                    continue
+                yield lineno, line
                 continue
-            if fenced:
-                continue
-            yield lineno, line
+            if (match and match.group(1)[0] == fence[0]
+                    and len(match.group(1)) >= fence[1]):
+                fence = None
 
 
 def is_allowed_capital(part):
@@ -212,7 +224,7 @@ def main(argv):
     paths = sorted(glob.glob(os.path.join(root, "*.md")))
     if not paths:
         print(f"no markdown files under {root}", file=sys.stderr)
-        return 2
+        return NO_INPUT
 
     # One read per file. The heading rule, the prose rules and the ref rule all
     # run on these cached unfenced lines, so no file is opened twice in a run
@@ -260,12 +272,12 @@ def main(argv):
         print(f"docs gate: {len(failures)} problems", file=sys.stderr)
         for failure in failures:
             print(f"  {failure}", file=sys.stderr)
-        return 1
+        return PROBLEMS
     print(
         f"docs gate ok: {headings} headings in {len(paths)} files; "
         f"{readmes} READMEs clean; {refs} refs resolve"
     )
-    return 0
+    return OK
 
 
 if __name__ == "__main__":

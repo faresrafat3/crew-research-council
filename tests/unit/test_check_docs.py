@@ -188,5 +188,50 @@ class GateVerdicts(unittest.TestCase):
         self.assertTrue(re.search(r"docs gate: 3 problems", err), msg=err)
 
 
+class GateFences(unittest.TestCase):
+    """A fence closes only on its own marker, and only when it is long enough.
+
+    Documenting a ``` sample inside a ~~~ block is legal Markdown; treating the
+    sample line as a close grades the block's body as prose.
+    """
+
+    def run_tree(self, body):
+        scratch = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, scratch)
+        with REAL_OPEN(os.path.join(scratch, "chapter.md"), "w", encoding="utf-8") as fh:
+            fh.write(body)
+        gate = load_gate()
+        gate.CLEAN_READMES = ()
+        gate.OUTPUT = scratch
+        return run_gate(gate, ["check_docs.py", scratch])
+
+    def test_a_backtick_line_does_not_close_a_tilde_fence(self):
+        code, out, err = self.run_tree(
+            "~~~text\n```python\n# Not A Heading Here\n```\n~~~\n\n# Fine heading\n"
+        )
+        self.assertEqual(code, 0, msg=err)
+        self.assertNotIn("Not A Heading Here", err)
+
+    def test_a_tilde_line_does_not_close_a_backtick_fence(self):
+        code, out, err = self.run_tree(
+            "```text\n~~~\n# Not A Heading Here\n~~~\n```\n\n# Fine heading\n"
+        )
+        self.assertEqual(code, 0, msg=err)
+
+    def test_a_longer_fence_runs_until_its_own_marker(self):
+        code, out, err = self.run_tree(
+            "````markdown\n```python\n# Not A Heading Here\n```\n````\n\n# Fine heading\n"
+        )
+        self.assertEqual(code, 0, msg=err)
+
+    def test_a_bare_fence_still_closes(self):
+        code, out, err = self.run_tree(
+            "# Fine heading\n\n```\n# Not A Heading Here\n```\n\n# Also Not A Heading\n"
+        )
+        self.assertEqual(code, 1)
+        self.assertIn("Also Not A Heading", err)
+        self.assertNotIn("Not A Heading Here", err)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -278,3 +278,37 @@ claim).
 - **Not claimed:** nothing about R02–R05 (still `UNVERIFIABLE`), no number
   changed, no ruling re-scored.
 
+---
+## APPEND 2026-11-02 — the tools stop reading the wrong row and the wrong fence
+
+- `tools/gen_leaderboard.py` selected a row with `f"formation={name}" in line`,
+  so `formation=routed` also matched `formation=routed-thresholds` and the first
+  row won: the board could publish the class-table arm's numbers under the
+  shipped arm's name without saying so. Rows are now parsed once into
+  `key=value` fields and matched on equality, keyed by
+  `(formation, verify_mode, seed, n)`.
+- Same selector: an indented `SUMMARY` row was dropped, a re-appended arm was
+  ignored in favour of the older row, an open seed depended on line order, and
+  an absent field was published as `None` beside real counts (`holes None vs 2`).
+  Indented rows now parse, identical repeats collapse, two rows that disagree
+  stop the report (`MeasurementError` -> `FAIL-LOUD`), an open seed reads the
+  lowest seed, and a missing field is fatal.
+- The read caches are cleared at entry to `main()`, so "once per report" is a
+  lifetime: a second report in the same process no longer re-prints the first
+  report's bytes. The board is rendered into a buffer and written only after
+  every row reads cleanly, so a refused report leaves no partial
+  `leaderboard.md` behind a `>` redirect.
+- `tools/check_docs.py` flipped one bool on any fence marker, so a ``` sample
+  inside a `~~~` block closed it and the block's body was graded as prose (two
+  false heading violations reproduced). The reader now remembers the opening
+  marker and its length and closes only on a matching marker at least that
+  long. The verdicts are named `OK` / `PROBLEMS` / `NO_INPUT`; the exit codes
+  stay 0 / 1 / 2.
+- Evidence: 14 witness tests written first, 12 of them red against the old tools
+  (`FAILED (failures=12)`), then `Ran 26 tests ... OK` and
+  `docs gate ok: 776 headings in 25 files; 2 READMEs clean; 32 refs resolve`.
+- **Not claimed:** `leaderboard.md` was not regenerated (no
+  `~/.hermes/crew/experiment/runs` tree in this environment), so its numbers
+  predate these fixes; the process machines (mission pipeline, board protocol,
+  trial lifecycle) are still prose; no frozen paper and no ruling was touched.
+

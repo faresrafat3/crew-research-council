@@ -204,5 +204,120 @@ class LeaderboardReadCost(LeaderboardFixture):
         self.assertEqual(len(first), 64)
 
 
+class LeaderboardRowIdentity(LeaderboardFixture):
+    """A row is chosen by its fields, never by a substring or its position.
+
+    `formation=routed` is a prefix of `formation=routed-thresholds`, so a
+    substring test reads one arm's numbers and labels them as the other's. The
+    row set also has to survive indentation, a re-appended arm and an open seed
+    without falling back on line order.
+    """
+
+    def write_log(self, body):
+        with REAL_OPEN(self.tool.LOG04, "w", encoding="utf-8") as handle:
+            handle.write(body)
+        return self.tool.LOG04
+
+    def full_log(self, extra_rows=()):
+        return LOG04 + "".join(row + "\n" for row in extra_rows)
+
+    def test_formation_is_matched_exactly(self):
+        rows = self.tool.summaries(self.write_log(
+            "\n".join(
+                [round04_row(seed, "routed-thresholds", "pre", 46, 250, 0, 8, 23)
+                 for seed in range(1, 6)]
+                + [round04_row(seed, "routed", "pre", 46, 300, 2, 8, 23)
+                   for seed in range(1, 6)]
+            ) + "\n"
+        ))
+        chosen = self.tool.pick(rows, "routed", None, 46, mode="pre")
+        self.assertEqual(self.tool.field(chosen, "total_cost"), 300,
+                         msg="the routed-thresholds row was read as routed")
+
+    def test_a_thresholds_row_never_supplies_the_routed_arm(self):
+        self.write_log(self.full_log(
+            round04_row(seed, "routed-thresholds", "pre", 46, 250, 0, 8, 23)
+            for seed in range(1, 6)
+        ))
+        out = self.run_tool()
+        self.assertIn("tax=+20 calls of 300", out)
+        self.assertNotIn("tax=+-30", out)
+
+    def test_an_indented_summary_row_is_still_a_row(self):
+        rows = self.tool.summaries(self.write_log(
+            "   " + round04_row(1, "solo", "solo", 46, 159, 0, 0, 12) + "\n"
+        ))
+        self.assertEqual(len(rows), 1,
+                         msg="an indented SUMMARY row was dropped")
+
+    def test_an_open_seed_reads_the_lowest_seed(self):
+        rows = self.tool.summaries(self.write_log(
+            round04_row(5, "solo", "solo", 46, 999, 0, 0, 12) + "\n"
+            + round04_row(1, "solo", "solo", 46, 159, 0, 0, 12) + "\n"
+        ))
+        chosen = self.tool.pick(rows, "solo", None, 46)
+        self.assertEqual(self.tool.field(chosen, "total_cost"), 159,
+                         msg="an open seed selected by line order")
+
+    def test_an_identical_repeat_collapses_to_one_row(self):
+        row = round04_row(9, "solo", "solo", 46, 159, 0, 0, 12)
+        expected = self.run_tool()
+        self.write_log(self.full_log([row]))
+        self.assertEqual(self.run_tool(), expected)
+
+    def test_rows_that_disagree_stop_the_report(self):
+        self.write_log(self.full_log([
+            round04_row(9, "solo", "solo", 46, 999, 0, 0, 12),
+        ]))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            with self.assertRaises(SystemExit) as caught:
+                self.tool.main()
+        self.assertIn("FAIL-LOUD", str(caught.exception.code))
+        self.assertIn("disagree", str(caught.exception.code))
+        self.assertEqual(out.getvalue(), "",
+                         msg="a refused report still published rows")
+
+    def test_a_missing_measurement_is_fatal(self):
+        with REAL_OPEN(self.tool.LOG04, "w", encoding="utf-8") as handle:
+            handle.write(LOG04.replace("hole_deliveries=2 ", ""))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            with self.assertRaises(SystemExit) as caught:
+                self.tool.main()
+        self.assertIn("FAIL-LOUD", str(caught.exception.code))
+        self.assertIn("hole_deliveries", str(caught.exception.code))
+        self.assertEqual(out.getvalue(), "",
+                         msg="a missing field was published as a measurement")
+
+    def test_a_broken_row_prints_no_partial_board(self):
+        with REAL_OPEN(self.tool.LOG04, "w", encoding="utf-8") as handle:
+            handle.write(LOG04.replace("resolved=12 verifier_calls=0", "resolved=12"))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            with self.assertRaises(SystemExit):
+                self.tool.main()
+        self.assertEqual(out.getvalue(), "",
+                         msg="a failed report left part of the board on stdout")
+
+    def test_a_second_report_reads_the_log_again(self):
+        first = self.run_tool()
+        with REAL_OPEN(self.tool.LOG04, "w", encoding="utf-8") as handle:
+            handle.write(LOG04.replace("total_cost=300", "total_cost=350"))
+        second = self.run_tool()
+        self.assertIn("tax=+70 calls of 350", second)
+        self.assertNotEqual(first, second, msg="the second report reused the first's bytes")
+
+    def test_the_seed_sweep_returns_a_boolean_verdict(self):
+        rows = self.tool.summaries(self.write_log(
+            round04_row(1, "routed", "pre", 46, 300, 0, 8, 23) + "\n"
+            + round04_row(2, "routed", "pre", 46, 305, 0, 8, 23) + "\n"
+        ))
+        values, stable = self.tool.seeds_stable(rows, "pre")
+        self.assertEqual(values, [300, 305])
+        self.assertIs(stable, False,
+                      msg="the sweep verdict is not a boolean state")
+
+
 if __name__ == "__main__":
     unittest.main()
