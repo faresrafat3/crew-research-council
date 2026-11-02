@@ -45,6 +45,10 @@ class MeasurementError(Exception):
     """A row that cannot be read as the measurement it claims to carry."""
 
 
+# Verdicts for `check_leaderboard`; only CURRENT is a pass.
+OK_EXIT, STALE_EXIT = 0, 1
+
+
 def _brief(row):
     """One row, short enough to name in an error message."""
     keys = ("formation", "verify_mode", "n", "total_cost", "passed", "resolved")
@@ -298,23 +302,68 @@ def report():
           f"| same |")
 
 
-def main():
-    """Print one report; the read caches live for exactly this call.
+def rendered():
+    """The whole report as text; the read caches live for exactly this render."""
+    _DIGESTS.clear()
+    _LINES.clear()
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        report()
+    return buffer.getvalue()
+
+
+# The generated board, beside this tool's parent directory.
+BOARD = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                     "leaderboard.md")
+
+# The three freshness verdicts, named once: a board that cannot be compared
+# (no run tree here) is a different state from a board that disagrees.
+CURRENT, STALE, SKIP = "CURRENT", "STALE", "SKIP"
+
+
+def check_leaderboard(path=BOARD):
+    """Compare the board on disk with what the logs generate now; 0 if current.
+
+    SKIP is honest: on a clean clone the run tree under `~/.hermes` is absent, so
+    the board cannot be re-derived and claiming either state would be a guess.
+    A STALE board is fatal because a stale board and a hand-edited one look the
+    same to every reader of the file.
+    """
+    if not os.path.isdir(RUNS):
+        print(f"leaderboard: {SKIP} (no run tree at {RUNS})")
+        return OK_EXIT
+    try:
+        generated = rendered()
+    except MeasurementError as failure:
+        sys.exit(f"FAIL-LOUD: {failure}")
+    if not os.path.exists(path):
+        print(f"leaderboard: {STALE} (no board at {path})", file=sys.stderr)
+        return STALE_EXIT
+    with open(path, encoding="utf-8") as handle:
+        published = handle.read()
+    if published != generated:
+        print(f"leaderboard: {STALE} (run `python3 tools/gen_leaderboard.py` "
+              f"and commit the diff)", file=sys.stderr)
+        return STALE_EXIT
+    print(f"leaderboard: {CURRENT}")
+    return OK_EXIT
+
+
+def main(argv=None):
+    """Print one report, or compare the board with the logs under `--check`.
 
     The board is rendered into a buffer and written only once every row has been
     read, so a refused report cannot leave half a leaderboard behind for a
     `> leaderboard.md` redirect to keep.
     """
-    _DIGESTS.clear()
-    _LINES.clear()
-    buffer = io.StringIO()
+    if "--check" in list(argv or []):
+        sys.exit(check_leaderboard())
     try:
-        with contextlib.redirect_stdout(buffer):
-            report()
+        text = rendered()
     except MeasurementError as failure:
         sys.exit(f"FAIL-LOUD: {failure}")
-    sys.stdout.write(buffer.getvalue())
+    sys.stdout.write(text)
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

@@ -319,5 +319,60 @@ class LeaderboardRowIdentity(LeaderboardFixture):
                       msg="the sweep verdict is not a boolean state")
 
 
+class LeaderboardFreshness(LeaderboardFixture):
+    """A generated board is CURRENT, STALE or SKIP, never silently unchecked."""
+
+    def write_board(self, body):
+        path = os.path.join(self.runs, "leaderboard.md")
+        with REAL_OPEN(path, "w", encoding="utf-8") as handle:
+            handle.write(body)
+        return path
+
+    def check(self, path):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = self.tool.check_leaderboard(path)
+        return code, out.getvalue(), err.getvalue()
+
+    def test_a_board_that_matches_the_logs_is_current(self):
+        path = self.write_board(self.tool.rendered())
+        code, out, err = self.check(path)
+        self.assertEqual(code, 0, msg=err)
+        self.assertIn("CURRENT", out)
+
+    def test_a_board_that_disagrees_with_the_logs_is_stale(self):
+        published = self.tool.rendered().replace("tax=+20 calls of 300",
+                                                 "tax=+21 calls of 300")
+        path = self.write_board(published)
+        code, out, err = self.check(path)
+        self.assertEqual(code, 1)
+        self.assertIn("STALE", err)
+
+    def test_a_missing_board_is_stale(self):
+        code, out, err = self.check(os.path.join(self.runs, "absent.md"))
+        self.assertEqual(code, 1)
+        self.assertIn("STALE", err)
+
+    def test_without_a_run_tree_the_check_skips_honestly(self):
+        self.tool.RUNS = os.path.join(self.runs, "absent")
+        code, out, err = self.check(os.path.join(self.runs, "absent.md"))
+        self.assertEqual(code, 0)
+        self.assertIn("SKIP", out)
+
+    def test_the_check_writes_no_report(self):
+        path = self.write_board(self.tool.rendered())
+        code, out, err = self.check(path)
+        self.assertNotIn("# LEADERBOARD", out, msg="the check leaked the report")
+
+    def test_the_cli_check_exits_on_the_verdict(self):
+        self.tool.RUNS = os.path.join(self.runs, "absent")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            with self.assertRaises(SystemExit) as caught:
+                self.tool.main(["--check"])
+        self.assertEqual(caught.exception.code, 0)
+        self.assertIn("SKIP", out.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -17,9 +17,11 @@ hermes itself (project config in `.hermes/`):
 hermes            # enter the council runtime from this directory
 git status        # must be clean before claiming any decision landed
 
-# gate (runs in .githooks/pre-commit, `git config core.hooksPath .githooks`)
-python3 tools/check_docs.py   # OUTPUT headings sentence case; READMEs clean; refs resolve
-python3 -m unittest discover -s tests/unit   # witness tests for both tools
+# gate (one definition: .githooks/pre-commit and CI both run this script)
+bash tools/gate.sh            # docs style + witness tests + board freshness
+python3 tools/check_docs.py   # docs style only
+python3 -m unittest discover -s tests/unit   # witness tests only
+python3 tools/gen_leaderboard.py --check     # CURRENT / STALE / SKIP
 ```
 
 ## Map
@@ -28,8 +30,9 @@ python3 -m unittest discover -s tests/unit   # witness tests for both tools
 - `VOICES-LIVE-16.md`, voice registry (register/rhythm/lexicon/forms per bot)
 - `crew/` `experiments/` · `ARENA.md` · `bets-ledger.md` · `ENTITY.md`
 - `tools/check_docs.py`, the docs gate; `tools/gen_leaderboard.py`, the generated
-  board numbers; `tests/unit/`, witness tests that each input is read once;
-  `.githooks/pre-commit` runs the gate and the tests
+  board numbers and their freshness check; `tools/gate.sh`, the one definition
+  of "verified"; `tests/unit/`, witness tests that each input is read once;
+  `.githooks/pre-commit` and CI both call `tools/gate.sh`
 
 ## Rules
 
