@@ -50,12 +50,12 @@ contributions to agent frameworks, and independent verification products for com
   `DEGENERATE_SINGLE_STATE_TRAP`, and a green patch echoing a cage-only literal was refused with
   `OVERFITTED_LITERAL_ECHO_DETECTED`; the one-line honest repair then sealed green, 22/22 tests
   (ledger record 11, field experiment §4.7 of the foundations document).
-- **The discipline figure.** The tasking brief asserts an agent-discipline jump from 17.9% to
-  100%. The examiner grepped the foundations document, all 20 ledger lines, the full
-  `peircean-engine` tree, and the scratch comparative reports; no artifact carries a 17.9%
-  baseline. Section 2.4 therefore records it as `[unverified]` and substitutes the verifiable
-  proxies: the engine gate 58/58 green verified live on 2026-11-08 (ledger record 11 reports
-  94/94 after the single-process topology change, commit `e1cff19`).
+- **The discipline figure.** Section 2.4 now measures the discipline jump directly from
+  `/home/fares/.hermes/state.db`: first-turn skill compliance 15.4% (19/123) before commit
+  `e1cff19` rising to 100% (7/7) after, with the terminal-to-skill ratio falling from 79.01:1
+  to 5.68:1. The tasking brief's figures (17.9% = 26/145; 77.34:1 → 11.18:1) and its proof file
+  were not found and do not reproduce, so they are not asserted; the verifiable proxies for
+  "the laws bite" remain those in §§2.1–2.3 and the engine gate 58/58 (94/94 per ledger record 11).
 
 ## Section 1: human-out-of-the-loop scientific autonomy and how six mechanical laws break agent collusion and hallucination
 
@@ -302,30 +302,41 @@ tests + 61 plugin checks) after the topology change, pushed as commit `e1cff19`.
 cites 58/58 as the documented gate at the time of writing and 94/94 as the ledger's own evidence;
 the two numbers describe two recorded states of the same suite, not a contradiction.
 
-### Section 2.4: the alleged discipline jump from 17.9% to 100% (unverified)
+### Section 2.4: the discipline jump measured from the session database
 
-**[unverified].** The tasking brief supplied for this monograph asserts a jump in "agent
-discipline" from 17.9% to 100%. The examiner searched every live source named in the brief and
-found no artifact that carries this figure:
+**Measured 2026-11-08 from `/home/fares/.hermes/state.db`.** The tasking brief
+supplied for this monograph asserted a discipline jump (145 sessions before the
+gate, first-turn skill compliance 17.9% = 26/145, terminal-to-skill ratio
+77.34:1 → 11.18:1, −85.5%) and pointed to a proof file
+`before-after-cohort-proof.md` under `/home/fares/.hermes/cache/scratch/`. That
+file does not exist (scratch entries are pruned after 24h idle) and the brief's
+figures do not reproduce from `state.db` under any natural cohort definition,
+so they are **not asserted** here. The same effect was measured instead, with a
+stated method:
 
-- `docs/SCIENTIFIC_FOUNDATIONS.md` (643 lines): no occurrence of `17.9`.
-- `memory/scientific_ledger.jsonl` (20 records): zero occurrences of `17.9` (grepped, count 0).
-- The comparative audit reports in `/home/fares/.hermes/cache/scratch/` (`forensic-report.txt`,
-  `forensic-data.json`): these are Hermes X-ray dashboards (sessions, tokens, tool-call counts per
-  profile) and contain no discipline metric.
-- Sibling terminal logs in the system-architect profile mention `17.9` only inside incidental
-  strings (SVG dimensions `17.6580310880829`, timestamps, hex fingerprints).
+- Source: `state.db` `messages` rows with `role='tool'` (one row per executed
+  tool call), ordered by `messages.id`; sessions with `tool_call_count >= 1`.
+- Cohort split: `sessions.started_at` before vs at/after commit `e1cff19`
+  (2026-11-08T02:02Z), the cycle-scoping change of record 11.
+- *First-turn skill compliance*: the session's first executed tool call is
+  `skill_view`.
+- *Terminal-to-skill ratio*: total `terminal` calls / total `skill_view` calls.
 
-A figure supplied only in a task brief is the weakest source in the evidence hierarchy: it
-compresses prior work and drifts from the artifacts. Accordingly this monograph does **not**
-assert 17.9% → 100% as a measured result, and it must not be quoted elsewhere as one. The
-verifiable proxies for "the laws bite" are the ones in §§2.1–2.3: a ratchet that reverts its own
-instrument's first probe, a seal that refuses a cryptographically valid but unreachable cage, and
-two live rejections of degenerate and overfitted cages. To promote the discipline figure from
-brief-claim to measurement, the missing artifact would be a session-level audit that scores
-every tool call against the six laws before and after the cycle-scoping change (record 11,
-`e1cff19`, 2026-11-08T02:02Z) — a well-defined experiment this monograph recommends as its first
-follow-up (§3 and Limitations).
+| Cohort | Sessions | First tool is `skill_view` | Terminal : skill_view |
+|---|---|---|---|
+| Before `e1cff19` | 123 | 19 (15.4%) | 79.01 : 1 (12,168 / 154) |
+| At/after `e1cff19` | 7 | 7 (100%) | 5.68 : 1 (125 / 22) |
+
+The after cohort is small (n=7) and `state.db` is live, so the after ratio
+drifts slightly on re-run; the before cohort is fixed. The direction the brief
+claimed is confirmed: after the gate, sessions open with a specialist skill and
+raw terminal dominance falls by an order of magnitude.
+
+The enforcement mechanism behind the measured compliance is the `skill-gate`
+plugin (`~/.hermes/plugins/skill-gate/`): phase 2 caps raw terminal calls at
+`DELEGATION_LIMIT = 12` before forcing a `delegate_task`, and its contract
+suite passes 66/66 live on 2026-11-08. The verifiable proxies for "the laws
+bite" remain those in §§2.1–2.3.
 
 ## Section 3: converting the architecture into three high-impact paths
 
@@ -415,8 +426,10 @@ or procurement team can read without trusting a model.
   law can exist in source and not in force. Any deployment of the kernel needs a startup
   fingerprint check (dispatcher build time vs kernel edit time), which the engine does not yet
   have.
-- **The 17.9% → 100% discipline figure is [unverified]** (§2.4) and must not be quoted as
-  measured until a session-level tool-call audit produces it.
+- **The discipline figure is measured with a small after cohort** (§2.4): 7 sessions
+  at/after `e1cff19`, so the exact after ratio is indicative, not precise. The brief's
+  original figures (17.9% = 26/145; 77.34:1 → 11.18:1) were not reproduced and must not be
+  quoted.
 - **Reproduction.** `npm test` in `peircean-engine` (58/58 as documented; 94/94 per ledger
   record 11), `node bin/cybernetic-pipeline.mjs --show-history`, and the commands in foundations
   §4.6 regenerate the ledger this monograph is built on.
@@ -425,7 +438,7 @@ or procurement team can read without trusting a model.
 
 | Order | Action | Why, in one line | Evidence that it stands on |
 |---|---|---|---|
-| 1 | Run the session-level tool-call discipline audit (before/after commit `e1cff19`) | Converts the only unverified number in this monograph into a measured one, or retires it | record 11, §2.3 |
+| 1 | Re-run the session-level tool-call discipline audit as the post-gate cohort grows | The audit is measured (§2.4) but the after cohort is n=7; a larger cohort firms the after ratio | record 11, §2.3; §2.4 |
 | 2 | Externalise the kernel + plugin as a standalone package with the 58/58 suite as conformance tests | The adoption-track contribution (§3.2) needs no new science, only packaging | Law III layering, §1.3 |
 | 3 | Draft paper 1 (Catch-22 / remediation-aware arbitration) with the 7 red attempts as motivating evidence | Strongest theorem; the negative result is publishable and rare | ledger records 7–9, §2.2 |
 | 4 | Pilot the sealed-cage gate on one external repository | First scaling data point and first product validation in the same step | §3.3.1 |
@@ -446,5 +459,4 @@ No external URLs are cited: this monograph's claims resolve to artifacts a reade
 | Comparative audit reports consulted | `/home/fares/.hermes/cache/scratch/forensic-report.txt`, `forensic-data.json` |
 | Historical grounding (Peirce, Bacon 1620, Ibn al-Haytham, Cowan 2001, Miller 1956, Platt 1964, Feynman 1974) | as reviewed in foundations §§1.2, 2.2 — named, not URL-cited, per the no-invented-citations rule |
 
-*End of monograph. Every number above was read from the live repository and ledger on 2026-11-08,
-except the single figure explicitly marked [unverified] in §2.4.*
+*End of monograph. Every number above was read from the live repository, ledger, and `state.db` on 2026-11-08; the tasking brief's original discipline figures were not reproduced and are not asserted (§2.4).*
